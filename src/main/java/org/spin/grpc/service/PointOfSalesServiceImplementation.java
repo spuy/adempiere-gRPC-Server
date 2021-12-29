@@ -28,7 +28,6 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.model.GenericPO;
@@ -154,6 +153,8 @@ import org.spin.grpc.util.ListAvailablePaymentMethodsRequest;
 import org.spin.grpc.util.ListAvailablePaymentMethodsResponse;
 import org.spin.grpc.util.ListAvailablePriceListRequest;
 import org.spin.grpc.util.ListAvailablePriceListResponse;
+import org.spin.grpc.util.ListAvailableSellersRequest;
+import org.spin.grpc.util.ListAvailableSellersResponse;
 import org.spin.grpc.util.ListAvailableWarehousesRequest;
 import org.spin.grpc.util.ListAvailableWarehousesResponse;
 import org.spin.grpc.util.ListCashMovementsRequest;
@@ -1605,6 +1606,76 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					.withCause(e)
 					.asRuntimeException());
 		}
+	}
+	
+	@Override
+	public void listAvailableSellers(ListAvailableSellersRequest request, StreamObserver<ListAvailableSellersResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			log.fine("Available Sellers = " + request.getPosUuid());
+			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
+					request.getClientRequest().getLanguage(), 
+					request.getClientRequest().getOrganizationUuid(), 
+					request.getClientRequest().getWarehouseUuid());
+			ListAvailableSellersResponse.Builder response = listAvailableSellers(request);
+			responseObserver.onNext(response.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.augmentDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+	
+	/**
+	 * List shipment Lines from Order UUID
+	 * @param request
+	 * @return
+	 */
+	private ListAvailableSellersResponse.Builder listAvailableSellers(ListAvailableSellersRequest request) {
+		if(Util.isEmpty(request.getPosUuid())) {
+			throw new AdempiereException("@C_POS_ID@ @NotFound@");
+		}
+		ListAvailableSellersResponse.Builder builder = ListAvailableSellersResponse.newBuilder();
+		String nexPageToken = null;
+		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.PAGE_SIZE;
+		int offset = pageNumber * RecordUtil.PAGE_SIZE;
+		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
+		//	
+		StringBuffer whereClause = new StringBuffer();
+		List<Object> parameters = new ArrayList<Object>();
+		parameters.add(posId);
+		if(request.getIsOnlyAllocated()) {
+			whereClause.append("EXISTS(SELECT 1 FROM C_POSSellerAllocation s WHERE s.C_POS_ID = ? AND s.SalesRep_ID = AD_User.AD_User_ID)");
+		} else {
+			whereClause.append("EXISTS(SELECT 1 FROM C_POSSellerAllocation s WHERE s.C_POS_ID <> ? AND s.SalesRep_ID = AD_User.AD_User_ID)");
+		}
+		Query query = new Query(Env.getCtx(), I_AD_User.Table_Name, whereClause.toString(), null)
+				.setParameters(parameters)
+				.setClient_ID()
+				.setOnlyActiveRecords(true);
+		int count = query.count();
+		query
+		.setLimit(limit, offset)
+		.<MUser>list()
+		.forEach(seller -> {
+			builder.addSellers(ConvertUtil.convertSeller(seller));
+		});
+		//	
+		builder.setRecordCount(count);
+		//	Set page token
+		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+		}
+		//	Set next page
+		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
+		return builder;
 	}
 	
 	/**
@@ -3091,10 +3162,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				//	Get current open amount
 				if(payment.isReceipt()) {
 					openAmount.updateAndGet(amount -> amount.subtract(convertedAmount));
+					payment.setOverUnderAmt(Env.ZERO);
 				} else {
-					openAmount.set(convertedAmount.negate());
+					openAmount.updateAndGet(amount -> amount.subtract(convertedAmount.negate()));
+					payment.setOverUnderAmt(Env.ZERO);
 				}
-				payment.setOverUnderAmt(getConvetedRemainingAmountToPaymentCurrency(openAmount.get(), salesOrder, payment));
 				payment.setDocAction(MPayment.DOCACTION_Complete);
 				setCurrentDate(payment);
 				payment.saveEx(transactionName);
@@ -3109,9 +3181,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			MBankStatement.addPayment(payment);
 		});
 		//	Validate Write Off Amount
-		BigDecimal writeOffAmtTolerance = Optional.ofNullable((BigDecimal) pos.get_Value("WriteOffAmtTolerance")).orElse(Env.ZERO);
-		if(writeOffAmtTolerance.compareTo(Env.ZERO) > 0 && openAmount.get().abs().compareTo(writeOffAmtTolerance) >= 0) {
-			throw new AdempiereException("@POS.WriteOffAmtToleranceExceeded@");
+		if(!isOpenRefund) {
+			BigDecimal writeOffAmtTolerance = Optional.ofNullable((BigDecimal) pos.get_Value("WriteOffAmtTolerance")).orElse(Env.ZERO);
+			if(writeOffAmtTolerance.compareTo(Env.ZERO) > 0 && openAmount.get().abs().compareTo(writeOffAmtTolerance) >= 0) {
+				throw new AdempiereException("@POS.WriteOffAmtToleranceExceeded@");
+			}
 		}
 		//	Allocate all payments
 		if(paymentsIds.size() > 0) {
@@ -3183,26 +3257,26 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		return convertedAmount;
 	}
 	
-	/**
-	 * Get Converted Amount based on Payment currency
-	 * @param order
-	 * @param payment
-	 * @return
-	 * @return BigDecimal
-	 */
-	private BigDecimal getConvetedRemainingAmountToPaymentCurrency(BigDecimal remainingAmount, MOrder order, MPayment payment) {
-		if(payment.getC_Currency_ID() == order.getC_Currency_ID()
-				|| remainingAmount == null
-				|| remainingAmount.compareTo(Env.ZERO) == 0) {
-			return remainingAmount;
-		}
-		BigDecimal convertedAmount = MConversionRate.convert(payment.getCtx(), remainingAmount, order.getC_Currency_ID(), payment.getC_Currency_ID(), payment.getDateAcct(), order.getC_ConversionType_ID(), order.getAD_Client_ID(), order.getAD_Org_ID());
-		if(convertedAmount == null) {
-			convertedAmount = Env.ZERO;
-		}
-		//	
-		return convertedAmount;
-	}
+//	/**
+//	 * Get Converted Amount based on Payment currency
+//	 * @param order
+//	 * @param payment
+//	 * @return
+//	 * @return BigDecimal
+//	 */
+//	private BigDecimal getConvetedRemainingAmountToPaymentCurrency(BigDecimal remainingAmount, MOrder order, MPayment payment) {
+//		if(payment.getC_Currency_ID() == order.getC_Currency_ID()
+//				|| remainingAmount == null
+//				|| remainingAmount.compareTo(Env.ZERO) == 0) {
+//			return remainingAmount;
+//		}
+//		BigDecimal convertedAmount = MConversionRate.convert(payment.getCtx(), remainingAmount, order.getC_Currency_ID(), payment.getC_Currency_ID(), payment.getDateAcct(), order.getC_ConversionType_ID(), order.getAD_Client_ID(), order.getAD_Org_ID());
+//		if(convertedAmount == null) {
+//			convertedAmount = Env.ZERO;
+//		}
+//		//	
+//		return convertedAmount;
+//	}
 	
 //	/**
 //	 * Processes different kinds of payment types
@@ -4674,7 +4748,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		if(currencyId <= 0) {
 			currencyId = salesOrder.getC_Currency_ID();
 		}
-		Optional<BigDecimal> paidAmount = MPayment.getOfOrder(salesOrder).stream().map(payment -> getConvetedAmount(salesOrder, payment, payment.getPayAmt())).collect(Collectors.reducing(BigDecimal::add));
+//		Optional<BigDecimal> paidAmount = MPayment.getOfOrder(salesOrder).stream().map(payment -> getConvetedAmount(salesOrder, payment, payment.getPayAmt())).collect(Collectors.reducing(BigDecimal::add));
 		//	
 		MPayment payment = new MPayment(Env.getCtx(), 0, transactionName);
 		payment.setC_BankAccount_ID(pointOfSalesDefinition.getC_BankAccount_ID());
@@ -4773,12 +4847,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		setCurrentDate(payment);
 		//	
-		BigDecimal convertedPaymentAmount = getConvetedAmount(salesOrder, payment, payment.getPayAmt());
-		if(paidAmount.isPresent()) {
-			payment.setOverUnderAmt(salesOrder.getGrandTotal().subtract(paidAmount.get().add(convertedPaymentAmount)));
-		} else {
-			payment.setOverUnderAmt(salesOrder.getGrandTotal().subtract(convertedPaymentAmount));
-		}
 		payment.saveEx(transactionName);
 		return payment;
 	}
