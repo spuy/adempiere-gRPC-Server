@@ -26,10 +26,5 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8/"/>
 	<classpathentry kind="con" path="org.eclipse.buildship.core.gradleclasspathcontainer"/>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/adempiereFork"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Fiscal-Printer"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Fiscal-Printer-API"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/CST-STD"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Material-Management-Improvements"/>
 	<classpathentry kind="output" path="bin/default"/>
 </classpath>

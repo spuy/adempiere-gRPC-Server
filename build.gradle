@@ -53,6 +53,11 @@ dependencies {
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0'
 	implementation 'com.itextpdf:itext-pdfa:5.5.2'
 	implementation 'com.lowagie:itext:2.1.7'
+	//	ADempiere Core
+	implementation 'io.github.adempiere:base:3.9.4-develop-1.1'
+	implementation 'io.github.adempiere:point-of-sales:3.9.4-develop-1.0'
+	implementation 'io.github.adempiere:store:3.9.4-develop-1.0'
+	implementation 'io.github.adempiere:fleet:3.9.4-develop-1.0'
 }
 
 protobuf {
