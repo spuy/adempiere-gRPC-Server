@@ -84,9 +84,9 @@ import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
-import org.eevolution.engine.freight.FreightEngine;
-import org.eevolution.engine.freight.FreightEngineFactory;
-import org.eevolution.engine.freight.FreightInfo;
+import org.eevolution.freight.engine.FreightEngine;
+import org.eevolution.freight.engine.FreightEngineFactory;
+import org.eevolution.freight.engine.FreightInfo;
 import org.spin.base.util.ContextManager;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
@@ -147,16 +147,16 @@ import org.spin.grpc.store.UpdateCartRequest;
 import org.spin.grpc.store.UpdateCustomerRequest;
 import org.spin.grpc.store.WebStoreGrpc.WebStoreImplBase;
 import org.spin.model.I_AD_AttachmentReference;
-import org.spin.model.I_C_PaymentMethod;
-import org.spin.model.I_W_DeliveryViaRuleAllocation;
+import org.spin.store.model.I_C_PaymentMethod;
+import org.spin.store.model.I_W_DeliveryViaRuleAllocation;
 import org.spin.model.MADAttachmentReference;
 import org.spin.model.MADToken;
 import org.spin.model.MADTokenDefinition;
-import org.spin.model.MCPaymentMethod;
-import org.spin.model.MWDeliveryViaRuleAllocation;
+import org.spin.store.model.MCPaymentMethod;
+import org.spin.store.model.MWDeliveryViaRuleAllocation;
 import org.spin.util.AttachmentUtil;
 import org.spin.util.TokenGeneratorHandler;
-import org.spin.util.VueStoreFrontUtil;
+import org.spin.store.util.VueStoreFrontUtil;
 
 import com.google.protobuf.ByteString;
 
@@ -1492,7 +1492,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 					&& shippmentMethod.isCalculatedFreight()) {
 				if(shippmentMethod.getM_Shipper_ID() > 0) {
 					MShipper shipper = (MShipper) shippmentMethod.getM_Shipper();
-					FreightInfo freightInfo = freightEngine.getFreightRuleFactory(shipper, shippmentMethod.getFreightCostRule())
+					FreightInfo freightInfo = (FreightInfo) freightEngine.getFreightRuleFactory(shipper, shippmentMethod.getFreightCostRule())
 							.calculate(Env.getCtx(), 
 									shippmentMethod.getM_Shipper_ID(), 
 									warehouse.getC_Location_ID(), 
@@ -1526,7 +1526,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 							.setIsAvailable(true));
 				} else {
 					MShipper.getShippersForFreightCategory(Env.getCtx(), shippmentMethod.getM_FreightCategory_ID(), transactionName).forEach(shipper -> {
-						FreightInfo freightInfo = freightEngine.getFreightRuleFactory(shipper, shippmentMethod.getFreightCostRule())
+						FreightInfo freightInfo = (FreightInfo) freightEngine.getFreightRuleFactory(shipper, shippmentMethod.getFreightCostRule())
 								.calculate(Env.getCtx(), 
 										shipper.getM_Shipper_ID(), 
 										warehouse.getC_Location_ID(), 
@@ -2485,15 +2485,15 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			.setProductType(getProductTypeFromProduct(product))
 			.setPriceInfo(
 					PriceInfo.newBuilder()
-						.setMaxPrice(priceList.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-						.setMaxRegularPrice(priceList.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+						.setMaxPrice(priceList.setScale(productPricing.getPrecision()).doubleValue())
+						.setMaxRegularPrice(priceList.setScale(productPricing.getPrecision()).doubleValue())
 						
-						.setFinalPrice(priceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-						.setSpecialPrice(priceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-						.setRegularPrice(priceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+						.setFinalPrice(priceStd.setScale(productPricing.getPrecision()).doubleValue())
+						.setSpecialPrice(priceStd.setScale(productPricing.getPrecision()).doubleValue())
+						.setRegularPrice(priceStd.setScale(productPricing.getPrecision()).doubleValue())
 						
-						.setMinimalRegularPrice(priceLimit.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-						.setMinimalPrice(priceLimit.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+						.setMinimalRegularPrice(priceLimit.setScale(productPricing.getPrecision()).doubleValue())
+						.setMinimalPrice(priceLimit.setScale(productPricing.getPrecision()).doubleValue())
 						
 						.setCurrencyCode(MCurrency.getISO_Code(Env.getCtx(), productPriceList.getC_Currency_ID()))
 						.setFormattedPrice(
@@ -2511,15 +2511,15 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 								)
 						.setTaxAdjustment(
 								TaxAdjustment.newBuilder()
-								.setMaxPrice(basePriceList.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-								.setMaxRegularPrice(basePriceList.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+								.setMaxPrice(basePriceList.setScale(productPricing.getPrecision()).doubleValue())
+								.setMaxRegularPrice(basePriceList.setScale(productPricing.getPrecision()).doubleValue())
 								
-								.setFinalPrice(basePriceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-								.setSpecialPrice(basePriceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-								.setRegularPrice(basePriceStd.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+								.setFinalPrice(basePriceStd.setScale(productPricing.getPrecision()).doubleValue())
+								.setSpecialPrice(basePriceStd.setScale(productPricing.getPrecision()).doubleValue())
+								.setRegularPrice(basePriceStd.setScale(productPricing.getPrecision()).doubleValue())
 								
-								.setMinimalRegularPrice(basePriceLimit.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
-								.setMinimalPrice(basePriceLimit.setScale(productPricing.getPrecision(), BigDecimal.ROUND_UP).doubleValue())
+								.setMinimalRegularPrice(basePriceLimit.setScale(productPricing.getPrecision()).doubleValue())
+								.setMinimalPrice(basePriceLimit.setScale(productPricing.getPrecision()).doubleValue())
 								.setFormattedPrice(
 										FormattedPrice.newBuilder()
 										//	TODO: Change to dynamic text message

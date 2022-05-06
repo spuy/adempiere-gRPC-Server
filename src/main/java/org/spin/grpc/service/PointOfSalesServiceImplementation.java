@@ -207,8 +207,8 @@ import org.spin.grpc.util.UpdateOrderLineRequest;
 import org.spin.grpc.util.UpdateOrderRequest;
 import org.spin.grpc.util.UpdatePaymentRequest;
 import org.spin.grpc.util.ValidatePINRequest;
-import org.spin.model.I_C_PaymentMethod;
-import org.spin.util.VueStoreFrontUtil;
+import org.spin.store.model.I_C_PaymentMethod;
+import org.spin.store.util.VueStoreFrontUtil;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -4241,7 +4241,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		BigDecimal multiplier = Env.ONE.subtract(discount.divide(Env.ONEHUNDRED, MathContext.DECIMAL128));
 		//	B = A / 100
 		BigDecimal finalPrice = basePrice.multiply(multiplier);
-		finalPrice = finalPrice.setScale(precision, BigDecimal.ROUND_HALF_UP);
+		finalPrice = finalPrice.setScale(precision);
 		return finalPrice;
 	}
 	
@@ -4262,7 +4262,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			discount = discount.multiply(Env.ONEHUNDRED);
 		}
 		if (discount.scale() > precision) {
-			discount = discount.setScale(precision, BigDecimal.ROUND_HALF_UP);
+			discount = discount.setScale(precision);
 		}
 		return discount.negate();
 	}
