@@ -1036,8 +1036,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 							String value = rs.getString(index);
 							if(!Util.isEmpty(value)) {
 								valueBuilder = ValueUtil.getValueFromString(value);
-								valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							}
+							valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							continue;
 						}
 						if (field.isKey()) {
@@ -1229,8 +1229,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 							String value = rs.getString(index);
 							if(!Util.isEmpty(value)) {
 								valueBuilder = ValueUtil.getValueFromString(value);
-								valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							}
+							valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							continue;
 						}
 						if (field.isKey()) {
@@ -3120,14 +3120,14 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 					try {
 						String columnName = metaData.getColumnName (index);
 						MBrowseField field = fieldsMap.get(columnName.toUpperCase());
-						Value.Builder valueBuilder = null;
+						Value.Builder valueBuilder = Value.newBuilder();;
 						//	Display Columns
 						if(field == null) {
 							String value = rs.getString(index);
 							if(!Util.isEmpty(value)) {
 								valueBuilder = ValueUtil.getValueFromString(value);
-								valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							}
+							valueObjectBuilder.putValues(columnName, valueBuilder.build());
 							continue;
 						}
 						//	From field
