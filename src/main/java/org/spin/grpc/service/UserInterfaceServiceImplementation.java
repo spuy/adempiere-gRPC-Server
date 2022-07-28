@@ -73,7 +73,6 @@ import org.compiere.model.I_AD_Private_Access;
 import org.compiere.model.I_AD_Process;
 import org.compiere.model.I_AD_Process_Para;
 import org.compiere.model.I_AD_Record_Access;
-import org.compiere.model.I_AD_Reference;
 import org.compiere.model.I_AD_ReportView;
 import org.compiere.model.I_AD_Role;
 import org.compiere.model.I_AD_Tab;
@@ -121,6 +120,7 @@ import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ReferenceUtil;
 import org.spin.base.util.ValueUtil;
 import org.spin.grpc.util.Attachment;
@@ -149,6 +149,8 @@ import org.spin.grpc.util.ListBrowserItemsRequest;
 import org.spin.grpc.util.ListBrowserItemsResponse;
 import org.spin.grpc.util.ListDrillTablesRequest;
 import org.spin.grpc.util.ListDrillTablesResponse;
+import org.spin.grpc.util.ListEntitiesResponse;
+import org.spin.grpc.util.ListGeneralInfoRequest;
 import org.spin.grpc.util.ListLookupItemsRequest;
 import org.spin.grpc.util.ListLookupItemsResponse;
 import org.spin.grpc.util.ListPrintFormatsRequest;
@@ -158,7 +160,6 @@ import org.spin.grpc.util.ListReferencesResponse;
 import org.spin.grpc.util.ListReportViewsRequest;
 import org.spin.grpc.util.ListReportViewsResponse;
 import org.spin.grpc.util.ListTabEntitiesRequest;
-import org.spin.grpc.util.ListTabEntitiesResponse;
 import org.spin.grpc.util.ListTranslationsRequest;
 import org.spin.grpc.util.ListTranslationsResponse;
 import org.spin.grpc.util.LockPrivateAccessRequest;
@@ -1067,13 +1068,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 
 	@Override
-	public void listTabEntities(ListTabEntitiesRequest request, StreamObserver<ListTabEntitiesResponse> responseObserver) {
+	public void listTabEntities(ListTabEntitiesRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
 		try {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
 			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListTabEntitiesResponse.Builder entityValueList = convertEntitiesList(context, request);
+			ListEntitiesResponse.Builder entityValueList = convertEntitiesList(context, request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -1091,7 +1092,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @param request
 	 * @return
 	 */
-	private ListTabEntitiesResponse.Builder convertEntitiesList(Properties context, ListTabEntitiesRequest request) {
+	private ListEntitiesResponse.Builder convertEntitiesList(Properties context, ListTabEntitiesRequest request) {
 		int tabId = RecordUtil.getIdFromUuid(I_AD_Tab.Table_Name, request.getTabUuid(), null);
 		if(tabId <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
@@ -1099,21 +1100,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		//	
 		MTab tab = MTab.get(context, tabId);
 		String tableName = MTable.getTableName(context, tab.getAD_Table_ID());
-		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		Env.clearWinContext(windowNo);
-		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
+
 		//	Fill context
-		attributes.entrySet().forEach(attribute -> {
-			if(attribute.getValue() instanceof Integer) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Integer) attribute.getValue());
-			} else if(attribute.getValue() instanceof Timestamp) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Timestamp) attribute.getValue());
-			} else if(attribute.getValue() instanceof Boolean) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Boolean) attribute.getValue());
-			} else if(attribute.getValue() instanceof String) {
-				Env.setContext(context, windowNo, attribute.getKey(), (String) attribute.getValue());
-			}
-		});
+		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
+		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
 
 		// get where clause including link column and parent column
 		String where = DictionaryUtil.getSQLWhereClauseFromTab(context, tab, null);
@@ -1151,7 +1141,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
-		ListTabEntitiesResponse.Builder builder = ListTabEntitiesResponse.newBuilder();
+		ListEntitiesResponse.Builder builder = ListEntitiesResponse.newBuilder();
 		//	
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromTab(tab));
 		if (!Util.isEmpty(whereClause.toString(), true)) {
@@ -1164,6 +1154,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				MRole.SQL_RO);
 		String orderByClause = criteria.getOrderByClause();
 		if(Util.isEmpty(orderByClause)) {
+			// First Tab Level is not a detail 
+			if (tab.getTabLevel() == 0) {
+				
+			}
 			orderByClause = "";
 		} else {
 			orderByClause = " ORDER BY " + orderByClause;
@@ -1174,7 +1168,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
 		//	Add Order By
 		parsedSQL = parsedSQL + orderByClause;
-		builder = convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
@@ -1186,80 +1180,112 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		//	Return
 		return builder;
 	}
-	
-	/**
-	 * Convert Entities List
-	 * @param table
-	 * @param sql
-	 * @return
-	 */
-	private ListTabEntitiesResponse.Builder convertListEntitiesResult(MTable table, String sql, List<Object> params) {
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-		ListTabEntitiesResponse.Builder builder = ListTabEntitiesResponse.newBuilder();
-		long recordCount = 0;
+
+	@Override
+	public void listGeneralInfo(ListGeneralInfoRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
 		try {
-			LinkedHashMap<String, MColumn> columnsMap = new LinkedHashMap<>();
-			//	Add field to map
-			for(MColumn column: table.getColumnsAsList()) {
-				columnsMap.put(column.getColumnName().toUpperCase(), column);
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
 			}
-			//	SELECT Key, Value, Name FROM ...
-			pstmt = DB.prepareStatement(sql, null);
-			AtomicInteger parameterIndex = new AtomicInteger(1);
-			for(Object value : params) {
-				ValueUtil.setParameterFromObject(pstmt, value, parameterIndex.getAndIncrement());
-			} 
-			//	Get from Query
-			rs = pstmt.executeQuery();
-			while(rs.next()) {
-				Entity.Builder valueObjectBuilder = Entity.newBuilder();
-				valueObjectBuilder.setTableName(table.getTableName());
-				ResultSetMetaData metaData = rs.getMetaData();
-				for (int index = 1; index <= metaData.getColumnCount(); index++) {
-					try {
-						String columnName = metaData.getColumnName (index);
-						if (columnName.toUpperCase().equals("UUID")) {
-							valueObjectBuilder.setUuid(rs.getString(index));
-						}
-						MColumn field = columnsMap.get(columnName.toUpperCase());
-						Value.Builder valueBuilder = Value.newBuilder();
-						//	Display Columns
-						if(field == null) {
-							String value = rs.getString(index);
-							if(!Util.isEmpty(value)) {
-								valueBuilder = ValueUtil.getValueFromString(value);
-							}
-							valueObjectBuilder.putValues(columnName, valueBuilder.build());
-							continue;
-						}
-						if (field.isKey()) {
-							valueObjectBuilder.setId(rs.getInt(index));
-						}
-						//	From field
-						String fieldColumnName = field.getColumnName();
-						valueBuilder = ValueUtil.getValueFromReference(rs.getObject(index), field.getAD_Reference_ID());
-						if(!valueBuilder.getValueType().equals(Value.ValueType.UNRECOGNIZED)) {
-							valueObjectBuilder.putValues(fieldColumnName, valueBuilder.build());
-						}
-					} catch (Exception e) {
-						log.severe(e.getLocalizedMessage());
-					}
-				}
-				//	
-				builder.addRecords(valueObjectBuilder.build());
-				recordCount++;
-			}
+			Properties context = ContextManager.getContext(request.getClientRequest());
+			ListEntitiesResponse.Builder entityValueList = convertEntitiesListFronGeneralInfo(context, request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-		} finally {
-			DB.close(rs, pstmt);
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.augmentDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException());
 		}
-		//	Set record counts
-		if (builder.getRecordCount() <= 0) {
-			builder.setRecordCount(recordCount);
+	}
+	
+	/**
+	 * Get default value base on field, process parameter, browse field or column
+	 * @param request
+	 * @return
+	 */
+	private ListEntitiesResponse.Builder convertEntitiesListFronGeneralInfo(Properties context, ListGeneralInfoRequest request) {
+		String tableName = request.getTableName();
+		if (Util.isEmpty(tableName, true)) {
+			tableName = request.getFilters().getTableName();
 		}
-		//	Return
+		if (Util.isEmpty(tableName, true)) {
+			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+		}
+		
+		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
+			request.getReferenceUuid(),
+			request.getFieldUuid(),
+			request.getProcessParameterUuid(),
+			request.getBrowseFieldUuid(),
+			request.getColumnUuid(),
+			request.getColumnName(),
+			tableName
+		);
+		
+		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
+		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+
+		//
+		MTable table = MTable.get(context, tableName);
+		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
+		StringBuffer whereClause = new StringBuffer(" WHERE 1=1 ");
+
+		// validation code of field
+		String parsedValidationCode = Env.parseContext(context, windowNo, reference.ValidationCode, false);
+		if (!Util.isEmpty(reference.ValidationCode)) {
+			if (Util.isEmpty(parsedValidationCode)) {
+				throw new AdempiereException("@WhereClause@ @Unparseable@");
+			}
+			whereClause.append(" AND ").append(parsedValidationCode);
+		}
+
+		//	For dynamic condition
+		List<Object> params = new ArrayList<>(); // includes on filters criteria
+		String dynamicWhere = ValueUtil.getWhereClauseFromCriteria(request.getFilters(), tableName, params);
+		if (!Util.isEmpty(dynamicWhere, true)) {
+			//	Add includes first AND
+			whereClause.append(" AND ")
+				.append("(")
+				.append(dynamicWhere)
+				.append(")");
+		}
+		
+		sql.append(whereClause); 
+		String parsedSQL = RecordUtil.addSearchValueAndGet(sql.toString(), tableName, request.getSearchValue(), params);
+
+		// add where with access restriction
+		parsedSQL = MRole.getDefault(context, false)
+			.addAccessSQL(parsedSQL,
+				null,
+				MRole.SQL_FULLYQUALIFIED,
+				MRole.SQL_RO
+			);
+		
+		//	Get page and count
+		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int count = 0;
+		ListEntitiesResponse.Builder builder = ListEntitiesResponse.newBuilder();
+		
+		//	Count records
+		count = RecordUtil.countRecords(parsedSQL, tableName, params);
+		//	Add Row Number
+		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, params);
+		//	
+		builder.setRecordCount(count);
+		//	Set page token
+		String nexPageToken = null;
+		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+		}
+		//	Set next page
+		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
+		
 		return builder;
 	}
 	
@@ -2406,22 +2432,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		DefaultValue.Builder builder = DefaultValue.newBuilder();
 		if(!Util.isEmpty(defaultValue)) {
 			Object defaultValueAsObject = null;
+
+			// Fill context
 			Properties context = Env.getCtx();
 			int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-			Env.clearWinContext(windowNo);
-			Map<String, Object> attributes = ValueUtil.convertValuesToObjects(contextAttributes);
-			//	Fill context
-			attributes.entrySet().forEach(attribute -> {
-				if(attribute.getValue() instanceof Integer) {
-					Env.setContext(context, windowNo, attribute.getKey(), (Integer) attribute.getValue());
-				} else if(attribute.getValue() instanceof Timestamp) {
-					Env.setContext(context, windowNo, attribute.getKey(), (Timestamp) attribute.getValue());
-				} else if(attribute.getValue() instanceof Boolean) {
-					Env.setContext(context, windowNo, attribute.getKey(), (Boolean) attribute.getValue());
-				} else if(attribute.getValue() instanceof String) {
-					Env.setContext(context, windowNo, attribute.getKey(), (String) attribute.getValue());
-				}
-			});
+			context = ContextManager.setContextWithAttributes(windowNo, context, contextAttributes);
+
 			if(defaultValue.trim().startsWith("@SQL=")) {
 				defaultValue = defaultValue.replace("@SQL=", "");
 				defaultValue = Env.parseContext(context, windowNo, defaultValue, false);
@@ -2575,27 +2591,25 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private LookupItem.Builder convertLookupItem(GetLookupItemRequest request) {
-		MLookupInfo reference = getInfoFromRequest(request.getReferenceUuid(), request.getFieldUuid(), request.getProcessParameterUuid(), request.getBrowseFieldUuid(), request.getColumnUuid(), request.getColumnName(), request.getTableName());
+		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
+			request.getReferenceUuid(),
+			request.getFieldUuid(),
+			request.getProcessParameterUuid(),
+			request.getBrowseFieldUuid(),
+			request.getColumnUuid(),
+			request.getColumnName(),
+			request.getTableName()
+		);
 		if(reference == null) {
 			throw new AdempiereException("@AD_Reference_ID@ @NotFound@");
 		}
-		String sql = reference.QueryDirect;
+
+		//	Fill context
 		Properties context = Env.getCtx();
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		Env.clearWinContext(windowNo);
-		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
-		//	Fill context
-		attributes.entrySet().forEach(attribute -> {
-			if(attribute.getValue() instanceof Integer) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Integer) attribute.getValue());
-			} else if(attribute.getValue() instanceof Timestamp) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Timestamp) attribute.getValue());
-			} else if(attribute.getValue() instanceof Boolean) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Boolean) attribute.getValue());
-			} else if(attribute.getValue() instanceof String) {
-				Env.setContext(context, windowNo, attribute.getKey(), (String) attribute.getValue());
-			}
-		});
+		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+
+		String sql = reference.QueryDirect;
 		sql = Env.parseContext(context, windowNo, sql, false);
 		if(Util.isEmpty(sql)
 				&& !Util.isEmpty(reference.QueryDirect)) {
@@ -2647,121 +2661,30 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 	
 	/**
-	 * Get reference Info from request
-	 * @param request
-	 * @return
-	 */
-	private MLookupInfo getInfoFromRequest(String referenceUuid, String fieldUuid, String processParameterUuid, String browseFieldUuid, String columnUuid, String columnName, String tableName) {
-		int referenceId = 0;
-		int referenceValueId = 0;
-		int validationRuleId = 0;
-		if(!Util.isEmpty(referenceUuid)) {
-			referenceId = RecordUtil.getIdFromUuid(I_AD_Reference.Table_Name, referenceUuid, null);
-		} else if(!Util.isEmpty(fieldUuid)) {
-			MField field = (MField) RecordUtil.getEntity(Env.getCtx(), I_AD_Field.Table_Name, fieldUuid, 0, null);
-			int fieldId = field.getAD_Field_ID();
-			List<MField> customFields = ASPUtil.getInstance(Env.getCtx()).getWindowFields(field.getAD_Tab_ID());
-			if(customFields != null) {
-				Optional<MField> maybeField = customFields.stream().filter(customField -> customField.getAD_Field_ID() == fieldId).findFirst();
-				if(maybeField.isPresent()) {
-					field = maybeField.get();
-					MColumn column = MColumn.get(Env.getCtx(), field.getAD_Column_ID());
-					//	Display Type
-					referenceId = column.getAD_Reference_ID();
-					referenceValueId = column.getAD_Reference_Value_ID();
-					validationRuleId = column.getAD_Val_Rule_ID();
-					columnName = column.getColumnName();
-					if(field.getAD_Reference_ID() > 0) {
-						referenceId = field.getAD_Reference_ID();
-					}
-					if(field.getAD_Reference_Value_ID() > 0) {
-						referenceValueId = field.getAD_Reference_Value_ID();
-					}
-					if(field.getAD_Val_Rule_ID() > 0) {
-						validationRuleId = field.getAD_Val_Rule_ID();
-					}
-				}
-			}
-		} else if(!Util.isEmpty(browseFieldUuid)) {
-			MBrowseField browseField = (MBrowseField) RecordUtil.getEntity(Env.getCtx(), I_AD_Browse_Field.Table_Name, browseFieldUuid, 0, null);
-			int browseFieldId = browseField.getAD_Browse_Field_ID();
-			List<MBrowseField> customFields = ASPUtil.getInstance(Env.getCtx()).getBrowseFields(browseField.getAD_Browse_ID());
-			if(customFields != null) {
-				Optional<MBrowseField> maybeField = customFields.stream().filter(customField -> customField.getAD_Browse_Field_ID() == browseFieldId).findFirst();
-				if(maybeField.isPresent()) {
-					browseField = maybeField.get();
-					referenceId = browseField.getAD_Reference_ID();
-					referenceValueId = browseField.getAD_Reference_Value_ID();
-					validationRuleId = browseField.getAD_Val_Rule_ID();
-					MViewColumn viewColumn = browseField.getAD_View_Column();
-					if(viewColumn.getAD_Column_ID() > 0) {
-						columnName = MColumn.getColumnName(Env.getCtx(), viewColumn.getAD_Column_ID());
-					} else {
-						columnName = browseField.getAD_Element().getColumnName();
-					}
-				}
-			}
-		} else if(!Util.isEmpty(processParameterUuid)) {
-			MProcessPara processParameter = (MProcessPara) RecordUtil.getEntity(Env.getCtx(), I_AD_Process_Para.Table_Name, processParameterUuid, 0, null);
-			int processParameterId = processParameter.getAD_Process_Para_ID();
-			List<MProcessPara> customParameters = ASPUtil.getInstance(Env.getCtx()).getProcessParameters(processParameter.getAD_Process_ID());
-			if(customParameters != null) {
-				Optional<MProcessPara> maybeParameter = customParameters.stream().filter(customField -> customField.getAD_Process_Para_ID() == processParameterId).findFirst();
-				if(maybeParameter.isPresent()) {
-					processParameter = maybeParameter.get();
-					referenceId = processParameter.getAD_Reference_ID();
-					referenceValueId = processParameter.getAD_Reference_Value_ID();
-					validationRuleId = processParameter.getAD_Val_Rule_ID();
-					columnName = processParameter.getColumnName();
-				}
-			}
-		} else if(!Util.isEmpty(columnUuid)) {
-			int columnId = RecordUtil.getIdFromUuid(I_AD_Column.Table_Name, columnUuid, null);
-			if(columnId > 0) {
-				MColumn column = MColumn.get(Env.getCtx(), columnId);
-				referenceId = column.getAD_Reference_ID();
-				referenceValueId = column.getAD_Reference_Value_ID();
-				validationRuleId = column.getAD_Val_Rule_ID();
-				columnName = column.getColumnName();
-			}
-		} else if(!Util.isEmpty(columnName)) {
-			referenceId = DisplayType.TableDir;
-		} else if(!Util.isEmpty(tableName)) {	//	Is a Table Direct
-			referenceId = DisplayType.TableDir;
-			columnName = tableName + "_ID";
-		} else {
-			throw new AdempiereException("@AD_Reference_ID@ / @AD_Column_ID@ / @AD_Table_ID@ / @AD_Process_Para_ID@ / @IsMandatory@");
-		}
-		return ReferenceUtil.getReferenceLookupInfo(referenceId, referenceValueId, columnName, validationRuleId);
-	}
-	
-	/**
 	 * Convert Object to list
 	 * @param request
 	 * @return
 	 */
 	private ListLookupItemsResponse.Builder convertLookupItemsList(ListLookupItemsRequest request) {
-		MLookupInfo reference = getInfoFromRequest(request.getReferenceUuid(), request.getFieldUuid(), request.getProcessParameterUuid(), request.getBrowseFieldUuid(), request.getColumnUuid(), request.getColumnName(), request.getTableName());
+		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
+			request.getReferenceUuid(),
+			request.getFieldUuid(),
+			request.getProcessParameterUuid(),
+			request.getBrowseFieldUuid(),
+			request.getColumnUuid(),
+			request.getColumnName(),
+			request.getTableName()
+		);
 		if(reference == null) {
 			throw new AdempiereException("@AD_Reference_ID@ @NotFound@");
 		}
-		String sql = reference.Query;
+
+		//	Fill context
 		Properties context = Env.getCtx();
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		Env.clearWinContext(windowNo);
-		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
-		//	Fill context
-		attributes.entrySet().forEach(attribute -> {
-			if(attribute.getValue() instanceof Integer) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Integer) attribute.getValue());
-			} else if(attribute.getValue() instanceof Timestamp) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Timestamp) attribute.getValue());
-			} else if(attribute.getValue() instanceof Boolean) {
-				Env.setContext(context, windowNo, attribute.getKey(), (Boolean) attribute.getValue());
-			} else if(attribute.getValue() instanceof String) {
-				Env.setContext(context, windowNo, attribute.getKey(), (String) attribute.getValue());
-			}
-		});
+		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+
+		String sql = reference.Query;
 		sql = Env.parseContext(context, windowNo, sql, false);
 		if(Util.isEmpty(sql)
 				&& !Util.isEmpty(reference.Query)) {
