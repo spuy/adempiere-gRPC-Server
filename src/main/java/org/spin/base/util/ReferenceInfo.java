@@ -330,12 +330,15 @@ public class ReferenceInfo {
 				validationRuleId = column.getAD_Val_Rule_ID();
 				columnName = column.getColumnName();
 			}
+		} else if(!Util.isEmpty(referenceUuid)) {
+			referenceValueId = RecordUtil.getIdFromUuid(I_AD_Reference.Table_Name, referenceUuid, null);
+			referenceId = DisplayType.Search;
 		} else if(!Util.isEmpty(tableName) && !Util.isEmpty(columnName)) {
 			int columnId = MColumn.getColumn_ID(tableName, columnName);
 			if(columnId > 0) {
 				MColumn column = MColumn.get(Env.getCtx(), columnId);
 				referenceId = column.getAD_Reference_ID();
-				referenceValueId = column.getAD_Reference_Value_ID();
+				referenceValueId = RecordUtil.getIdFromUuid(I_AD_Reference.Table_Name, referenceUuid, null);
 				validationRuleId = column.getAD_Val_Rule_ID();
 				columnName = column.getColumnName();
 			}
@@ -346,13 +349,6 @@ public class ReferenceInfo {
 		} else {
 			throw new AdempiereException("@AD_Reference_ID@ / @AD_Column_ID@ / @AD_Table_ID@ / @AD_Process_Para_ID@ / @IsMandatory@");
 		}
-
-		// TODO: Add implementation to List Validations
-		// overwrite reference with request uuid
-		if(!Util.isEmpty(referenceUuid)) {
-			referenceValueId = RecordUtil.getIdFromUuid(I_AD_Reference.Table_Name, referenceUuid, null);
-			// X_AD_Reference reference = new X_AD_Reference(Env.getCtx(), referenceValueId, null);
-		} 
 		return ReferenceUtil.getReferenceLookupInfo(referenceId, referenceValueId, columnName, validationRuleId);
 	}
 	

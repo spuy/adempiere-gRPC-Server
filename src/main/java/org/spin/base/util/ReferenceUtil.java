@@ -68,7 +68,7 @@ public class ReferenceUtil {
 	 * @param columnName
 	 * @return
 	 */
-	public static boolean validateReference(int referenceId, int referenceValueId, String columnName) {
+	public static boolean validateReference(int referenceId) {
 		if(!DisplayType.isLookup(referenceId)) {
 			return false;
 		}
@@ -84,7 +84,7 @@ public class ReferenceUtil {
 	 * @return
 	 */
 	public ReferenceInfo getReferenceInfo(int referenceId, int referenceValueId, String columnName, String language, String tableName) {
-		if(!validateReference(referenceId, referenceValueId, columnName)) {
+		if(!validateReference(referenceId)) {
 			return null;
 		}
 		String key = referenceId + "|" + referenceValueId + "|" + columnName + "|" + language;
@@ -130,12 +130,12 @@ public class ReferenceUtil {
 	 * @return
 	 */
 	public static MLookupInfo getReferenceLookupInfo(int referenceId, int referenceValueId, String columnName, int validationRuleId) {
-		if(!validateReference(referenceId, referenceValueId, columnName)) {
+		if(!validateReference(referenceId)) {
 			return null;
 		}
 		MLookupInfo lookupInformation = null;
 		if(DisplayType.TableDir == referenceId
-				|| referenceValueId == 0) {
+				|| referenceValueId <= 0) {
 			//	Add Display
 			lookupInformation = getLookupInfoFromColumnName(columnName);
 		} else {
