@@ -272,7 +272,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 			log.severe(e.getLocalizedMessage());
 			responseObserver.onError(Status.INTERNAL
 					.withDescription(e.getLocalizedMessage())
-					.augmentDescription(e.getLoclizedMessage())
 					.withCause(e)
 					.asRuntimeException());
 		}
