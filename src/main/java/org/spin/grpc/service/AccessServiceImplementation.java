@@ -317,14 +317,19 @@ public class AccessServiceImplementation extends SecurityImplBase {
 				throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 			}
 		}
+
+		final String sqlRole = "SELECT ur.AD_Role_ID "
+			+ "FROM AD_User_Roles ur "
+			+ "INNER JOIN AD_Role AS r ON ur.AD_Role_ID = r.AD_Role_ID "
+			+ "WHERE ur.AD_User_ID = ? AND ur.IsActive = 'Y' "
+			+ "AND (r.IsAccessAllOrgs = 'Y' "
+			+ "OR (r.IsUseUserOrgAccess = 'N' AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = ur.AD_Role_ID) ) "
+			+ "OR (r.IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ur.AD_User_ID) )) "
+			+ "ORDER BY COALESCE(ur.IsDefault,'N') DESC";
 		if(isDefaultRole
 				&& Util.isEmpty(request.getRoleUuid())) {
 			if(roleId <= 0) {
-				roleId = DB.getSQLValue(null, "SELECT ur.AD_Role_ID "
-						+ "FROM AD_User_Roles ur "
-						+ "WHERE ur.AD_User_ID = ? AND ur.IsActive = 'Y' "
-					+ "AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = ur.AD_Role_ID) "
-						+ "ORDER BY COALESCE(ur.IsDefault,'N') DESC", userId);
+				roleId = DB.getSQLValue(null, sqlRole, userId);
 			}
 			//	Organization
 			if(organizationId < 0) {
@@ -337,10 +342,7 @@ public class AccessServiceImplementation extends SecurityImplBase {
 				MRole role = MRole.get(context, roleId);
 				if(role != null
 						&& !Optional.ofNullable(role.getUUID()).orElse("").equals(Optional.ofNullable(request.getRoleUuid()).orElse(""))) {
-					roleId = DB.getSQLValue(null, "SELECT ur.AD_Role_ID "
-							+ "FROM AD_User_Roles ur "
-							+ "WHERE ur.AD_User_ID = ? AND ur.IsActive = 'Y' "
-							+ "ORDER BY COALESCE(ur.IsDefault,'N') DESC", userId);
+					roleId = DB.getSQLValue(null, sqlRole, userId);
 					//	Organization
 					if(organizationId < 0) {
 						organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
