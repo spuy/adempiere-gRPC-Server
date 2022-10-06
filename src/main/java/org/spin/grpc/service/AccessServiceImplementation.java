@@ -322,9 +322,10 @@ public class AccessServiceImplementation extends SecurityImplBase {
 			+ "FROM AD_User_Roles ur "
 			+ "INNER JOIN AD_Role AS r ON ur.AD_Role_ID = r.AD_Role_ID "
 			+ "WHERE ur.AD_User_ID = ? AND ur.IsActive = 'Y' "
+			+ "AND r.IsActive = 'Y' "
 			+ "AND (r.IsAccessAllOrgs = 'Y' "
-			+ "OR (r.IsUseUserOrgAccess = 'N' AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = ur.AD_Role_ID) ) "
-			+ "OR (r.IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ur.AD_User_ID) )) "
+			+ "OR (r.IsUseUserOrgAccess = 'N' AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = ur.AD_Role_ID AND ro.IsActive = 'Y') ) "
+			+ "OR (r.IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ur.AD_User_ID AND uo.IsActive = 'Y') )) "
 			+ "ORDER BY COALESCE(ur.IsDefault,'N') DESC";
 		if(isDefaultRole
 				&& Util.isEmpty(request.getRoleUuid())) {
