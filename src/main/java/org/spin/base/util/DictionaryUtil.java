@@ -196,6 +196,26 @@ public class DictionaryUtil {
 	}
 
 	/**
+	 * Add and get talbe alias to columns in validation code sql
+	 * @param tableAlias
+	 * @param dynamicValidation
+	 * @return {String}
+	 */
+	public static String getValidationCodeWithAlias(String tableAlias, String dynamicValidation) {
+		String validationCode = dynamicValidation;
+
+		Matcher matcherTableAliases = Pattern.compile("" + tableAlias + ".", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+			.matcher(dynamicValidation);
+		if (!matcherTableAliases.find()) {
+			Pattern patternColumnName = Pattern.compile("(\\w+)(\\s+){0,1}=", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+			Matcher matchColumnName = patternColumnName.matcher(validationCode);
+			validationCode = matchColumnName.replaceAll(tableAlias + ".$1="); // $&
+		}
+
+		return validationCode;
+	}
+
+	/**
 	 * Get SQL Where Clause including link column and parent column
 	 * @param {Properties} context
 	 * @param {MTab} tab
