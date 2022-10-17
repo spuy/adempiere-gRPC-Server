@@ -278,18 +278,17 @@ public class ReferenceUtil {
 		MLookupInfo lookupInformation = null;
 		if (DisplayType.Account == referenceId) {
 			columnName = I_C_ValidCombination.COLUMNNAME_C_ValidCombination_ID;
-		} else if (DisplayType.Location == referenceId) {
-			columnName = I_C_Location.COLUMNNAME_C_Location_ID;
 		}
 
-		if(DisplayType.TableDir == referenceId
+		if (DisplayType.Location == referenceId) {
+			columnName = I_C_Location.COLUMNNAME_C_Location_ID;
+			lookupInformation = getLookupInfoFromColumnName(columnName);
+			lookupInformation.Query = getQueryLocation();
+			lookupInformation.QueryDirect = getDirectQueryLocation();
+		} else if(DisplayType.TableDir == referenceId
 				|| referenceValueId <= 0) {
 			//	Add Display
 			lookupInformation = getLookupInfoFromColumnName(columnName);
-			if (DisplayType.Location == referenceId) {
-				lookupInformation.Query = getQueryLocation();
-				lookupInformation.QueryDirect = getDirectQueryLocation();
-			}
 		} else {
 			//	Get info
 			lookupInformation = getLookupInfoFromReference(referenceValueId);	
