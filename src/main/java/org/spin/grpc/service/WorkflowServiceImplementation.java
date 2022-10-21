@@ -354,6 +354,8 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				|| documentStatus.equals(DocumentEngine.STATUS_Reversed)
 				|| documentStatus.equals(DocumentEngine.STATUS_Unknown)
 				|| documentStatus.equals(DocumentEngine.STATUS_Closed)) {
+			/** Drafted = DR */
+			statusesList.add(DocumentEngine.STATUS_Drafted);
 			/** In Progress = IP */
 			statusesList.add(DocumentEngine.STATUS_InProgress);
 			/** Approved = AP */
