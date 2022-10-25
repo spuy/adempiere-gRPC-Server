@@ -333,19 +333,27 @@ public class AccessServiceImplementation extends SecurityImplBase {
 			warehouseId = DB.getSQLValue(null, "SELECT M_Warehouse_ID FROM M_Warehouse WHERE IsActive = 'Y' AND AD_Org_ID = ?", organizationId);
 		} else {
 			if(roleId <= 0) {
-				roleId = RecordUtil.getIdFromUuid(I_AD_Role.Table_Name, request.getRoleUuid(), null);
-				MRole role = MRole.get(context, roleId);
+				MRole role = new Query(
+					Env.getCtx(),
+					I_AD_Role.Table_Name,
+					"UUID = ?",
+					null
+					)
+					.setParameters(request.getRoleUuid())
+					.first();
+				roleId = role.getAD_Role_ID();
 				if(role != null
 						&& !Optional.ofNullable(role.getUUID()).orElse("").equals(Optional.ofNullable(request.getRoleUuid()).orElse(""))) {
 					roleId = DB.getSQLValue(null, sqlRole, userId);
-					//	Organization
-					if(organizationId < 0) {
-						organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
-					}
 				}
+				//	Organization
+				if(organizationId < 0) {
+					organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
+				}
+				
 			}
 			if(organizationId < 0) {
-				organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
+				organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
 			}
 			warehouseId = RecordUtil.getIdFromUuid(I_M_Warehouse.Table_Name, request.getWarehouseUuid(), null);
 		}
