@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import org.compiere.model.I_AD_Reference;
 import org.compiere.model.I_C_Location;
 import org.compiere.model.I_C_ValidCombination;
+import org.compiere.model.I_M_AttributeSetInstance;
 import org.compiere.model.MColumn;
 import org.compiere.model.MCountry;
 import org.compiere.model.MLookupFactory;
@@ -74,7 +75,7 @@ public class ReferenceUtil {
 	 */
 	public static boolean validateReference(int referenceId) {
 		if (DisplayType.isLookup(referenceId) || DisplayType.Account == referenceId 
-			|| DisplayType.Location == referenceId) {
+			|| DisplayType.Location == referenceId || DisplayType.PAttribute == referenceId) {
 			return true;
 		}
 		return false;
@@ -105,6 +106,14 @@ public class ReferenceUtil {
 				referenceInfo.setDisplayColumnValue(I_C_ValidCombination.COLUMNNAME_Combination);
 				referenceInfo.setTableAlias(I_C_ValidCombination.Table_Name + "_" + columnName);
 				referenceInfo.setJoinColumnName(I_C_ValidCombination.COLUMNNAME_C_ValidCombination_ID);
+			} else if (DisplayType.PAttribute == referenceId) {
+				//  Add Display
+				referenceInfo = new ReferenceInfo();
+				referenceInfo.setColumnName(columnName);
+				referenceInfo.setTableName(I_M_AttributeSetInstance.Table_Name);
+				referenceInfo.setDisplayColumnValue(I_M_AttributeSetInstance.COLUMNNAME_Description);
+				referenceInfo.setTableAlias(I_M_AttributeSetInstance.Table_Name + "_" + columnName);
+				referenceInfo.setJoinColumnName(I_M_AttributeSetInstance.COLUMNNAME_M_AttributeSetInstance_ID);
 			} else if (DisplayType.Location == referenceId) {
 				//  Add Display
 				referenceInfo = new ReferenceInfo();
@@ -287,6 +296,15 @@ public class ReferenceUtil {
 			lookupInformation = getLookupInfoFromColumnName(columnName);
 			lookupInformation.Query = getQueryLocation();
 			lookupInformation.QueryDirect = getDirectQueryLocation();
+		} else if (DisplayType.PAttribute == referenceId) {
+			columnName = I_M_AttributeSetInstance.COLUMNNAME_M_AttributeSetInstance_ID;
+			lookupInformation = getLookupInfoFromColumnName(columnName);
+			lookupInformation.DisplayType = referenceId;
+			lookupInformation.Query = "SELECT M_AttributeSetInstance.M_AttributeSetInstance_ID, "
+				+ "NULL,  M_AttributeSetInstance.Description, M_AttributeSetInstance.IsActive "
+				+ "FROM M_AttributeSetInstance ";
+			lookupInformation.QueryDirect = lookupInformation.Query
+				+ "WHERE M_AttributeSetInstance.M_AttributeSetInstance_ID = ? ";
 		} else if(DisplayType.TableDir == referenceId
 				|| referenceValueId <= 0) {
 			//	Add Display
