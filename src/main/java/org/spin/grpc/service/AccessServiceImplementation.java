@@ -338,19 +338,19 @@ public class AccessServiceImplementation extends SecurityImplBase {
 					I_AD_Role.Table_Name,
 					"UUID = ?",
 					null
-					)
+				)
 					.setParameters(request.getRoleUuid())
 					.first();
-				roleId = role.getAD_Role_ID();
-				if(role != null
-						&& !Optional.ofNullable(role.getUUID()).orElse("").equals(Optional.ofNullable(request.getRoleUuid()).orElse(""))) {
+				if (role == null) {
+					// get default role
 					roleId = DB.getSQLValue(null, sqlRole, userId);
+				} else {
+					roleId = role.getAD_Role_ID();
 				}
 				//	Organization
 				if(organizationId < 0) {
 					organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
 				}
-				
 			}
 			if(organizationId < 0) {
 				organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
@@ -592,7 +592,11 @@ public class AccessServiceImplementation extends SecurityImplBase {
 				userInfo.setImage(ValueUtil.validateNull(attachmentReference.getValidFileName()));
 			}
 		}
-		Object value = user.get_Value("ConnectionTimeout");
+		Object value = null;
+		// checks if the column exists in the database
+		if (user.get_ColumnIndex("ConnectionTimeout") >= 0) {
+			value = user.get_Value("ConnectionTimeout");
+		}
 		long sessionTimeout = 0;
 		if(value == null) {
 			String sessionTimeoutAsString = MSysConfig.getValue("WEBUI_DEFAULT_TIMEOUT", Env.getAD_Client_ID(Env.getCtx()), 0);
