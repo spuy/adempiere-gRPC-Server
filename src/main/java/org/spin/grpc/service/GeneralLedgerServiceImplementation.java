@@ -27,8 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
 import org.adempiere.exceptions.AdempiereException;
-import org.compiere.model.I_AD_Table;
-import org.compiere.model.I_Fact_Acct;
+import org.adempiere.core.domains.models.I_Fact_Acct;
 import org.compiere.model.MAccount;
 import org.compiere.model.MAcctSchema;
 import org.compiere.model.MAcctSchemaElement;
