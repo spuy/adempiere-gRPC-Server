@@ -65,23 +65,12 @@ dependencies {
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0'
 	implementation 'com.itextpdf:itext-pdfa:5.5.2'
 	implementation 'com.lowagie:itext:2.1.7'
+    implementation 'org.jfree:jfreechart:1.0.19'
 
 
 	//	ADempiere Core
     implementation project(':spuy-core')
     implementation project(':adempiere')
-    implementation fileTree(
-            dir: '../adempiere/lib',
-            include: [
-                    '*.jar'
-            ]
-    )
-    implementation fileTree(
-            dir: '../adempiere/tools/lib',
-            include: [
-                    '*.jar'
-            ]
-    )
 
 	// ADempiere External Libraries
 	// implementation 'io.vavr:vavr:1.0.0-alpha-4'

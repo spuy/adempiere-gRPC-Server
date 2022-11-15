@@ -1009,6 +1009,9 @@ public class ConvertUtil {
 
 		int standardPrecision = priceList.getStandardPrecision();
 		BigDecimal availableQuantity = MStorage.getQtyAvailable(orderLine.getM_Warehouse_ID(), 0, orderLine.getM_Product_ID(), orderLine.getM_AttributeSetInstance_ID(), null);
+
+		BigDecimal priceActualAmount = orderLine.getPriceActual();
+
 		//	Convert
 		return builder
 				.setUuid(ValueUtil.validateNull(orderLine.getUUID()))
