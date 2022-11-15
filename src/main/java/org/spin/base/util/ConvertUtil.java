@@ -555,12 +555,12 @@ public class ConvertUtil {
 		//	
 		return new Query(order.getCtx(), "C_POSPaymentReference", "C_Order_ID = ?", order.get_TrxName()).setParameters(order.getC_Order_ID()).list();
 	}
-	
+
 	private static List<PO> getPaymentReferencesList(MOrder order) {
 		return getPaymentReferences(order)
 			.stream()
 			.filter(paymentReference -> {
-				return (!paymentReference.get_ValueAsBoolean("Processed") && !paymentReference.get_ValueAsBoolean("IsPaid")) 
+				return (!paymentReference.get_ValueAsBoolean("Processed") && !paymentReference.get_ValueAsBoolean("IsPaid"))
 					|| paymentReference.get_ValueAsBoolean("IsKeepReferenceAfterProcess");
 			})
 			.collect(Collectors.toList());
@@ -610,10 +610,10 @@ public class ConvertUtil {
 					return discountLine;
 				})
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
-		//	
+		//
 		BigDecimal totalDiscountAmount = discountAmount.add(lineDiscountAmount);
-		
-		//	
+
+		//
 		Optional<BigDecimal> paidAmount = MPayment.getOfOrder(order).stream().map(payment -> {
 			BigDecimal paymentAmount = payment.getPayAmt();
 			if(paymentAmount.compareTo(Env.ZERO) == 0
@@ -658,7 +658,7 @@ public class ConvertUtil {
 			chargeAmt = maybeChargeAmt.get()
 				.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP);
 		}
-		
+
 		BigDecimal totalPaymentAmount = paymentAmount;
 		if(paymentReferenceAmount.isPresent()) {
 			totalPaymentAmount = totalPaymentAmount.subtract(paymentReferenceAmount.get());
@@ -769,7 +769,7 @@ public class ConvertUtil {
 
 		return paymentMethodBuilder;
 	}
-	
+
 	/**
 	 * Convert payment
 	 * @param payment
@@ -795,13 +795,13 @@ public class ConvertUtil {
 
 		MCPaymentMethod paymentMethod = MCPaymentMethod.getById(Env.getCtx(), payment.get_ValueAsInt("C_PaymentMethod_ID"), null);
 		PaymentMethod.Builder paymentMethodBuilder = convertPaymentMethod(paymentMethod);
-		
+
 		MCurrency currency = MCurrency.get(Env.getCtx(), payment.getC_Currency_ID());
 		Currency.Builder currencyBuilder = convertCurrency(currency);
 		MOrder order = new MOrder(payment.getCtx(), payment.getC_Order_ID(), null);
 		BigDecimal convertedAmount = getConvetedAmount(order, payment, paymentAmount)
 			.setScale(presicion, BigDecimal.ROUND_HALF_UP);
-		
+
 		//	Convert
 		builder
 			.setId(payment.getC_Payment_ID())
@@ -846,7 +846,7 @@ public class ConvertUtil {
 		if(paymentReference.get_ValueAsInt("C_Currency_ID") == order.getC_Currency_ID()) {
 			return Env.ONE;
 		}
-		
+
 		Timestamp conversionDate = Timestamp.valueOf(paymentReference.get_ValueAsString("PayDate"));
 		BigDecimal conversionRate = MConversionRate.getRate(
 			paymentReference.get_ValueAsInt("C_Currency_ID"),
@@ -871,24 +871,24 @@ public class ConvertUtil {
 		if(currencyId == order.getC_Currency_ID()) {
 			return;
 		}
-		int convertionRateId = MConversionRate.getConversionRateId(currencyId, 
-				order.getC_Currency_ID(), 
-				transactionDate, 
-				conversionTypeId, 
-				order.getAD_Client_ID(), 
+		int convertionRateId = MConversionRate.getConversionRateId(currencyId,
+				order.getC_Currency_ID(),
+				transactionDate,
+				conversionTypeId,
+				order.getAD_Client_ID(),
 				order.getAD_Org_ID());
 		if(convertionRateId == -1) {
-			String error = MConversionRate.getErrorMessage(order.getCtx(), 
-					"ErrorConvertingDocumentCurrencyToBaseCurrency", 
-					currencyId, 
-					order.getC_Currency_ID(), 
-					conversionTypeId, 
-					transactionDate, 
+			String error = MConversionRate.getErrorMessage(order.getCtx(),
+					"ErrorConvertingDocumentCurrencyToBaseCurrency",
+					currencyId,
+					order.getC_Currency_ID(),
+					conversionTypeId,
+					transactionDate,
 					null);
 			throw new AdempiereException(error);
 		}
 	}
-	
+
 	/**
 	 * Convert customer bank account
 	 * @param customerBankAccount
@@ -987,7 +987,7 @@ public class ConvertUtil {
 		BigDecimal totalDiscountAmount = discountAmount.multiply(quantityOrdered);
 		BigDecimal totalAmount = orderLine.getLineNetAmt();
 		BigDecimal totalBaseAmount = totalAmount.subtract(totalDiscountAmount);
-		BigDecimal totalTaxAmount = tax.calculateTax(totalAmount, priceList.isTaxIncluded(), priceList.getStandardPrecision());
+		BigDecimal totalTaxAmount = tax.calculateTax(totalAmount, !priceList.isTaxIncluded(), priceList.getStandardPrecision());
 		BigDecimal totalBaseAmountWithTax = totalBaseAmount.add(totalTaxAmount);
 		BigDecimal totalAmountWithTax = totalAmount.add(totalTaxAmount);
 
@@ -1006,7 +1006,7 @@ public class ConvertUtil {
 			})
 			.findFirst()
 			.get();
-	
+
 		int standardPrecision = priceList.getStandardPrecision();
 		BigDecimal availableQuantity = MStorage.getQtyAvailable(orderLine.getM_Warehouse_ID(), 0, orderLine.getM_Product_ID(), orderLine.getM_AttributeSetInstance_ID(), null);
 		//	Convert
@@ -1038,6 +1038,8 @@ public class ConvertUtil {
 				.setDiscountAmount(ValueUtil.getDecimalFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
 				.setDiscountRate(ValueUtil.getDecimalFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
 				.setTaxRate(ConvertUtil.convertTaxRate(tax))
+				.setPriceListWithTax(ValueUtil.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setPriceWithTax(ValueUtil.getDecimalFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
 				//	Totals
 				.setTotalDiscountAmount(ValueUtil.getDecimalFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
 				.setTotalTaxAmount(ValueUtil.getDecimalFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
@@ -1306,7 +1308,7 @@ public class ConvertUtil {
 		}).forEach(columnName -> {
 			builder.putAdditionalAttributes(columnName, ValueUtil.getValueFromObject(businessPartnerLocation.get_Value(columnName)).build());
 		});
-		//	
+		//
 		return builder;
 	}
 	
@@ -1420,7 +1422,7 @@ public class ConvertUtil {
 		}
 		MUOM productUom = MUOM.get(Env.getCtx(), productConversion.getC_UOM_ID());
 		MUOM uomToConvert = MUOM.get(Env.getCtx(), productConversion.getC_UOM_To_ID());
-		
+
 		return ProductConversion.newBuilder()
 			.setUuid(ValueUtil.validateNull(productConversion.getUUID()))
 			.setId(productConversion.getC_UOM_Conversion_ID())
@@ -1430,7 +1432,7 @@ public class ConvertUtil {
 			.setProductUom(convertUnitOfMeasure(productUom))
 		;
 	}
-	
+
 	/**
 	 * Convert resource
 	 * @param reference
