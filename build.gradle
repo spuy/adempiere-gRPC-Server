@@ -120,7 +120,6 @@ task ADempiereAllInOne(type: CreateStartScripts) {
 
 application {
     mainClass = 'org.spin.server.AllInOneServices'
-    applicationDefaultJvmArgs = ["-DPropertyFile=resources/standalone.yml","-Dsun.awt.disablegrab=true"]
 }
 
 applicationDistribution.into('bin') {
