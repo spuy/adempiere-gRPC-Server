@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import org.adempiere.core.domains.models.I_S_ResourceAssignment;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.model.GenericPO;
 import org.adempiere.pos.process.ReverseTheSalesTransaction;

@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.adempiere.core.domains.models.I_M_Attribute;
+import org.adempiere.core.domains.models.I_M_AttributeInstance;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.core.domains.models.I_C_Invoice;
 import org.adempiere.core.domains.models.I_C_InvoiceLine;
