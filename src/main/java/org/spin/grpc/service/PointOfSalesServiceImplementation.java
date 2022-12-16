@@ -16,6 +16,7 @@ package org.spin.grpc.service;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -6006,6 +6007,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		productPricing.setM_PriceList_ID(priceList.getM_PriceList_ID());
 		productPricing.setPriceDate(validFrom);
 		builder.setProduct(ConvertUtil.convertProduct(product));
+		BigDecimal priceStd = productPricing.getPriceStd();
 		int taxCategoryId = product.getC_TaxCategory_ID();
 		Optional<MTax> optionalTax = Arrays.asList(MTax.getAll(Env.getCtx()))
 		.stream()
@@ -6018,6 +6020,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	Validate
 		if(optionalTax.isPresent()) {
 			builder.setTaxRate(ConvertUtil.convertTaxRate(optionalTax.get()));
+			priceStd = priceStd.divide(Env.ONEHUNDRED.add(optionalTax.get().getRate()).divide(Env.ONEHUNDRED), RoundingMode.HALF_UP);
 		}
 		//	Set currency
 		builder.setCurrency(ConvertUtil.convertCurrency(MCurrency.get(Env.getCtx(), priceList.getC_Currency_ID())));
@@ -6030,7 +6033,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	Prices
 		if(Optional.ofNullable(productPricing.getPriceStd()).orElse(Env.ZERO).signum() > 0) {
 			builder.setPriceList(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(productPricing.getPriceList()).orElse(Env.ZERO)));
-			builder.setPriceStandard(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(productPricing.getPriceStd()).orElse(Env.ZERO)));
+			builder.setPriceStandard(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(priceStd).orElse(Env.ZERO)));
 			builder.setPriceLimit(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(productPricing.getPriceLimit()).orElse(Env.ZERO)));
 			//	Get from schema
 			if(displayCurrencyId > 0) {
