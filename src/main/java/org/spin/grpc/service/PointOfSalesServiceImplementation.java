@@ -3948,6 +3948,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int count = query.count();
 		query
 		.setLimit(limit, offset)
+		.setOrderBy(I_C_OrderLine.COLUMNNAME_Line)
 		.<MOrderLine>list()
 		.forEach(orderLine -> {
 			builder.addOrderLines(ConvertUtil.convertOrderLine(orderLine));
