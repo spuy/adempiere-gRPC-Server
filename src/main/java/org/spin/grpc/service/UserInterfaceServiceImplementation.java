@@ -40,6 +40,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import javax.script.ScriptEngine;
 
@@ -132,6 +133,8 @@ import org.spin.backend.grpc.common.DeletePreferenceRequest;
 import org.spin.backend.grpc.common.DrillTable;
 import org.spin.backend.grpc.common.Empty;
 import org.spin.backend.grpc.common.Entity;
+import org.spin.backend.grpc.common.ExistsReferencesRequest;
+import org.spin.backend.grpc.common.ExistsReferencesResponse;
 import org.spin.backend.grpc.common.GetContextInfoValueRequest;
 import org.spin.backend.grpc.common.GetDefaultValueRequest;
 import org.spin.backend.grpc.common.GetLookupItemRequest;
@@ -178,9 +181,7 @@ import org.spin.backend.grpc.common.UnlockPrivateAccessRequest;
 import org.spin.backend.grpc.common.UpdateBrowserEntityRequest;
 import org.spin.backend.grpc.common.UserInterfaceGrpc.UserInterfaceImplBase;
 import org.spin.backend.grpc.common.Value;
-import org.adempiere.core.domains.models.I_AD_AttachmentReference;
 import org.adempiere.core.domains.models.I_AD_ContextInfo;
-import org.spin.model.MADAttachmentReference;
 import org.spin.model.MADContextInfo;
 import org.spin.util.ASPUtil;
 import org.spin.util.AbstractExportFormat;
@@ -405,7 +406,76 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 					.asRuntimeException());
 		}
 	}
-	
+
+
+	@Override
+	public void existsReferences(ExistsReferencesRequest request, StreamObserver<ExistsReferencesResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Process Activity Requested is Null");
+			}
+			log.fine("References Info Requested = " + request);
+			ExistsReferencesResponse.Builder entityValueList = existsReferences(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ExistsReferencesResponse.Builder existsReferences(ExistsReferencesRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		// validate tab
+		if (request.getTabId() <= 0 && Util.isEmpty(request.getTabUuid(), true)) {
+			throw new AdempiereException("@AD_Tab_ID@ @Mandatory@");
+		}
+		MTab tab = (MTab) RecordUtil.getEntity(context, I_AD_Tab.Table_Name, request.getTabUuid(), request.getTabId(), null);
+		if (tab == null || tab.getAD_Tab_ID() <= 0) {
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		}
+
+		// builder
+		ExistsReferencesResponse.Builder builder = ExistsReferencesResponse.newBuilder();
+
+		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		// validate multiple keys as accounting tables and translation tables
+		if (!table.isSingleKey()) {
+			return builder;
+		}
+
+		// validate record
+		if(request.getRecordId() <= 0 && Util.isEmpty(request.getRecordUuid())) {
+			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
+		}
+		PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
+		// if (entity == null) {
+		// 	throw new AdempiereException("@Record_ID@ @NotFound@");
+		// }
+
+		int recordCount = 0;
+		if (entity != null && entity.get_ID() >= 0) {
+			List<ZoomInfoFactory.ZoomInfo> zoomInfos = ZoomInfoFactory.retrieveZoomInfos(entity, tab.getAD_Window_ID())
+				.stream()
+				.filter(zoomInfo -> {
+					return zoomInfo.query.getRecordCount() > 0;
+				})
+				.collect(Collectors.toList());
+			if (zoomInfos != null && zoomInfos.size() > 0) {
+				recordCount = zoomInfos.size();
+			}
+		}
+
+		//	Return
+		return builder.setRecordCount(recordCount);
+	}
+
+
 	@Override
 	public void getDefaultValue(GetDefaultValueRequest request, StreamObserver<DefaultValue> responseObserver) {
 		try {
@@ -1549,19 +1619,27 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if(Util.isEmpty(request.getTableName())) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
-		String tableName = request.getTableName();
+		MTable table = MTable.get(context, request.getTableName());
+		if (table == null || table.getAD_Table_ID() < 0) {
+			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+		}
+		// validate multiple keys as accounting tables and translation tables
+		if (!table.isSingleKey()) {
+			return builder;
+		}
+
 		StringBuffer whereClause = new StringBuffer();
 		List<Object> params = new ArrayList<>();
 		if(!Util.isEmpty(request.getUuid())) {
 			whereClause.append(I_AD_Element.COLUMNNAME_UUID + " = ?");
 			params.add(request.getUuid());
 		} else if(request.getId() > 0) {
-			whereClause.append(tableName + "_ID = ?");
+			whereClause.append(table.getTableName() + "_ID = ?");
 			params.add(request.getId());
 		} else {
 			throw new AdempiereException("@Record_ID@ @NotFound@");
 		}
-		PO entity = new Query(context, tableName, whereClause.toString(), null)
+		PO entity = new Query(context, table.getTableName(), whereClause.toString(), null)
 				.setParameters(params)
 				.first();
 		if(entity != null

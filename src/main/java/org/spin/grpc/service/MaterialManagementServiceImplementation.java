@@ -29,6 +29,8 @@ import org.adempiere.core.domains.models.I_C_Invoice;
 import org.adempiere.core.domains.models.I_C_InvoiceLine;
 import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.core.domains.models.I_C_OrderLine;
+import org.adempiere.core.domains.models.I_M_Attribute;
+import org.adempiere.core.domains.models.I_M_AttributeInstance;
 import org.adempiere.core.domains.models.I_M_AttributeSet;
 import org.adempiere.core.domains.models.I_M_AttributeSetInstance;
 import org.adempiere.core.domains.models.I_M_AttributeUse;

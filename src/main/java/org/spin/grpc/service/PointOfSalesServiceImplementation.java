@@ -68,6 +68,7 @@ import org.adempiere.core.domains.models.I_M_PriceList;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Storage;
 import org.adempiere.core.domains.models.I_M_Warehouse;
+import org.adempiere.core.domains.models.I_S_ResourceAssignment;
 import org.compiere.model.MAllocationHdr;
 import org.compiere.model.MAllocationLine;
 import org.compiere.model.MAttributeSetInstance;
@@ -131,6 +132,7 @@ import org.spin.backend.grpc.common.ProductPrice;
 import org.spin.backend.grpc.common.RunBusinessProcessRequest;
 import org.spin.backend.grpc.pos.*;
 import org.spin.backend.grpc.pos.StoreGrpc.StoreImplBase;
+import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.spin.backend.grpc.pos.UpdateCustomerBankAccountRequest;
 import org.spin.backend.grpc.pos.UpdateCustomerRequest;
 import org.spin.backend.grpc.pos.UpdateOrderLineRequest;
@@ -3964,6 +3966,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int count = query.count();
 		query
 		.setLimit(limit, offset)
+		.setOrderBy(I_C_OrderLine.COLUMNNAME_Line)
 		.<MOrderLine>list()
 		.forEach(orderLine -> {
 			builder.addOrderLines(ConvertUtil.convertOrderLine(orderLine));
