@@ -23,6 +23,10 @@ repositories {
     mavenLocal()
 }
 
+ext {
+    adempiereVersion = '3.9.4-rc-1.0.6'
+}
+
 sourceCompatibility = 11
 targetCompatibility = 11
 
@@ -36,6 +40,7 @@ def grpcVersion = '1.17.0' // CURRENT_GRPC_VERSION
 def nettyTcNativeVersion = '2.0.17.Final'
 def protobufVersion = '3.5.1'
 def protocVersion = '3.5.1-1'
+//def adempiereBaseVersion = '3.9.4-rc-1.0.6'
 
 dependencies {
     implementation fileTree(
