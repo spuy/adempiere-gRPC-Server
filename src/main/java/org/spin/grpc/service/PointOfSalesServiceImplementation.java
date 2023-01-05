@@ -3301,6 +3301,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					//	Set default values
 					salesOrder.setDocAction(DocAction.ACTION_Complete);
 					setCurrentDate(salesOrder);
+					salesOrder.setPaymentRule(MOrder.PAYMENTRULE_Cash);
 					salesOrder.saveEx();
 					//	Update Process if exists
 					if (!salesOrder.processIt(MOrder.DOCACTION_Complete)) {
