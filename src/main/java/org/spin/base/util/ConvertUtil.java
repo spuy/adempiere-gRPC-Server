@@ -35,7 +35,6 @@ import org.adempiere.core.domains.models.I_C_ConversionType;
 import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.core.domains.models.I_C_POSKeyLayout;
 import org.adempiere.core.domains.models.I_C_UOM;
-import org.compiere.model.MAttachment;
 import org.compiere.model.MBPBankAccount;
 import org.compiere.model.MBPartner;
 import org.compiere.model.MBPartnerLocation;
