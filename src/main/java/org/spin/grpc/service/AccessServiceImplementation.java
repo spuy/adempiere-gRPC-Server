@@ -219,10 +219,9 @@ public class AccessServiceImplementation extends SecurityImplBase {
 	public void listRoles(ListRolesRequest request, StreamObserver<ListRolesResponse> responseObserver) {
 		try {
 			if(request == null) {
-				throw new AdempiereException("Lookup Request Null");
+				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getSessionUuid(), request.getLanguage());
-			ListRolesResponse.Builder rolesList = convertRolesList(request);
+			ListRolesResponse.Builder rolesList = listRoles(request);
 			responseObserver.onNext(rolesList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -240,22 +239,34 @@ public class AccessServiceImplementation extends SecurityImplBase {
 	 * @param request
 	 * @return
 	 */
-	private ListRolesResponse.Builder convertRolesList(ListRolesRequest request) {
-		ListRolesResponse.Builder builder = ListRolesResponse.newBuilder();
-		Properties context = ContextManager.getContext(request.getSessionUuid(), request.getLanguage());	
-		MSession session = MSession.get(context, false, false);
-		if(session == null) {
-			throw new AdempiereException("@AD_Session_ID@ @IsMandatory@");
-		}
+	private ListRolesResponse.Builder listRoles(ListRolesRequest request) {
+		Properties context = ContextManager.getContext(request.getSessionUuid(), request.getLanguage());
+		int userId = Env.getAD_User_ID(context);
+
 		//	Get page and count
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(request.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
-		Query query = new Query(Env.getCtx(), I_AD_Role.Table_Name, 
-				"EXISTS(SELECT 1 FROM AD_User_Roles ur WHERE ur.AD_Role_ID = AD_Role.AD_Role_ID AND ur.AD_User_ID = ?)", null)
-				.setParameters(session.getCreatedBy());
+		
+		final String whereClause = "EXISTS("
+			+ "SELECT 1 FROM AD_User_Roles ur "
+			+ "WHERE ur.AD_Role_ID = AD_Role.AD_Role_ID AND ur.AD_User_ID = ?"
+			+ ")"
+			+ "AND ("
+			+ "IsAccessAllOrgs = 'Y' "
+			+ "OR (IsUseUserOrgAccess = 'N' and EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = AD_Role.AD_Role_ID AND ro.IsActive = 'Y'))"
+			+ "OR (IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ? AND uo.IsActive = 'Y'))"
+			+ ")"
+		;
+		Query query = new Query(context, I_AD_Role.Table_Name, 
+			whereClause, null)
+			.setParameters(userId, userId)
+			.setOnlyActiveRecords(true)
+		;
 		int count = query.count();
+
+		ListRolesResponse.Builder builder = ListRolesResponse.newBuilder();
 		query.setLimit(limit, offset)
 			.<MRole>list()
 			.forEach(role -> {
