@@ -15,6 +15,7 @@
 package org.spin.grpc.service;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -53,6 +54,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.nio.ByteBuffer;
 
 /**
  * @author Edwin Betancourt, EdwinBetanc0urt@outlook.com, https://github.com/EdwinBetanc0urt
@@ -183,15 +185,23 @@ public class FileManagementServiceImplementation extends FileManagementImplBase 
 
 	@Override
 	public StreamObserver<LoadResourceRequest> loadResource(StreamObserver<ResourceReference> responseObserver) {
+		AtomicReference<String> resourceUuid = new AtomicReference<>();
+		AtomicReference<ByteBuffer> buffer = new AtomicReference<>();
 		return new StreamObserver<LoadResourceRequest>() {
 			@Override
 			public void onNext(LoadResourceRequest fileUploadRequest) {
-				try{
-					// if (fileUploadRequest.hasMetadata()) {
-					// 	writer = getFilePath(fileUploadRequest);
-					// } else {
-					// 	writeFile(writer, fileUploadRequest.getFile().getContent());
-					// }
+				try {
+					if(resourceUuid.get() == null) {
+						resourceUuid.set(fileUploadRequest.getResourceUuid());
+						BigDecimal size = ValueUtil.getBigDecimalFromDecimal(fileUploadRequest.getFileSize());
+						if(size != null
+							&& fileUploadRequest.getData() != null) {
+							buffer.set(ByteBuffer.wrap(new byte[size.intValue()]));
+							buffer.set(buffer.get().put(fileUploadRequest.getData().toByteArray()));
+						}
+					} else if(buffer.get() != null){
+						buffer.set(buffer.get().put(fileUploadRequest.getData().toByteArray()));
+					}
 				} catch (Exception e){
 					this.onError(e);
 				}
@@ -199,19 +209,38 @@ public class FileManagementServiceImplementation extends FileManagementImplBase 
 
 			@Override
 			public void onError(Throwable throwable) {
-				// status = Status.FAILED;
-				this.onCompleted();
+				
 			}
 
 			@Override
 			public void onCompleted() {
-				// closeFile(writer);
-				// status = Status.IN_PROGRESS.equals(status) ? Status.SUCCESS : status;
-				ResourceReference response = ResourceReference.newBuilder()
-					// .setStatus(status)
-					.build();
-				responseObserver.onNext(response);
-				responseObserver.onCompleted();
+				try {
+					MClientInfo clientInfo = MClientInfo.get(Env.getCtx());
+					if (clientInfo == null || clientInfo.getFileHandler_ID() <= 0) {
+						throw new AdempiereException("@FileHandler_ID@ @NotFound@");
+					}
+					if(resourceUuid.get() != null && buffer.get() != null) {
+						MADAttachmentReference resourceReference = (MADAttachmentReference) RecordUtil.getEntity(Env.getCtx(), I_AD_AttachmentReference.Table_Name, resourceUuid.get(), -1, null);
+						if(resourceReference != null) {
+							byte[] data = buffer.get().array();
+							AttachmentUtil.getInstance()
+								.clear()
+								.withAttachmentReferenceId(resourceReference.getAD_AttachmentReference_ID())
+								.withFileName(resourceReference.getFileName())
+								.withClientId(clientInfo.getAD_Client_ID())
+								.withData(data)
+								.saveAttachment();
+							MADAttachmentReference.resetAttachmentReferenceCache(clientInfo.getFileHandler_ID(), resourceReference);
+						}
+					}
+					ResourceReference response = ResourceReference.newBuilder()
+						// .setStatus(status)
+						.build();
+					responseObserver.onNext(response);
+					responseObserver.onCompleted();
+				} catch (Exception e) {
+					throw new AdempiereException(e);
+				}
 			}
 		};
 	}
