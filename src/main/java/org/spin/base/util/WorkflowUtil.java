@@ -1,17 +1,17 @@
 /*************************************************************************************
  * Product: Adempiere ERP & CRM Smart Business Solution                              *
- * This program is free software; you can redistribute it and/or modify it    		 *
+ * This program is free software; you can redistribute it and/or modify it           *
  * under the terms version 2 or later of the GNU General Public License as published *
- * by the Free Software Foundation. This program is distributed in the hope   		 *
- * that it will be useful, but WITHOUT ANY WARRANTY; without even the implied 		 *
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.           		 *
- * See the GNU General Public License for more details.                       		 *
- * You should have received a copy of the GNU General Public License along    		 *
- * with this program; if not, write to the Free Software Foundation, Inc.,    		 *
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                     		 *
- * For the text or an alternative of this public license, you may reach us    		 *
+ * by the Free Software Foundation. This program is distributed in the hope          *
+ * that it will be useful, but WITHOUT ANY WARRANTY; without even the implied        *
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
+ * See the GNU General Public License for more details.                              *
+ * You should have received a copy of the GNU General Public License along           *
+ * with this program; if not, write to the Free Software Foundation, Inc.,           *
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                            *
+ * For the text or an alternative of this public license, you may reach us           *
  * Copyright (C) 2012-2018 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
- * Contributor(s): Yamel Senih www.erpya.com				  		                 *
+ * Contributor(s): Yamel Senih www.erpya.com                                         *
  *************************************************************************************/
 package org.spin.base.util;
 
@@ -36,18 +36,19 @@ import org.compiere.wf.MWFNodeNext;
 import org.compiere.wf.MWFProcess;
 import org.compiere.wf.MWFResponsible;
 import org.compiere.wf.MWorkflow;
+import org.spin.backend.grpc.wf.Action;
+import org.spin.backend.grpc.wf.ConditionType;
+import org.spin.backend.grpc.wf.DurationUnit;
+import org.spin.backend.grpc.wf.Operation;
+import org.spin.backend.grpc.wf.PublishStatus;
 import org.spin.backend.grpc.wf.WorkflowActivity;
 import org.spin.backend.grpc.wf.WorkflowCondition;
 import org.spin.backend.grpc.wf.WorkflowDefinition;
 import org.spin.backend.grpc.wf.WorkflowEvent;
 import org.spin.backend.grpc.wf.WorkflowNode;
 import org.spin.backend.grpc.wf.WorkflowProcess;
+import org.spin.backend.grpc.wf.WorkflowState;
 import org.spin.backend.grpc.wf.WorkflowTransition;
-import org.spin.backend.grpc.wf.WorkflowCondition.ConditionType;
-import org.spin.backend.grpc.wf.WorkflowCondition.Operation;
-import org.spin.backend.grpc.wf.WorkflowDefinition.DurationUnit;
-import org.spin.backend.grpc.wf.WorkflowDefinition.PublishStatus;
-import org.spin.backend.grpc.wf.WorkflowProcess.WorkflowState;
 
 /**
  * Class for handle workflow conversion values
@@ -248,6 +249,51 @@ public class WorkflowUtil {
 			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
 		}
 		builder.setPriority(node.getPriority());
+
+		// set action node
+		switch (node.getAction()) {
+			case MWFNode.ACTION_UserChoice:
+				builder.setAction(Action.USER_CHOICE);
+				break;
+			case MWFNode.ACTION_DocumentAction:
+				builder.setAction(Action.DOCUMENT_ACTION);
+				break;
+			case MWFNode.ACTION_SubWorkflow:
+				builder.setAction(Action.SUB_WORKFLOW);
+				break;
+			case MWFNode.ACTION_EMail:
+				builder.setAction(Action.EMAIL);
+				break;
+			case MWFNode.ACTION_AppsProcess:
+				builder.setAction(Action.APPS_PROCESS);
+				break;
+			case MWFNode.ACTION_SmartView:
+				builder.setAction(Action.SMART_VIEW);
+				break;
+			case MWFNode.ACTION_AppsReport:
+				builder.setAction(Action.APPS_REPORT);
+				break;
+			case MWFNode.ACTION_SmartBrowse:
+				builder.setAction(Action.SMART_BROWSE);
+				break;
+			case MWFNode.ACTION_AppsTask:
+				builder.setAction(Action.APPS_TASK);
+				break;
+			case MWFNode.ACTION_SetVariable:
+				builder.setAction(Action.SET_VARIABLE);
+				break;
+			case MWFNode.ACTION_UserWindow:
+				builder.setAction(Action.USER_WINDOW);
+				break;
+			case MWFNode.ACTION_UserForm:
+				builder.setAction(Action.USER_FORM);
+				break;
+			case MWFNode.ACTION_WaitSleep:
+			default:
+				builder.setAction(Action.WAIT_SLEEP);
+				break;
+		}
+
 		//	Get Events
 		List<MWFNodeNext> workflowNodeTransitionList = new Query(
 				node.getCtx(),
@@ -386,17 +432,17 @@ public class WorkflowUtil {
 		//	State
 		if(!Util.isEmpty(workflowEventAudit.getWFState())) {
 			if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_Running)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.RUNNING);
+				builder.setWorkflowState(WorkflowState.RUNNING);
 			} else if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_Completed)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.COMPLETED);
+				builder.setWorkflowState(WorkflowState.COMPLETED);
 			} else if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_Aborted)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.ABORTED);
+				builder.setWorkflowState(WorkflowState.ABORTED);
 			} else if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_Terminated)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.TERMINATED);
+				builder.setWorkflowState(WorkflowState.TERMINATED);
 			} else if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_Suspended)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.SUSPENDED);
+				builder.setWorkflowState(WorkflowState.SUSPENDED);
 			} else if(workflowEventAudit.getWFState().equals(MWFProcess.WFSTATE_NotStarted)) {
-				builder.setWorkflowState(org.spin.backend.grpc.wf.WorkflowEvent.WorkflowState.NOT_STARTED);
+				builder.setWorkflowState(WorkflowState.NOT_STARTED);
 			}
 		}
 		//	

@@ -7,7 +7,7 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
@@ -43,6 +43,10 @@ service BusinessData {
 service UserInterface {
 	// Get a Tab Entity
 	rpc GetTabEntity(GetTabEntityRequest) returns (Entity) {}
+	// Create Tab Entity
+	rpc CreateTabEntity(CreateTabEntityRequest) returns (Entity) {}
+	// Update Tab Entity
+	rpc UpdateTabEntity(UpdateTabEntityRequest) returns (Entity) {}
 	//	List tab Entities
 	rpc ListTabEntities(ListTabEntitiesRequest) returns (ListEntitiesResponse) {}
 	//	Rollback Entity Request
@@ -97,6 +101,8 @@ service UserInterface {
 	rpc ListTabSequences(ListTabSequencesRequest) returns (ListEntitiesResponse) {}
 	//	Save Tab Sequences
 	rpc SaveTabSequences(SaveTabSequencesRequest) returns (ListEntitiesResponse) {}
+	// List Tree Nodes Request
+	rpc ListTreeNodes(ListTreeNodesRequest) returns (ListTreeNodesResponse) {}
 }
 
 //	Role Access Request
@@ -394,6 +400,26 @@ message GetTabEntityRequest {
 	int32 id = 7;
 }
 
+// Create Tab Entity Request
+message CreateTabEntityRequest {
+	ClientRequest client_request = 1;
+	string window_uuid = 2;
+	string tab_uuid = 3;
+	int32 window_no = 4;
+	repeated KeyValue attributes = 5;
+}
+
+// Update Tab Entity Request
+message UpdateTabEntityRequest {
+	ClientRequest client_request = 1;
+	string window_uuid = 2;
+	string tab_uuid = 3;
+	int32 window_no = 4;
+	string uuid = 5;
+	int32 id = 6;
+	repeated KeyValue attributes = 7;
+}
+
 // List Tab Entities Request
 message ListTabEntitiesRequest {
 	ClientRequest client_request = 1;
@@ -641,4 +667,38 @@ message SaveTabSequencesRequest {
 	string tab_uuid = 2;
 	repeated KeyValue context_attributes = 3;
 	repeated KeyValueSelection entities = 4;
+}
+
+
+// List Tree Nodes Request
+message ListTreeNodesRequest {
+	ClientRequest client_request = 1;
+	string table_name = 2;
+	int32 id = 3;
+	string uuid = 4;
+	int32 element_id = 5;
+	string element_uuid = 6;
+}
+
+// Tree Node
+message TreeNode {
+	int32 id = 1;
+	string uuid = 2;
+	int32 parent_id = 3;
+	string parent_uuid = 4;
+	int32 record_id = 5;
+	string record_uuid = 6;
+	string name = 7;
+	string description = 8;
+	string sequence = 9;
+	bool is_summary = 10;
+	bool is_active = 11;
+	repeated TreeNode childs = 12;
+}
+
+// List Tree Nodes Response
+message ListTreeNodesResponse {
+	int64 record_count = 1;
+	repeated TreeNode records = 2;
+	string next_page_token = 3;
 }

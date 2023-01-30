@@ -7,7 +7,7 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
@@ -27,6 +27,8 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,7 +81,7 @@ import org.adempiere.core.domains.models.I_AD_Tab;
 import org.adempiere.core.domains.models.I_AD_User;
 import org.adempiere.core.domains.models.I_AD_Window;
 import org.adempiere.core.domains.models.I_CM_Chat;
-import org.compiere.model.MAttachment;
+import org.adempiere.core.domains.models.I_C_Element;
 import org.compiere.model.MChangeLog;
 import org.compiere.model.MChat;
 import org.compiere.model.MChatEntry;
@@ -98,6 +100,8 @@ import org.compiere.model.MRole;
 import org.compiere.model.MRule;
 import org.compiere.model.MTab;
 import org.compiere.model.MTable;
+import org.compiere.model.MTree;
+import org.compiere.model.MTreeNode;
 import org.compiere.model.MUser;
 import org.compiere.model.MWindow;
 import org.compiere.model.M_Element;
@@ -127,6 +131,7 @@ import org.spin.backend.grpc.common.ChatEntry;
 import org.spin.backend.grpc.common.Condition.Operator;
 import org.spin.backend.grpc.common.ContextInfoValue;
 import org.spin.backend.grpc.common.CreateChatEntryRequest;
+import org.spin.backend.grpc.common.CreateTabEntityRequest;
 import org.spin.backend.grpc.common.Criteria;
 import org.spin.backend.grpc.common.DefaultValue;
 import org.spin.backend.grpc.common.DeletePreferenceRequest;
@@ -161,6 +166,8 @@ import org.spin.backend.grpc.common.ListTabEntitiesRequest;
 import org.spin.backend.grpc.common.ListTabSequencesRequest;
 import org.spin.backend.grpc.common.ListTranslationsRequest;
 import org.spin.backend.grpc.common.ListTranslationsResponse;
+import org.spin.backend.grpc.common.ListTreeNodesRequest;
+import org.spin.backend.grpc.common.ListTreeNodesResponse;
 import org.spin.backend.grpc.common.LockPrivateAccessRequest;
 import org.spin.backend.grpc.common.LookupItem;
 import org.spin.backend.grpc.common.Preference;
@@ -177,8 +184,10 @@ import org.spin.backend.grpc.common.SaveTabSequencesRequest;
 import org.spin.backend.grpc.common.SetPreferenceRequest;
 import org.spin.backend.grpc.common.SetRecordAccessRequest;
 import org.spin.backend.grpc.common.Translation;
+import org.spin.backend.grpc.common.TreeNode;
 import org.spin.backend.grpc.common.UnlockPrivateAccessRequest;
 import org.spin.backend.grpc.common.UpdateBrowserEntityRequest;
+import org.spin.backend.grpc.common.UpdateTabEntityRequest;
 import org.spin.backend.grpc.common.UserInterfaceGrpc.UserInterfaceImplBase;
 import org.spin.backend.grpc.common.Value;
 import org.adempiere.core.domains.models.I_AD_ContextInfo;
@@ -431,7 +440,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	private ExistsReferencesResponse.Builder existsReferences(ExistsReferencesRequest request) {
 		Properties context = ContextManager.getContext(request.getClientRequest());
 
-		// validate tab
+		// validate tab		
 		if (request.getTabId() <= 0 && Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@AD_Tab_ID@ @Mandatory@");
 		}
@@ -730,8 +739,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ChatEntry.Builder chatEntryValue = addChatEntry(context, request);
+			ChatEntry.Builder chatEntryValue = addChatEntry(request);
 			responseObserver.onNext(chatEntryValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -853,8 +861,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getUuid());
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			Entity.Builder entityValue = getEntity(context, request);
+			Entity.Builder entityValue = getEntity(request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -870,13 +877,25 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @param request
 	 * @return
 	 */
-	private Entity.Builder getEntity(Properties context, GetTabEntityRequest request) {
-		MTab tab = new Query(context, MTab.Table_Name, MTab.COLUMNNAME_UUID + " = ? ", null)
-			.setParameters(request.getTabUuid())
-			.first();
+	private Entity.Builder getEntity(GetTabEntityRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+		if (Util.isEmpty(request.getTabUuid(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
+		}
+		MTab tab = new Query(
+			context,
+			MTab.Table_Name,
+			MTab.COLUMNNAME_UUID + " = ? ",
+			null
+		)
+		.setParameters(request.getTabUuid())
+		.first();
+		if (tab == null || tab.getAD_Tab_ID() <= 0) {
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		}
 		MTable table = MTable.get(context, tab.getAD_Table_ID());
 		String tableName = table.getTableName();
-		
+
 		String sql = DictionaryUtil.getQueryWithReferencesFromTab(tab);
 		// add filter
 		StringBuffer whereClause = new StringBuffer()
@@ -914,7 +933,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
 						String columnName = metaData.getColumnName (index);
-						if (columnName.toUpperCase().equals("UUID")) {
+						if (columnName.toUpperCase().equals(I_AD_Element.COLUMNNAME_UUID)) {
 							valueObjectBuilder.setUuid(rs.getString(index));
 						}
 						MColumn field = columnsMap.get(columnName.toUpperCase());
@@ -1068,6 +1087,144 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		//	Return
 		return builder;
 	}
+
+
+	@Override
+	public void createTabEntity(CreateTabEntityRequest request, StreamObserver<Entity> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			Entity.Builder entityValue = createTabEntity(request);
+			responseObserver.onNext(entityValue.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+	private Entity.Builder createTabEntity(CreateTabEntityRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		if (Util.isEmpty(request.getTabUuid(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
+		}
+
+		MTab tab = new Query(
+			context,
+			I_AD_Tab.Table_Name,
+			"UUID = ?",
+			null
+		).setParameters(request.getTabUuid())
+		.first();
+		if (tab == null || tab.getAD_Tab_ID() <= 0) {
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		}
+
+		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		PO entity = table.getPO(0, null);
+		if (entity == null) {
+			throw new AdempiereException("@Error@ PO is null");
+		}
+		request.getAttributesList().forEach(attribute -> {
+			int referenceId = DictionaryServiceImplementation.getReferenceId(entity.get_Table_ID(), attribute.getKey());
+			Object value = null;
+			if (referenceId > 0) {
+				value = ValueUtil.getObjectFromReference(attribute.getValue(), referenceId);
+			}
+			if (value == null) {
+				value = ValueUtil.getObjectFromValue(attribute.getValue());
+			}
+			entity.set_ValueOfColumn(attribute.getKey(), value);
+		});
+		//	Save entity
+		entity.saveEx();
+
+
+		GetTabEntityRequest.Builder getEntityBuilder = GetTabEntityRequest.newBuilder()
+			.setClientRequest(request.getClientRequest())
+			.setTabUuid(request.getTabUuid())
+			.setId(entity.get_ID())
+			.setUuid(entity.get_UUID())
+		;
+
+		Entity.Builder builder = getEntity(getEntityBuilder.build());
+		return builder;
+	}
+
+
+	@Override
+	public void updateTabEntity(UpdateTabEntityRequest request, StreamObserver<Entity> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			Entity.Builder entityValue = updateTabEntity(request);
+			responseObserver.onNext(entityValue.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+	private Entity.Builder updateTabEntity(UpdateTabEntityRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		if (Util.isEmpty(request.getTabUuid(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
+		}
+
+		MTab tab = new Query(
+			context,
+			I_AD_Tab.Table_Name,
+			"UUID = ?",
+			null
+		).setParameters(request.getTabUuid())
+		.first();
+		if (tab == null || tab.getAD_Tab_ID() <= 0) {
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		}
+
+		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getUuid(), request.getId(), null);
+		if (entity == null) {
+			throw new AdempiereException("@Error@ @PO@ @NotFound@");
+		}
+		if (entity.get_ID() >= 0) {
+			request.getAttributesList().forEach(attribute -> {
+				int referenceId = DictionaryServiceImplementation.getReferenceId(entity.get_Table_ID(), attribute.getKey());
+				Object value = null;
+				if (referenceId > 0) {
+					value = ValueUtil.getObjectFromReference(attribute.getValue(), referenceId);
+				}
+				if (value == null) {
+					value = ValueUtil.getObjectFromValue(attribute.getValue());
+				}
+				entity.set_ValueOfColumn(attribute.getKey(), value);
+			});
+			//	Save entity
+			entity.saveEx();
+		}
+
+		GetTabEntityRequest.Builder getEntityBuilder = GetTabEntityRequest.newBuilder()
+			.setClientRequest(request.getClientRequest())
+			.setTabUuid(request.getTabUuid())
+			.setId(entity.get_ID())
+			.setUuid(entity.get_UUID())
+		;
+
+		Entity.Builder builder = getEntity(getEntityBuilder.build());
+		return builder;
+	}
+
 
 	@Override
 	public void listGeneralInfo(ListGeneralInfoRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
@@ -2128,14 +2285,19 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @param request
 	 * @return
 	 */
-	private ChatEntry.Builder addChatEntry(Properties context, CreateChatEntryRequest request) {
-		if(Util.isEmpty(request.getTableName())) {
-			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+	private ChatEntry.Builder addChatEntry(CreateChatEntryRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		if (Util.isEmpty(request.getTableName())) {
+			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
 		AtomicReference<MChatEntry> entryReference = new AtomicReference<>();
 		Trx.run(transactionName -> {
 			String tableName = request.getTableName();
 			MTable table = MTable.get(context, tableName);
+			if (table == null || table.getAD_Table_ID() <= 0) {
+				throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+			}
 			PO entity = RecordUtil.getEntity(context, tableName, request.getUuid(), request.getId(), transactionName);
 			//	
 			StringBuffer whereClause = new StringBuffer();
@@ -2160,6 +2322,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			}
 			//	Add entry PO
 			MChatEntry entry = new MChatEntry(chat, request.getComment());
+			entry.setAD_User_ID(Env.getAD_User_ID(context));
 			entry.saveEx(transactionName);
 			entryReference.set(entry);
 		});
@@ -2351,18 +2514,17 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 
 		//	Convert value from type
-		if(DisplayType.isID(referenceId)
-				|| referenceId == DisplayType.Integer) {
+		if (DisplayType.isID(referenceId) || referenceId == DisplayType.Integer) {
 			try {
 				defaultValueAsObject = Integer.parseInt(String.valueOf(defaultValueAsObject));
 			} catch (Exception e) {
-				log.warning(e.getLocalizedMessage());
+				// log.warning(e.getLocalizedMessage());
 			}
-		} else if(DisplayType.isNumeric(validationRuleId)) {
+		} else if (DisplayType.isNumeric(referenceId)) {
 			try {
 				defaultValueAsObject = new BigDecimal(String.valueOf(defaultValueAsObject));
 			} catch (Exception e) {
-				log.warning(e.getLocalizedMessage());
+				// log.warning(e.getLocalizedMessage());
 			}
 		}
 		if (ReferenceUtil.validateReference(referenceId)) {
@@ -3573,6 +3735,154 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		});
 
 		return builderList;
+	}
+
+
+	@Override
+	public void listTreeNodes(ListTreeNodesRequest request, StreamObserver<ListTreeNodesResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+
+			ListTreeNodesResponse.Builder recordsListBuilder = listTreeNodes(request);
+			responseObserver.onNext(recordsListBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListTreeNodesResponse.Builder listTreeNodes(ListTreeNodesRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		if (Util.isEmpty(request.getTableName(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
+		}
+		MTable table = MTable.get(context, request.getTableName());
+		if (table == null || table.getAD_Table_ID() <= 0) {
+			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+		}
+		if (!MTree.hasTree(table.getAD_Table_ID())) {
+			throw new AdempiereException("@AD_Table_ID@ + @AD_Tree@ @NotFound@");
+		}
+
+		// get element id
+		int elementId = request.getElementId();
+		if (elementId <= 0 && Util.isEmpty(request.getElementUuid())) {
+			elementId = RecordUtil.getIdFromUuid(I_C_Element.Table_Name, request.getElementUuid(), null);
+		}
+
+		int clientId = Env.getAD_Client_ID(context);
+		int treeId = getDefaultTreeIdFromTableName(clientId, table.getTableName(), elementId);
+		MTree tree = new MTree(Env.getCtx(), treeId, false, false, null, null);
+
+		ListTreeNodesResponse.Builder builder = ListTreeNodesResponse.newBuilder();
+
+		MTreeNode treeNode = tree.getRoot();
+		int treeNodeId = request.getId();
+		if (treeNodeId <= 0 && !Util.isEmpty(request.getUuid())) {
+			treeNodeId = RecordUtil.getIdFromUuid(table.getTableName(), request.getUuid(), null);
+			if (treeNodeId <= 0) {
+				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
+			}
+		}
+
+		// list child nodes
+		Enumeration<?> childrens = Collections.emptyEnumeration();
+		if (treeNodeId <= 0) {
+			// get root children's
+			childrens = treeNode.children();
+			builder.setRecordCount(tree.getRoot().getChildCount());
+		} else {
+			// get current node
+			MTreeNode currentNode = treeNode.findNode(treeNodeId);
+			if (currentNode == null) {
+				throw new AdempiereException("@Node_ID@ @NotFound@");
+			}
+			childrens = currentNode.children();
+			builder.setRecordCount(currentNode.getChildCount());
+		}
+
+		final boolean isWhitChilds = true;
+		while (childrens.hasMoreElements()) {
+			MTreeNode child = (MTreeNode) childrens.nextElement();
+			TreeNode.Builder childBuilder = convertTreeNode(table, child, isWhitChilds);
+			builder.addRecords(childBuilder.build());
+		}
+
+
+		return builder;
+	}
+
+	public TreeNode.Builder convertTreeNode(MTable table, MTreeNode treeNode, boolean isWithChildrens) {
+		TreeNode.Builder builder = TreeNode.newBuilder();
+
+		String recordUuid = RecordUtil.getUuidFromId(table.getTableName(), treeNode.getNode_ID());
+		builder.setId(treeNode.getNode_ID())
+			.setRecordId(treeNode.getNode_ID())
+			.setRecordUuid(ValueUtil.validateNull(recordUuid))
+			.setSequence(treeNode.getSeqNo())
+			.setName(
+				ValueUtil.validateNull(treeNode.getName())
+			)
+			.setDescription(
+				ValueUtil.validateNull(treeNode.getDescription())
+			)
+			.setParentId(treeNode.getParent_ID())
+			.setIsSummary(treeNode.isSummary())
+			.setIsActive(true)
+		;
+
+		if (isWithChildrens) {
+			Enumeration<?> childrens = treeNode.children();
+			while (childrens.hasMoreElements()) {
+				MTreeNode child = (MTreeNode) childrens.nextElement();
+				TreeNode.Builder childBuilder = convertTreeNode(table, child, isWithChildrens);
+				builder.addChilds(childBuilder.build());
+			}
+		}
+
+		return builder;
+	}
+
+
+	public int getDefaultTreeIdFromTableName(int clientId, String tableName, int elementId) {
+		if(Util.isEmpty(tableName)) {
+			return -1;
+		}
+		//
+		Integer treeId = null;
+		String whereClause = new String();
+		//	Valid Accouting Element
+		if (elementId > 0) {
+			whereClause = " AND EXISTS ("
+				+ "SELECT 1 FROM C_Element ae "
+				+ "WHERE ae.C_Element_ID=" + elementId
+				+ " AND tr.AD_Tree_ID=ae.AD_Tree_ID) "
+			;
+		}
+		if(treeId == null || treeId == 0) {
+			String sql = "SELECT tr.AD_Tree_ID "
+				+ "FROM AD_Tree tr "
+				+ "INNER JOIN AD_Table tb ON (tr.AD_Table_ID=tb.AD_Table_ID) "
+				+ "WHERE tr.AD_Client_ID IN(0, ?) "
+				+ "AND tb.TableName=? "
+				+ "AND tr.IsActive='Y' "
+				+ "AND tr.IsAllNodes='Y' "
+				+ whereClause
+				+ "ORDER BY tr.AD_Client_ID DESC, tr.IsDefault DESC, tr.AD_Tree_ID"
+			;
+			//	Get Tree
+			treeId = DB.getSQLValue(null, sql, clientId, tableName);
+		}
+		//	Default Return
+		return treeId;
 	}
 
 }
