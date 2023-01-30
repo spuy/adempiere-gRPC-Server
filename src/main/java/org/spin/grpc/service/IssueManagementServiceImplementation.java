@@ -546,12 +546,20 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 				}
 			}
 
-			parametersList.add(table.getAD_Table_ID(), recordId);
+			parametersList.add(table.getAD_Table_ID());
+			parametersList.add(recordId);
 			whereClause = "AD_Table_ID = ? AND Record_ID = ? ";
 		} else {
-			int userId = Env.getAD_Client_ID(context);
-			parametersList.add(userId, userId);
-			whereClause = "AD_User_ID = ? OR AD_User_ID = ?";
+			int userId = Env.getAD_User_ID(context);
+			int roleId = Env.getAD_Role_ID(context);
+
+			parametersList.add(userId);
+			parametersList.add(roleId);
+			whereClause = "Processed='N' "
+				+ "AND (SalesRep_ID=? OR AD_Role_ID = ?) "
+				+ "AND (DateNextAction IS NULL OR TRUNC(DateNextAction, 'DD') <= TRUNC(SysDate, 'DD'))"
+				+ "AND (R_Status_ID IS NULL OR R_Status_ID IN (SELECT R_Status_ID FROM R_Status WHERE IsClosed='N'))"
+			;
 		}
 
 		Query queryRequests = new Query(
@@ -660,22 +668,37 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	private Issue.Builder createIssue(CreateIssueRequest request) {
 		Properties context = ContextManager.getContext(request.getClientRequest());
 
-		if (Util.isEmpty(request.getTableName(), true)) {
-			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
-		}
+		MRequest requestRecord = new MRequest(context, 0, null);
 
-		MTable table = MTable.get(context, request.getTableName());
-		if (table == null || table.getAD_Table_ID() <= 0) {
-			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
-		}
+		// create issue with record on window
+		if (!Util.isEmpty(request.getTableName(), true) || !Util.isEmpty(request.getRecordUuid(), true) || request.getRecordId() > 0) {
+			if (Util.isEmpty(request.getTableName(), true)) {
+				throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
+			}
 
-		// validate record
-		if (request.getRecordId() < 0 && Util.isEmpty(request.getRecordUuid(), true)) {
-			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
-		}
-		PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
-		if (entity == null) {
-			throw new AdempiereException("@PO@ @NotFound@");
+			MTable table = MTable.get(context, request.getTableName());
+			if (table == null || table.getAD_Table_ID() <= 0) {
+				throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+			}
+
+			// validate record
+			if (request.getRecordId() < 0 && Util.isEmpty(request.getRecordUuid(), true)) {
+				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
+			}
+			PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
+			if (entity == null) {
+				throw new AdempiereException("@PO@ @NotFound@");
+			}
+
+			PO.copyValues(entity, requestRecord, true);
+
+			// validate if entity key column exists on request to set
+			String keyColumn = entity.get_TableName() + "_ID";
+			if (requestRecord.get_ColumnIndex(keyColumn) >= 0) {
+				requestRecord.set_ValueOfColumn(keyColumn, entity.get_ID());
+			}
+			requestRecord.setRecord_ID(entity.get_ID());
+			requestRecord.setAD_Table_ID(table.getAD_Table_ID());
 		}
 
 		if (Util.isEmpty(request.getSubject(), true)) {
@@ -702,17 +725,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			throw new AdempiereException("@SalesRep_ID@ @NotFound@");
 		}
 
-		MRequest requestRecord = new MRequest(context, 0, null);
-		PO.copyValues(entity, requestRecord, true);
-
-		// validate if entity key column exists on request to set
-		String keyColumn = entity.get_TableName() + "_ID";
-		if (requestRecord.get_ColumnIndex(keyColumn) >= 0) {
-			requestRecord.set_ValueOfColumn(keyColumn, entity.get_ID());
-		}
-
-		requestRecord.setRecord_ID(entity.get_ID());
-		requestRecord.setAD_Table_ID(table.getAD_Table_ID());
+		// fill values
 		requestRecord.setR_RequestType_ID(requestTypeId);
 		requestRecord.setSubject(request.getSubject());
 		requestRecord.setSummary(request.getSummary());
