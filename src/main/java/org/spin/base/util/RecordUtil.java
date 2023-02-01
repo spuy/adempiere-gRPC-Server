@@ -555,7 +555,8 @@ public class RecordUtil {
 			.collect(Collectors.toList());
 		int positionFrom = -1;
 		if (fromWhereParts != null && fromWhereParts.size() > 0) {
-			MatchResult lastFrom = fromWhereParts.get(fromWhereParts.size() - 1);
+			// MatchResult lastFrom = fromWhereParts.get(fromWhereParts.size() - 1);
+			MatchResult lastFrom = fromWhereParts.get(0);
 			positionFrom = lastFrom.start();
 		} else {
 			return 0;
