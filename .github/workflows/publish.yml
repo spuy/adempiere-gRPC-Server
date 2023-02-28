@@ -112,7 +112,7 @@ jobs:
     steps:
       - id: check_secret_job
         run: |
-          if [[ "${{ secrets.DOCKER_REPO_ADEMPIERE_MIDDLEWARE }}" != "" && \
+          if [[ "${{ secrets.DOCKER_REPO_BACKEND }}" != "" && \
                 "${{ secrets.DOCKER_USERNAME }}" != "" && \
                 "${{ secrets.DOCKER_TOKEN }}" != "" ]]; \
           then
@@ -162,8 +162,8 @@ jobs:
           file: build-docker/production-alpine.Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_MIDDLEWARE }}:alpine-${{ github.event.release.tag_name }}
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_MIDDLEWARE }}:alpine
+            ${{ secrets.DOCKER_REPO_BACKEND }}:alpine-${{ github.event.release.tag_name }}
+            ${{ secrets.DOCKER_REPO_BACKEND }}:alpine
           build-args: |
             JDK_RELEASE=11-jdk-alpine
 
@@ -206,8 +206,8 @@ jobs:
           file: ./build-docker/production.Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_MIDDLEWARE }}:latest
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_MIDDLEWARE }}:${{ github.event.release.tag_name }}
+            ${{ secrets.DOCKER_REPO_BACKEND }}:latest
+            ${{ secrets.DOCKER_REPO_BACKEND }}:${{ github.event.release.tag_name }}
           build-args: |
             JDK_RELEASE=11-jdk
 
