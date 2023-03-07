@@ -230,8 +230,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Request is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListWorkflowActivitiesResponse.Builder activitiesList = convertWorkflowActivities(context, request);
+			ListWorkflowActivitiesResponse.Builder activitiesList = listWorkflowActivities(request);
 			responseObserver.onNext(activitiesList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -242,14 +241,15 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 					.asRuntimeException());
 		}
 	}
-	
+
 	/**
 	 * Convert request for workflow to builder
-	 * @param context
 	 * @param request
 	 * @return
 	 */
-	private ListWorkflowActivitiesResponse.Builder convertWorkflowActivities(Properties context, ListWorkflowActivitiesRequest request) {
+	private ListWorkflowActivitiesResponse.Builder listWorkflowActivities(ListWorkflowActivitiesRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
 		if(Util.isEmpty(request.getUserUuid())) {
 			throw new AdempiereException("@AD_User_ID@ @NotFound@");
 		}
@@ -335,9 +335,11 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 					orderType = documentType.getDocBaseType();
 				}
 			}
-			isSOTrx = ValueUtil.booleanToString(
-				entity.get_ValueAsBoolean(I_C_Order.COLUMNNAME_IsSOTrx)
-			);
+			if (entity.get_ColumnIndex(I_C_Order.COLUMNNAME_IsSOTrx) >= 0) {
+				isSOTrx = ValueUtil.booleanToString(
+					entity.get_ValueAsBoolean(I_C_Order.COLUMNNAME_IsSOTrx)
+				);
+			}
 			recordId = entity.get_ID();
 		}
 		if (documentStatus == null) {
@@ -584,7 +586,14 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				orderType = documentType.getDocBaseType();
 			}
 		}
-		String isSOTrx = entity.get_ValueAsBoolean(I_C_Order.COLUMNNAME_IsSOTrx)? "Y": "N";
+
+		String isSOTrx = "Y";
+		if (entity.get_ColumnIndex(I_C_Order.COLUMNNAME_IsSOTrx) >= 0) {
+			isSOTrx = ValueUtil.booleanToString(
+				entity.get_ValueAsBoolean(I_C_Order.COLUMNNAME_IsSOTrx)
+			);
+		}
+
 		//	
 		if (documentStatus == null) {
 			throw new AdempiereException("@DocStatus@ @NotFound@");

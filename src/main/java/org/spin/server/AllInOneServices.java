@@ -7,17 +7,16 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
- * along with this program.	If not, see <https://www.gnu.org/licenses/>.            *
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
 package org.spin.server;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
-
 import org.spin.base.setup.SetupLoader;
 import org.spin.base.util.Services;
 import org.spin.grpc.service.AccessServiceImplementation;
@@ -52,6 +51,7 @@ import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NettyServerBuilder;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.grpc.ServerBuilder;
 
 public class AllInOneServices {
 	private static final Logger logger = Logger.getLogger(AllInOneServices.class.getName());
@@ -72,22 +72,28 @@ public class AllInOneServices {
 	  }
 
 	private void start() throws IOException {
-		  NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(SetupLoader.getInstance().getServer().getPort());
-		  //	For Access
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.ACCESS.getServiceName())) {
-			  serverBuilder.addService(new AccessServiceImplementation());
-			  logger.info("Service " + Services.ACCESS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
-		  //	Business Logic
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.BUSINESS.getServiceName())) {
-			  serverBuilder.addService(new BusinessDataServiceImplementation());
-			  logger.info("Service " + Services.BUSINESS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
-		  //	Core Implementation
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.CORE.getServiceName())) {
-			  serverBuilder.addService(new CoreFunctionalityImplementation());
-			  logger.info("Service " + Services.CORE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
+		ServerBuilder<?> serverBuilder;
+		if(SetupLoader.getInstance().getServer().isTlsEnabled()) {
+			serverBuilder = NettyServerBuilder.forPort(SetupLoader.getInstance().getServer().getPort())
+				.sslContext(getSslContextBuilder().build());
+		} else {
+			serverBuilder = ServerBuilder.forPort(SetupLoader.getInstance().getServer().getPort());
+		}
+		//	For Access
+		if(SetupLoader.getInstance().getServer().isValidService(Services.ACCESS.getServiceName())) {
+			serverBuilder.addService(new AccessServiceImplementation());
+			logger.info("Service " + Services.ACCESS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Business Logic
+		if(SetupLoader.getInstance().getServer().isValidService(Services.BUSINESS.getServiceName())) {
+			serverBuilder.addService(new BusinessDataServiceImplementation());
+			logger.info("Service " + Services.BUSINESS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Core Implementation
+		if(SetupLoader.getInstance().getServer().isValidService(Services.CORE.getServiceName())) {
+			serverBuilder.addService(new CoreFunctionalityImplementation());
+			logger.info("Service " + Services.CORE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	Dictionary
 		if(SetupLoader.getInstance().getServer().isValidService(Services.DICTIONARY.getServiceName())) {
 			serverBuilder.addService(new DictionaryServiceImplementation());
@@ -103,46 +109,46 @@ public class AllInOneServices {
 			serverBuilder.addService(new FileManagementServiceImplementation());
 			logger.info("Service " + Services.FILE_MANAGEMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
-		  //	Dashboarding
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.DASHBOARDING.getServiceName())) {
-			  serverBuilder.addService(new DashboardingServiceImplementation());
-			  logger.info("Service " + Services.DASHBOARDING.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
-		  //	Workflow
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.WORKFLOW.getServiceName())) {
-			  serverBuilder.addService(new WorkflowServiceImplementation());
-			  logger.info("Service " + Services.WORKFLOW.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
+		//	Dashboarding
+		if(SetupLoader.getInstance().getServer().isValidService(Services.DASHBOARDING.getServiceName())) {
+			serverBuilder.addService(new DashboardingServiceImplementation());
+			logger.info("Service " + Services.DASHBOARDING.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Workflow
+		if(SetupLoader.getInstance().getServer().isValidService(Services.WORKFLOW.getServiceName())) {
+			serverBuilder.addService(new WorkflowServiceImplementation());
+			logger.info("Service " + Services.WORKFLOW.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	General Ledger
 		if(SetupLoader.getInstance().getServer().isValidService(Services.GENERAL_LEDGER.getServiceName())) {
 			serverBuilder.addService(new GeneralLedgerServiceImplementation());
 			logger.info("Service " + Services.GENERAL_LEDGER.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
-		  //	Log
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.LOG.getServiceName())) {
-			  serverBuilder.addService(new LogsServiceImplementation());
-			  logger.info("Service " + Services.LOG.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
+		//	Log
+		if(SetupLoader.getInstance().getServer().isValidService(Services.LOG.getServiceName())) {
+			serverBuilder.addService(new LogsServiceImplementation());
+			logger.info("Service " + Services.LOG.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	Material Management
 		if(SetupLoader.getInstance().getServer().isValidService(Services.MATERIAL_MANAGEMENT.getServiceName())) {
 			serverBuilder.addService(new MaterialManagementServiceImplementation());
 			logger.info("Service " + Services.MATERIAL_MANAGEMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
-		  //	Store
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.STORE.getServiceName())) {
-			  serverBuilder.addService(new WebStoreServiceImplementation());
-			  logger.info("Service " + Services.STORE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
-		  //	POS
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.POS.getServiceName())) {
-			  serverBuilder.addService(new PointOfSalesServiceImplementation());
-			  logger.info("Service " + Services.POS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
-		  //	Updater
-		  if(SetupLoader.getInstance().getServer().isValidService(Services.UPDATER.getServiceName())) {
-			  serverBuilder.addService(new UpdateImplementation());
-			  logger.info("Service " + Services.UPDATER.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
-		  }
+		//	Store
+		if(SetupLoader.getInstance().getServer().isValidService(Services.STORE.getServiceName())) {
+			serverBuilder.addService(new WebStoreServiceImplementation());
+			logger.info("Service " + Services.STORE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	POS
+		if(SetupLoader.getInstance().getServer().isValidService(Services.POS.getServiceName())) {
+			serverBuilder.addService(new PointOfSalesServiceImplementation());
+			logger.info("Service " + Services.POS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Updater
+		if(SetupLoader.getInstance().getServer().isValidService(Services.UPDATER.getServiceName())) {
+			serverBuilder.addService(new UpdateImplementation());
+			logger.info("Service " + Services.UPDATER.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	Business Partner
 		if(SetupLoader.getInstance().getServer().isValidService(Services.BUSINESS_PARTNER.getServiceName())) {
 			serverBuilder.addService(new BusinessPartnerServiceImplementation());
@@ -203,27 +209,18 @@ public class AllInOneServices {
 			serverBuilder.addService(new UserInterfaceServiceImplementation());
 			logger.info("Service " + Services.UI.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
-
-		  //	Add services
-		  if(SetupLoader.getInstance().getServer().isTlsEnabled()) {
-			  
-			  server = serverBuilder.sslContext(getSslContextBuilder().build())
-		                .build()
-		                .start();
-		  } else {
-			  server = serverBuilder.build()
-				        .start();
-		  }
-		  logger.info("Server started, listening on " + SetupLoader.getInstance().getServer().getPort());
-		    Runtime.getRuntime().addShutdownHook(new Thread() {
-		      @Override
-		      public void run() {
-		        // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-		    	  logger.info("*** shutting down gRPC server since JVM is shutting down");
+		//	Add Server
+		server = serverBuilder.build().start();
+		logger.info("Server started, listening on " + SetupLoader.getInstance().getServer().getPort());
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				// Use stderr here since the logger may have been reset by its JVM shutdown hook.
+				logger.info("*** shutting down gRPC server since JVM is shutting down");
 		    	  AllInOneServices.this.stop();
-		        logger.info("*** server shut down");
-		      }
-		    });
+		    	logger.info("*** server shut down");
+			}
+		});
 	  }
 
 	  private void stop() {
@@ -246,13 +243,13 @@ public class AllInOneServices {
 	 * @throws Exception 
 	   */
 	  public static void main(String[] args) throws Exception {
-		  if(args == null) {
-			  throw new Exception("Arguments Not Found");
-		  }
-		  //	
-		  if(args == null || args.length == 0) {
-			  throw new Exception("Arguments Must Be: [property file name]");
-		  }
+		if (args == null) {
+			throw new Exception("Arguments Not Found");
+		}
+		//
+		if (args.length == 0) {
+			throw new Exception("Arguments Must Be: [property file name]");
+		}
 		  String setupFileName = args[0];
 		  if(setupFileName == null || setupFileName.trim().length() == 0) {
 			  throw new Exception("Setup File not found");

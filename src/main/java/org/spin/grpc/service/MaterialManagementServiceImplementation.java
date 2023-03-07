@@ -7,7 +7,7 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.adempiere.core.domains.models.I_M_Attribute;
 import org.adempiere.core.domains.models.I_M_AttributeInstance;
@@ -35,9 +37,11 @@ import org.adempiere.core.domains.models.I_M_AttributeSet;
 import org.adempiere.core.domains.models.I_M_AttributeSetInstance;
 import org.adempiere.core.domains.models.I_M_AttributeUse;
 import org.adempiere.core.domains.models.I_M_AttributeValue;
+import org.adempiere.core.domains.models.I_M_Locator;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Requisition;
 import org.adempiere.core.domains.models.I_M_RequisitionLine;
+import org.adempiere.core.domains.models.I_M_Warehouse;
 import org.compiere.model.MAttribute;
 import org.compiere.model.MAttributeInstance;
 import org.compiere.model.MAttributeSet;
@@ -45,27 +49,37 @@ import org.compiere.model.MAttributeSetInstance;
 import org.compiere.model.MAttributeUse;
 import org.compiere.model.MAttributeValue;
 import org.compiere.model.MInvoiceLine;
+import org.compiere.model.MLocator;
+import org.compiere.model.MLookupInfo;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MProduct;
 import org.compiere.model.MRequisitionLine;
 import org.compiere.model.MRole;
 import org.compiere.model.MTable;
+import org.compiere.model.MWarehouse;
 import org.compiere.model.Query;
 import org.adempiere.core.domains.models.X_M_Attribute;
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
+import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.spin.base.util.ContextManager;
 import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ValueUtil;
 
 import org.spin.backend.grpc.common.ListEntitiesResponse;
 import org.spin.backend.grpc.material_management.GetProductAttributeSetInstanceRequest;
 import org.spin.backend.grpc.material_management.GetProductAttributeSetRequest;
+import org.spin.backend.grpc.material_management.ListAvailableWarehousesRequest;
+import org.spin.backend.grpc.material_management.ListAvailableWarehousesResponse;
+import org.spin.backend.grpc.material_management.ListLocatorsRequest;
+import org.spin.backend.grpc.material_management.ListLocatorsResponse;
 import org.spin.backend.grpc.material_management.ListProductAttributeSetInstancesRequest;
 import org.spin.backend.grpc.material_management.ListProductAttributeSetInstancesResponse;
 import org.spin.backend.grpc.material_management.ListProductStorageRequest;
+import org.spin.backend.grpc.material_management.Locator;
 import org.spin.backend.grpc.material_management.MaterialManagementGrpc.MaterialManagementImplBase;
 import org.spin.backend.grpc.material_management.ProductAttribute;
 import org.spin.backend.grpc.material_management.ProductAttributeInstance;
@@ -73,6 +87,7 @@ import org.spin.backend.grpc.material_management.ProductAttributeSet;
 import org.spin.backend.grpc.material_management.ProductAttributeSetInstance;
 import org.spin.backend.grpc.material_management.ProductAttributeValue;
 import org.spin.backend.grpc.material_management.SaveProductAttributeSetInstanceRequest;
+import org.spin.backend.grpc.material_management.Warehouse;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -139,7 +154,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		//	Get page and count
 		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
 		int count = 0;
 		ListEntitiesResponse.Builder builder = ListEntitiesResponse.newBuilder();
 
@@ -310,13 +325,13 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 				productAttributeSetId = attributeSetInstance.getM_AttributeSet_ID();
 			}
 		}
-			
+
 		if (productAttributeSetId <= 0) {
 			throw new AdempiereException("@M_AttributeSet_ID@ @NotFound@");
 		}
-		
-		ProductAttributeSet.Builder builder =convertProductAttributeSet(productAttributeSetId);
-		
+
+		ProductAttributeSet.Builder builder = convertProductAttributeSet(productAttributeSetId);
+
 		return builder;
 	}
 
@@ -355,7 +370,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 				MProduct product = (MProduct) RecordUtil.getEntity(
 					context,
 					I_M_Product.Table_Name,
-					request.getProductUuid(),
+					request.getProductUuid(), 
 					request.getProductId(),
 					null
 				);
@@ -394,7 +409,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 				.asRuntimeException());
 		}
 	}
-	
+
 	private ListProductAttributeSetInstancesResponse.Builder listProductAttributeSetInstances(ListProductAttributeSetInstancesRequest request) {
 		Properties context = ContextManager.getContext(request.getClientRequest());
 
@@ -427,24 +442,39 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			throw new AdempiereException("@M_AttributeSet_ID@ @NotFound@");
 		}
 
-		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		String whereClause = "M_AttributeSet_ID = ?";
+		List<Object> parameters = new ArrayList<Object>();
+		parameters.add(productAttributeSetId);
+
+		// Add search value to filter
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			whereClause += " AND (UPPER(Description) LIKE '%' || UPPER(?) || '%')";
+			parameters.add(request.getSearchValue());
+		}
 
 		Query query =  new Query(
 			context,
 			I_M_AttributeSetInstance.Table_Name,
-			"M_AttributeSet_ID = ?",
+			whereClause,
 			null
 		)
 			.setClient_ID()
-			.setParameters(productAttributeSetId)
-			.setOnlyActiveRecords(true);
+			.setParameters(parameters)
+			.setOnlyActiveRecords(true)
+			.setApplyAccessFilter(true)
+		;
 
 		int count = query.count();
 
-		List<MAttributeSetInstance> productAttributeSetInstancesList = query.setLimit(limit, offset).list();
+		String nexPageToken = null;
+		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		List<MAttributeSetInstance> productAttributeSetInstancesList = query
+			.setOrderBy("M_AttributeSet_ID, UPPER(Description) ASC")
+			.setLimit(limit, offset)
+			.<MAttributeSetInstance>list();
 		ListProductAttributeSetInstancesResponse.Builder builderList = ListProductAttributeSetInstancesResponse.newBuilder()
 			.setRecordCount(count);
 
@@ -486,7 +516,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		if (attributeSetInstance.getGuaranteeDate() != null) {
 			builder.setGuaranteeDate(attributeSetInstance.getGuaranteeDate().getTime());
 		}
-		
+
 		final String whereClause = I_M_AttributeInstance.COLUMNNAME_M_AttributeSetInstance_ID + " = ? ";
 		List<MAttributeInstance> attributeInstancesList = new Query(
 			Env.getCtx(),
@@ -494,8 +524,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			whereClause,
 			null
 		)
-		.setParameters(attributeSetInstance.getM_AttributeSetInstance_ID())
-		.list();
+			.setParameters(attributeSetInstance.getM_AttributeSetInstance_ID())
+			.list();
 		if (attributeInstancesList != null) {
 			attributeInstancesList.forEach(attributeInstance -> {
 				ProductAttributeInstance.Builder attributeInstanceBuilder = convertProductAttributeInstance(
@@ -656,81 +686,346 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ProductAttributeSetInstance.Builder saveProductAttributeSetInstance(SaveProductAttributeSetInstanceRequest request) {
-		ProductAttributeSetInstance.Builder builder = ProductAttributeSetInstance.newBuilder();
-
 		Properties context = ContextManager.getContext(request.getClientRequest());
 
-		int attributeSetInstanceId = request.getId();
-		if (attributeSetInstanceId <= 0) {
-			attributeSetInstanceId = RecordUtil.getIdFromUuid(I_M_AttributeSetInstance.Table_Name, request.getUuid(), null);
-		}
+		AtomicReference<MAttributeSetInstance> attributeSetInstaceAtomic = new AtomicReference<MAttributeSetInstance>();
 
-		MProduct product = (MProduct) RecordUtil.getEntity(context, I_M_Product.Table_Name, request.getProductUuid(), request.getProductId(), null);
-		if (product.getM_AttributeSet_ID() < 1) {
-			throw new AdempiereException("@PAttributeNoAttributeSet@");
-		}
-		boolean isProductASI = product.getM_AttributeSetInstance_ID() > 0;
-
-		MAttributeSetInstance attributeSetInstace = MAttributeSetInstance.get(context, attributeSetInstanceId, product.getM_Product_ID());
-
-		MAttributeSet atttibuteSet = MAttributeSet.get(context, product.getM_AttributeSet_ID());
-		attributeSetInstace.setM_AttributeSet_ID(product.getM_AttributeSet_ID());
-		attributeSetInstace.saveEx();
-
-		Map<String, Object> attributesValues = ValueUtil.convertValuesToObjects(request.getAttributesList());
-		List<MAttribute> attributes = Arrays.asList(atttibuteSet.getMAttributes(isProductASI));
-
-		//  Save Instance Attributes
-		attributes.stream().forEach(attribute -> {
-			attribute.set_TrxName(null); // with transaction name dont save instance attributes
-
-			Object currentValue = attributesValues.get(attribute.getUUID());
-			if (MAttribute.ATTRIBUTEVALUETYPE_List.equals(attribute.getAttributeValueType())) {
-				int attributeId = 0;
-				if (currentValue != null) {
-					attributeId = (Integer) currentValue;
-				}
-				MAttributeValue attributeValue = new MAttributeValue(context, attributeId, null);
-				if (attribute.isMandatory() && (attributeValue == null || attributeValue.getM_AttributeValue_ID() <= 0)) {
-					throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
-				}
-					attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), attributeValue);
+		Trx.run(transactionName -> {
+			int attributeSetInstanceId = request.getId();
+			if (attributeSetInstanceId <= 0) {
+				attributeSetInstanceId = RecordUtil.getIdFromUuid(I_M_AttributeSetInstance.Table_Name, request.getUuid(), transactionName);
 			}
-			else if (MAttribute.ATTRIBUTEVALUETYPE_Number.equals(attribute.getAttributeValueType())) {
-				BigDecimal value = null;
-				if (currentValue != null) {
-					if (currentValue instanceof Integer) {
-						value = BigDecimal.valueOf((Integer) currentValue);
-					} else {
-						value = (BigDecimal) currentValue;
+
+			MProduct product = (MProduct) RecordUtil.getEntity(context, I_M_Product.Table_Name, request.getProductUuid(), request.getProductId(), transactionName);
+			if (product.getM_AttributeSet_ID() < 1) {
+				throw new AdempiereException("@PAttributeNoAttributeSet@");
+			}
+			boolean isProductASI = product.getM_AttributeSetInstance_ID() > 0;
+
+			MAttributeSetInstance attributeSetInstace = MAttributeSetInstance.get(context, attributeSetInstanceId, product.getM_Product_ID());
+
+			MAttributeSet atttibuteSet = MAttributeSet.get(context, product.getM_AttributeSet_ID());
+			attributeSetInstace.setM_AttributeSet_ID(product.getM_AttributeSet_ID());
+			attributeSetInstace.saveEx();
+
+			Map<String, Object> attributesValues = ValueUtil.convertValuesToObjects(request.getAttributesList());
+			List<MAttribute> attributes = Arrays.asList(atttibuteSet.getMAttributes(isProductASI));
+			if (attributes == null || attributes.size() <= 0) {
+				attributes = Arrays.asList(atttibuteSet.getMAttributes(!isProductASI));
+			}
+
+			// Save Instance Attributes
+			attributes.stream().forEach(attribute -> {
+				Object currentValue = attributesValues.get(attribute.getUUID());
+				if (MAttribute.ATTRIBUTEVALUETYPE_List.equals(attribute.getAttributeValueType())) {
+					int attributeId = 0;
+					if (currentValue != null) {
+						attributeId = (Integer) currentValue;
 					}
+					MAttributeValue attributeValue = new MAttributeValue(context, attributeId, transactionName);
+					if (attribute.isMandatory() && (attributeValue == null || attributeValue.getM_AttributeValue_ID() <= 0)) {
+						throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
+					}
+					attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), attributeValue);
 				}
-				if (attribute.isMandatory() && value == null) {
-					throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
+				else if (MAttribute.ATTRIBUTEVALUETYPE_Number.equals(attribute.getAttributeValueType())) {
+					BigDecimal value = null;
+					if (currentValue != null) {
+						if (currentValue instanceof Integer) {
+							value = BigDecimal.valueOf((Integer) currentValue);
+						} else {
+							value = (BigDecimal) currentValue;
+						}
+					}
+					if (attribute.isMandatory() && value == null) {
+						throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
+					}
+					// setMAttributeInstance doesn't work without decimal point
+					if (value != null && value.scale() == 0) {
+						value = value.setScale(1, RoundingMode.HALF_UP);
+					}
+					attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), value);
 				}
-				// setMAttributeInstance doesn't work without decimal point
-				if (value != null && value.scale() == 0) {
-					value = value.setScale(1, RoundingMode.HALF_UP);
+				else {
+					String value = null;
+					if (currentValue != null) {
+						value = currentValue.toString();
+					}
+					if (attribute.isMandatory() && Util.isEmpty(value, true)) {
+						throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
+					}
+					attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), value);
 				}
-				attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), value);
-			}
-			else {
-				String value = null;
-				if (currentValue != null) {
-					value = currentValue.toString();
-				}
-				if (attribute.isMandatory() && Util.isEmpty(value, true)) {
-					throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
-				}
-				attribute.setMAttributeInstance(attributeSetInstace.getM_AttributeSetInstance_ID(), value);
-			}
+			});
+
+			attributeSetInstace.setDescription();
+			attributeSetInstace.saveEx();
+			attributeSetInstaceAtomic.set(attributeSetInstace);
 		});
 
-		attributeSetInstace.setDescription();
-		attributeSetInstace.saveEx();
-
-		builder = convertProductAttributeSetInstance(attributeSetInstace);
+		ProductAttributeSetInstance.Builder builder = convertProductAttributeSetInstance(attributeSetInstaceAtomic.get());
 
 		return builder;
 	}
+
+
+	@Override
+	public void listAvailableWarehouses(ListAvailableWarehousesRequest request, StreamObserver<ListAvailableWarehousesResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListAvailableWarehousesResponse.Builder recordsList = listAvailableWarehouses(request);
+			responseObserver.onNext(recordsList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException());
+		}
+	}
+
+	private ListAvailableWarehousesResponse.Builder listAvailableWarehouses(ListAvailableWarehousesRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		String whereClause = "1 = 1";
+		List<Object> parameters = new ArrayList<Object>();
+
+		// Add warehouse to filter
+		if (!Util.isEmpty(request.getWarehouseUuid(), true) || request.getWarehouseId() > 0) {
+			whereClause += " AND M_Warehouse_ID = ?";
+			int warehouseId = request.getWarehouseId();
+			if (!Util.isEmpty(request.getWarehouseUuid())) {
+				warehouseId = RecordUtil.getIdFromUuid(I_M_Warehouse.Table_Name, request.getWarehouseUuid(), null);
+			}
+			parameters.add(warehouseId);
+		}
+
+		// Add search value to filter
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			whereClause += " AND ("
+				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%'"
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Description) LIKE '%' || UPPER(?) || '%' "
+			+ ")";
+			parameters.add(request.getSearchValue());
+			parameters.add(request.getSearchValue());
+			parameters.add(request.getSearchValue());
+		}
+
+		Query query = new Query(
+			context,
+			I_M_Warehouse.Table_Name,
+			whereClause,
+			null
+		)
+			.setParameters(parameters)
+			.setOnlyActiveRecords(true)
+			.setApplyAccessFilter(true)
+		;
+
+		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+		int count = query.count();
+
+		ListAvailableWarehousesResponse.Builder builderList = ListAvailableWarehousesResponse.newBuilder()
+			.setRecordCount(count)
+		;
+
+		List<MWarehouse> warehousesList = query
+			.setOrderBy("M_Warehouse_ID, UPPER(Value)")
+			.setLimit(limit, offset)
+			.<MWarehouse>list()
+		;
+		if (warehousesList != null) {
+			warehousesList.forEach(warehouse -> {
+				Warehouse.Builder warehouseBuilder = convertAvailableWarehouse(
+					warehouse
+				);
+				builderList.addRecords(warehouseBuilder);
+			});
+		}
+
+		// Set page token
+		String nexPageToken = null;
+		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+		}
+		// Set next page
+		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
+
+		return builderList;
+	}
+
+	private Warehouse.Builder convertAvailableWarehouse(int warehouseId) {
+		MWarehouse warehouse = MWarehouse.get(Env.getCtx(), warehouseId);
+		return convertAvailableWarehouse(
+			warehouse
+		);
+	}
+	private Warehouse.Builder convertAvailableWarehouse(MWarehouse warehouse) {
+		Warehouse.Builder builder = Warehouse.newBuilder();
+		if (warehouse == null) {
+			return builder;
+		}
+
+		builder.setId(warehouse.getM_Warehouse_ID())
+			.setUuid(ValueUtil.validateNull(warehouse.getUUID()))
+			.setValue(ValueUtil.validateNull(warehouse.getValue()))
+			.setName(ValueUtil.validateNull(warehouse.getName()))
+			.setDescription(ValueUtil.validateNull(warehouse.getDescription()))
+			.setIsInTransit(warehouse.isInTransit())
+		;
+		if (warehouse.getM_WarehouseSource_ID() > 0) {
+			Warehouse.Builder builderSource = convertAvailableWarehouse(
+				warehouse.getM_WarehouseSource_ID()
+			);
+			builder.setWarehouseSource(builderSource);
+		}
+
+		return builder;
+	}
+
+
+	@Override
+	public void listLocators(ListLocatorsRequest request, StreamObserver<ListLocatorsResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListLocatorsResponse.Builder recordsList = listLocators(request);
+			responseObserver.onNext(recordsList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException());
+		}
+	}
+
+	private ListLocatorsResponse.Builder listLocators(ListLocatorsRequest request) {
+		Properties context = ContextManager.getContext(request.getClientRequest());
+
+		// Fill context
+		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
+		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+
+		String whereClause = "1 = 1";
+		List<Object> parameters = new ArrayList<Object>();
+
+		// Add warehouse to filter
+		if (!Util.isEmpty(request.getWarehouseUuid(), true) || request.getWarehouseId() > 0) {
+			whereClause += " AND M_Warehouse_ID = ?";
+			int warehouseId = request.getWarehouseId();
+			if (!Util.isEmpty(request.getWarehouseUuid())) {
+				warehouseId = RecordUtil.getIdFromUuid(I_M_Warehouse.Table_Name, request.getWarehouseUuid(), null);
+			}
+			parameters.add(warehouseId);
+		}
+
+		// Add search value to filter
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			whereClause += " AND (UPPER(Value) LIKE '%' || UPPER(?) || '%')";
+			parameters.add(request.getSearchValue());
+		}
+
+		// Add dynamic validation to filter
+		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
+			request.getReferenceUuid(),
+			request.getFieldUuid(),
+			request.getProcessParameterUuid(),
+			request.getBrowseFieldUuid(),
+			request.getColumnUuid(),
+			request.getColumnName(),
+			I_M_Locator.Table_Name
+		);
+		if (reference != null) {
+			// validation code of field
+			String validationCode = DictionaryUtil.getValidationCodeWithAlias(I_M_Locator.Table_Name, reference.ValidationCode);
+			String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
+			if (!Util.isEmpty(reference.ValidationCode, true)) {
+				if (Util.isEmpty(parsedValidationCode, true)) {
+					throw new AdempiereException("@WhereClause@ @Unparseable@");
+				}
+				if (!Util.isEmpty(whereClause, true)) {
+					whereClause += " AND ";
+				}
+				whereClause += parsedValidationCode;
+			}
+		}
+
+		Query query = new Query(
+			context,
+			I_M_Locator.Table_Name,
+			whereClause,
+			null
+		)
+			.setParameters(parameters)
+			.setOnlyActiveRecords(true)
+			.setApplyAccessFilter(true)
+		;
+
+		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+		int count = query.count();
+
+		ListLocatorsResponse.Builder builderList = ListLocatorsResponse.newBuilder()
+			.setRecordCount(count)
+		;
+
+		List<MLocator> locatorsList = query
+			.setOrderBy("M_Warehouse_ID, UPPER(Value)")
+			.setLimit(limit, offset)
+			.<MLocator>list()
+		;
+		if (locatorsList != null) {
+			locatorsList.forEach(locator -> {
+				Locator.Builder locatorBuilder = convertLocator(
+					locator
+				);
+				builderList.addRecords(locatorBuilder);
+			});
+		}
+
+		// Set page token
+		String nexPageToken = null;
+		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+		}
+		// Set next page
+		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
+
+		return builderList;
+	}
+
+	private Locator.Builder convertLocator(MLocator locator) {
+		Locator.Builder builder = Locator.newBuilder();
+		if (locator == null || locator.getM_Locator_ID() <= 0) {
+			return builder;
+		}
+
+		builder.setId(locator.getM_Locator_ID())
+			.setUuid(ValueUtil.validateNull(locator.getUUID()))
+			.setValue(ValueUtil.validateNull(locator.getValue()))
+			.setIsDefault(locator.isDefault())
+			.setAisle(ValueUtil.validateNull(locator.getX()))
+			.setBin(ValueUtil.validateNull(locator.getX()))
+			.setLevel(ValueUtil.validateNull(locator.getZ()))
+		;
+		if (locator.getM_Warehouse_ID() > 0) {
+			Warehouse.Builder builderWarehouse = convertAvailableWarehouse(
+				locator.getM_Warehouse_ID()
+			);
+			builder.setWarehouse(builderWarehouse);
+		}
+
+		return builder;
+	}
+
 }

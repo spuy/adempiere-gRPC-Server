@@ -13,7 +13,7 @@ jobs:
 
   # Build dist application backend
   build-app:
-    name: Build dist backend
+    name: Build dist Middleware
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -28,7 +28,13 @@ jobs:
           architecture: x64
 
       - name: Build with Gradle
-        run: gradle createRelease
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.0.1
+          arguments: createRelease
+        env:
+          GITHUB_DEPLOY_USER: ${{ github.actor }}
+          GITHUB_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
 
       - name: Upload dist app zip artifact
         uses: actions/upload-artifact@v3
@@ -155,7 +161,7 @@ jobs:
           context: .
           file: build-docker/production-alpine.Dockerfile
           push: true
-          tags: | 
+          tags: |
             ${{ secrets.DOCKER_REPO_BACKEND }}:alpine-${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_REPO_BACKEND }}:alpine
           build-args: |
@@ -204,3 +210,61 @@ jobs:
             ${{ secrets.DOCKER_REPO_BACKEND }}:${{ github.event.release.tag_name }}
           build-args: |
             JDK_RELEASE=11-jdk
+
+  # Check secrets to push image in docker hub registry
+  check-digital-ocean-secrets:
+    name: Check if digital ocean registry information was set on secrets
+    needs:
+      - build-app
+    runs-on: ubuntu-latest
+    outputs:
+      is_have_secrets: ${{ steps.check_secret_job.outputs.is_have_secrets }}
+    steps:
+      - id: check_secret_job
+        run: |
+          if [[ "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" != "" && \
+                "${{ secrets.DIGITALOCEAN_ORGANIZATION }}" != "" ]]; \
+          then
+            echo "Secrets to use a container registry are configured in the repo"
+            echo "is_have_secrets=true" >> $GITHUB_OUTPUT
+          else
+            echo "Secrets to use a container registry were not configured in the repo"
+            echo "is_have_secrets=false" >> $GITHUB_OUTPUT
+          fi
+
+  push-imame-do:
+    name: Push Docker image to Digital Ocean
+    needs:
+      - check-digital-ocean-secrets
+    # Skip step based on secret
+    if: needs.check-digital-ocean-secrets.outputs.is_have_secrets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Download build dist app
+        uses: actions/download-artifact@v3
+        with:
+          name: backend.zip
+          path: dist
+
+      - name: Unzip dist file
+        run: |
+          cd dist
+          unzip -o backend.zip
+
+      - uses: actions/checkout@v3
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      - name: Log in to DO Container Registry
+        run: doctl registry login --expiry-seconds 600
+      - name: Build image
+        run: docker build -t backend --build-arg GITHUB_DEPLOY_USER="${{ github.actor }}" --build-arg GITHUB_DEPLOY_TOKEN="${{ secrets.DEPLOY_TOKEN }}" -f docker/Dockerfile .
+      - name: Tag image
+        run: docker tag backend registry.digitalocean.com/${{ secrets.DIGITALOCEAN_ORGANIZATION }}/backend:${{ github.event.release.tag_name }}
+      - name: Push image to DO Container Registry
+        run: docker push registry.digitalocean.com/${{ secrets.DIGITALOCEAN_ORGANIZATION }}/backend:${{ github.event.release.tag_name }}
+            

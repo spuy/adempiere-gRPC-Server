@@ -11,6 +11,9 @@ on:
       - '*'         # matches every branch that doesn't contain a '/'
       - '*/*'       # matches every branch containing a single '/'
       - '**'        # matches every branch
+    paths-ignore:
+      - README.md
+      - README.es.md
 
   pull_request:
     branches:
@@ -20,6 +23,9 @@ on:
       - experimental
       - bugfix/**
       - feature/**
+    paths-ignore:
+      - README.md
+      - README.es.md
 
 jobs:
 
@@ -39,4 +45,7 @@ jobs:
           architecture: x64
 
       - name: Build with Gradle
-        run: gradle build
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.0.1
+          arguments: build
