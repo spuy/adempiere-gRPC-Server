@@ -6,7 +6,7 @@ plugins {
     id 'visual-studio'
 }
 group 'com.nikhilm'
-sourceCompatibility = 1.11
+//sourceCompatibility = 1.11
 def grpcVersion = '1.53.0'
 def baseVersion = '3.9.4'
 def baseGroupId = 'io.github.adempiere'
@@ -24,21 +24,22 @@ ext {
     adempiereVersion = '3.9.4-rc-1.0.6'
 }
 
-//sourceCompatibility = 1.8
-//targetCompatibility = 1.8
+sourceCompatibility = 11
+targetCompatibility = 11
 def libraryVersion = '1.0.0'
 // IMPORTANT: You probably want the non-SNAPSHOT version of gRPC. Make sure you
 // are looking at a tagged version of the example and not "master"!
 
 // Feel free to delete the comment at the next line. It is just for safely
 // updating the version in our release process.
-def grpcVersion = '1.17.0' // CURRENT_GRPC_VERSION
 def nettyTcNativeVersion = '2.0.17.Final'
 def protobufVersion = '3.5.1'
 def protocVersion = '3.5.1-1'
 //def adempiereBaseVersion = '3.9.4-rc-1.0.6'
 
 dependencies {
+    implementation project(':spuy-core')
+    implementation project(':adempiere')
     implementation fileTree(
         dir: 'dependencies',
         include: [
@@ -87,8 +88,6 @@ dependencies {
 	implementation "${baseGroupId}:jasperreports:${baseVersion}"
 	//	Others
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
-    implementation project(':spuy-core')
-    implementation project(':adempiere')
 
 	// ADempiere External Libraries
 	implementation 'com.github.jjYBdx4IL:ecs:1.4.2.1'
@@ -175,3 +174,6 @@ task createRelease(type: Copy) {
         }
    	}
 }
+
+tasks.withType(Copy).all { duplicatesStrategy 'exclude' }
+
