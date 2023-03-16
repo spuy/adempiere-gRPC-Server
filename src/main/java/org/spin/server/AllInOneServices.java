@@ -17,6 +17,8 @@ package org.spin.server;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
+
+import org.spin.authentication.AuthorizationServerInterceptor;
 import org.spin.base.setup.SetupLoader;
 import org.spin.base.util.Services;
 import org.spin.grpc.service.AccessServiceImplementation;
@@ -80,6 +82,8 @@ public class AllInOneServices {
 		} else {
 			serverBuilder = ServerBuilder.forPort(SetupLoader.getInstance().getServer().getPort());
 		}
+		//	
+//		serverBuilder.intercept(new AuthorizationServerInterceptor());
 		//	For Access
 		if(SetupLoader.getInstance().getServer().isValidService(Services.ACCESS.getServiceName())) {
 			serverBuilder.addService(new AccessServiceImplementation());
