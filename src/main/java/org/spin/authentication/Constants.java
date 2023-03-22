@@ -12,50 +12,15 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.base.util;
+package org.spin.authentication;
+import io.grpc.Context;
+import io.grpc.Metadata;
 
-/**
- * Services
- * @author Yamel Senih
- */
-public enum Services {
-    ACCESS("access"),
-    BUSINESS("business"),
-	BUSINESS_PARTNER("business_partner"),
-    CORE("core"),
-    DASHBOARDING("dashboarding"),
-	DICTIONARY("dictionary"),
-	ENROLLMENT("enrollment"),
-	EXTENSION("extension"),
-	FILE_MANAGEMENT("file_management"),
-	GENERAL_LEDGER("general_ledger"),
-	IN_OUT("in_out"),
-	INVOICE("invoice"),
-	ISSUE_MANAGEMENT("issue_management"),
-	LOG("log"),
-	MATERIAL_MANAGEMENT("material_management"),
-    ORDER("order"),
-    PAYMENT("payment"),
-	PAYMENT_PTINT_EXPORT("payment_print_export"),
-    PAYROLL_ACTION_NOTICE("payroll_action_notice"),
-	POS("pos"),
-	PRODUCT("product"),
-	STORE("store"),
-	TIME_CONTROL("time_control"),
-	TIME_RECORD("time_record"),
-	USER_CUSTOMIZATION("user_customization"),
-	UI("ui"),
-	UPDATER("updater"),
-	WORKFLOW("workflow");
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 
-	/**	Service Name	*/
-    private final String serviceName;
+public class Constants {
+	public static final String BEARER_TYPE = "Bearer";
 
-    Services(String serviceName) {
-        this.serviceName = serviceName;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
+    public static final Metadata.Key<String> AUTHORIZATION_METADATA_KEY = Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER);
+    public static final Context.Key<String> CLIENT_ID_CONTEXT_KEY = Context.key("clientId");
 }

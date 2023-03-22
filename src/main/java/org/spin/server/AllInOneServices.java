@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2012-2018 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2012-2023 E.R.P. Consultores y Asociados, C.A.                     *
  * Contributor(s): Yamel Senih ysenih@erpya.com                                     *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -17,6 +17,8 @@ package org.spin.server;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
+
+import org.spin.authentication.AuthorizationServerInterceptor;
 import org.spin.base.setup.SetupLoader;
 import org.spin.base.util.Services;
 import org.spin.grpc.service.AccessServiceImplementation;
@@ -40,6 +42,7 @@ import org.spin.grpc.service.PayrollActionNoticeServiceImplementation;
 import org.spin.grpc.service.PointOfSalesServiceImplementation;
 import org.spin.grpc.service.ProductServiceImplementation;
 import org.spin.grpc.service.TimeControlServiceImplementation;
+import org.spin.grpc.service.TimeRecordServiceImplementation;
 import org.spin.grpc.service.UpdateImplementation;
 import org.spin.grpc.service.UserCustomizationImplementation;
 import org.spin.grpc.service.UserInterfaceServiceImplementation;
@@ -79,6 +82,10 @@ public class AllInOneServices {
 		} else {
 			serverBuilder = ServerBuilder.forPort(SetupLoader.getInstance().getServer().getPort());
 		}
+
+		// Validate JWT on all requests
+		serverBuilder.intercept(new AuthorizationServerInterceptor());
+
 		//	For Access
 		if(SetupLoader.getInstance().getServer().isValidService(Services.ACCESS.getServiceName())) {
 			serverBuilder.addService(new AccessServiceImplementation());
@@ -198,6 +205,11 @@ public class AllInOneServices {
 		if(SetupLoader.getInstance().getServer().isValidService(Services.TIME_CONTROL.getServiceName())) {
 			serverBuilder.addService(new TimeControlServiceImplementation());
 			logger.info("Service " + Services.TIME_CONTROL.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Time Record
+		if (SetupLoader.getInstance().getServer().isValidService(Services.TIME_RECORD.getServiceName())) {
+			serverBuilder.addService(new TimeRecordServiceImplementation());
+			logger.info("Service " + Services.TIME_RECORD.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	User Customization
 		if(SetupLoader.getInstance().getServer().isValidService(Services.USER_CUSTOMIZATION.getServiceName())) {
