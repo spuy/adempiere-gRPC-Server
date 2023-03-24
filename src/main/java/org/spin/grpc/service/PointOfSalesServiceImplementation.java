@@ -828,7 +828,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				.setReportType(reportType)
 			;
 
-			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runProcess(Env.getCtx(), processRequest.build());
+			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runBusinessProcess(processRequest.build());
 			
 			// preview document
 			ticket.setProcessLog(processLog.build());
@@ -878,7 +878,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				.setReportType(reportType)
 			;
 
-			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runProcess(Env.getCtx(), processRequest.build());
+			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runBusinessProcess(processRequest.build());
 			
 			// preview document
 			ticket.setProcessLog(processLog.build());

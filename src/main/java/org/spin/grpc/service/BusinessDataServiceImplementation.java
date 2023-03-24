@@ -215,18 +215,6 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 	
 	/**
 	 * Run a process from request
-	 * @deprecated Use {@link #runBusinessProcess(RunBusinessProcessRequest)} instead.
-	 * @param context
-	 * @param request
-	 * @return
-	 * @throws FileNotFoundException
-	 * @throws IOException
-	 */
-	public static ProcessLog.Builder runProcess(Properties context, RunBusinessProcessRequest request) throws FileNotFoundException, IOException {
-		return runBusinessProcess(request);
-	}
-	/**
-	 * Run a process from request
 	 * @param request
 	 * @throws IOException 
 	 * @throws FileNotFoundException 
