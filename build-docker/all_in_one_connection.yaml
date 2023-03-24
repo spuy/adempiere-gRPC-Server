@@ -3,6 +3,7 @@ server:
     services:
         - services_enabled
     log_level: WARNING
+    secret_key: fill_secret_key
 database:
     host: localhost
     port: 5432
