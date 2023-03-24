@@ -437,7 +437,7 @@ public class AccessServiceImplementation extends SecurityImplBase {
         		.claim("AD_Language", language)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 //	10 minutes
-                .setExpiration(new Date(System.currentTimeMillis() + (1000 * 10 * 60)))
+                .setExpiration(new Date(System.currentTimeMillis() + SetupLoader.getInstance().getServer().getExpiration()))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 	}

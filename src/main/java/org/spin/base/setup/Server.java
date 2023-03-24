@@ -37,6 +37,8 @@ public class Server {
 	private String log_level;
 	/**	ASecret Key	*/
 	private String secret_key;
+	/**	Time expiration	*/
+	private long expiration;
 	/**	Embedded services	*/
 	private List<String> services;
 	/**
@@ -47,10 +49,11 @@ public class Server {
 	 * @param private_key_file
 	 * @param trust_certificate_collection_file
 	 * @param secret_key
+	 * @param expiration
 	 * @param log_level
 	 * @param services
 	 */
-	public Server(String host, int port, String certificate_chain_file, String private_key_file, String trust_certificate_collection_file, String log_level, String secret_key, List<String> services) {
+	public Server(String host, int port, String certificate_chain_file, String private_key_file, String trust_certificate_collection_file, String log_level, String secret_key, long expiration, List<String> services) {
 		this.host = host;
 		this.port = port;
 		this.certificate_chain_file = certificate_chain_file;
@@ -58,6 +61,7 @@ public class Server {
 		this.trust_certificate_collection_file = trust_certificate_collection_file;
 		this.log_level = log_level;
 		this.secret_key = secret_key;
+		this.expiration= expiration; 
 		this.services = services;
 		if(this.log_level == null
 				|| this.log_level.trim().length() == 0) {
@@ -139,6 +143,10 @@ public class Server {
 		return secret_key;
 	}
 	
+	public long getExpiration() {
+		return expiration;
+	}
+
 	/**
 	 * Validate is a service is enabled
 	 * @param service

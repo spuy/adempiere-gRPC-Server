@@ -29,6 +29,8 @@ server:
        - workflow
     log_level: WARNING
     secret_key: fill_secret_key
+    # Default 24 hours
+    expiration: 86400000
 database:
     host: localhost
     port: 5432
