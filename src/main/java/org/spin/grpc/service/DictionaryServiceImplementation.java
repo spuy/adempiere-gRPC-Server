@@ -73,7 +73,6 @@ import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceUtil;
 import org.spin.base.util.ValueUtil;
-import org.spin.backend.grpc.dictionary.ApplicationRequest;
 import org.spin.backend.grpc.dictionary.Browser;
 import org.spin.backend.grpc.dictionary.ContextInfo;
 import org.spin.backend.grpc.dictionary.DependentField;
@@ -132,11 +131,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getFieldUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
 			Field.Builder fieldBuilder = getField(request);
 			responseObserver.onNext(fieldBuilder.build());
 			responseObserver.onCompleted();
@@ -157,11 +151,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getReferenceUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
 			Reference.Builder fieldBuilder = convertReference(Env.getCtx(), request);
 			responseObserver.onNext(fieldBuilder.build());
 			responseObserver.onCompleted();
@@ -181,12 +170,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			ValidationRule.Builder fieldBuilder = convertValidationRule(Env.getCtx(), request);
 			responseObserver.onNext(fieldBuilder.build());
 			responseObserver.onCompleted();
@@ -206,12 +189,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			Process.Builder processBuilder = convertProcess(Env.getCtx(), request.getUuid(), request.getId(), true);
 			responseObserver.onNext(processBuilder.build());
 			responseObserver.onCompleted();
@@ -231,12 +208,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			Browser.Builder browserBuilder = convertBrowser(Env.getCtx(), request.getUuid(), true);
 			responseObserver.onNext(browserBuilder.build());
 			responseObserver.onCompleted();
@@ -256,12 +227,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			Form.Builder formBuilder = convertForm(Env.getCtx(), request.getUuid(), request.getId());
 			responseObserver.onNext(formBuilder.build());
 			responseObserver.onCompleted();
@@ -285,12 +250,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			Window.Builder windowBuilder = convertWindow(Env.getCtx(), request.getUuid(), request.getId(), withTabs);
 			responseObserver.onNext(windowBuilder.build());
 			responseObserver.onCompleted();
@@ -315,12 +274,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			Tab.Builder tabBuilder = convertTab(Env.getCtx(), request.getUuid(), withFields);
 			responseObserver.onNext(tabBuilder.build());
 			responseObserver.onCompleted();
@@ -1925,12 +1878,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			ListFieldsResponse.Builder fielsListBuilder = getIdentifierFields(Env.getCtx(), request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
@@ -2030,12 +1977,6 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ApplicationRequest applicationInfo = request.getApplicationRequest();
-			if(applicationInfo == null
-					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-			
 			ListFieldsResponse.Builder fielsListBuilder = getTableSearchFields(Env.getCtx(), request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
