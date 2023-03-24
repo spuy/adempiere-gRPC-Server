@@ -516,7 +516,7 @@ public class AccessServiceImplementation extends SecurityImplBase {
 		SessionManager.loadDefaultSessionValues(context, request.getLanguage());
 		//	Session values
 		builder.setId(session.getAD_Session_ID());
-		builder.setUuid(ValueUtil.validateNull(session.getUUID()));
+		builder.setUuid(createBearerToken(session, warehouseId, Env.getAD_Language(Env.getCtx())));
 		builder.setName(ValueUtil.validateNull(session.getDescription()));
 		builder.setUserInfo(
 			convertUserInfo(MUser.get(context, userId))
