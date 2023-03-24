@@ -15,7 +15,6 @@
 package org.spin.grpc.service;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.adempiere.exceptions.AdempiereException;

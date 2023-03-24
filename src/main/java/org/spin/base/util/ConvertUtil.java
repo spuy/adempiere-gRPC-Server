@@ -16,6 +16,7 @@
 package org.spin.base.util;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -648,17 +649,17 @@ public class ConvertUtil {
 
 		int standardPrecision = priceList.getStandardPrecision();
 
-		BigDecimal creditAmt = BigDecimal.ZERO.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP);
+		BigDecimal creditAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
 		Optional<BigDecimal> maybeCreditAmt = getPaymentChageOrCredit(order, true);
 		if (maybeCreditAmt.isPresent()) {
 			creditAmt = maybeCreditAmt.get()
-				.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP);
+				.setScale(standardPrecision, RoundingMode.HALF_UP);
 		}
-		BigDecimal chargeAmt = BigDecimal.ZERO.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP);
+		BigDecimal chargeAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
 		Optional<BigDecimal> maybeChargeAmt = getPaymentChageOrCredit(order, false);
 		if (maybeChargeAmt.isPresent()) {
 			chargeAmt = maybeChargeAmt.get()
-				.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP);
+				.setScale(standardPrecision, RoundingMode.HALF_UP);
 		}
 		
 		BigDecimal totalPaymentAmount = paymentAmount;
@@ -685,14 +686,14 @@ public class ConvertUtil {
 			.setPriceList(ConvertUtil.convertPriceList(MPriceList.get(Env.getCtx(), order.getM_PriceList_ID(), order.get_TrxName())))
 			.setWarehouse(convertWarehouse(order.getM_Warehouse_ID()))
 			.setIsDelivered(order.isDelivered())
-			.setDiscountAmount(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(totalDiscountAmount).orElse(Env.ZERO).setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setTaxAmount(ValueUtil.getDecimalFromBigDecimal(grandTotal.subtract(totalLines.add(discountAmount)).setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setTotalLines(ValueUtil.getDecimalFromBigDecimal(totalLines.add(totalDiscountAmount).setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setGrandTotal(ValueUtil.getDecimalFromBigDecimal(grandTotal.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setDisplayCurrencyRate(ValueUtil.getDecimalFromBigDecimal(displayCurrencyRate.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setPaymentAmount(ValueUtil.getDecimalFromBigDecimal(paymentAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setOpenAmount(ValueUtil.getDecimalFromBigDecimal(openAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setRefundAmount(ValueUtil.getDecimalFromBigDecimal(refundAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+			.setDiscountAmount(ValueUtil.getDecimalFromBigDecimal(Optional.ofNullable(totalDiscountAmount).orElse(Env.ZERO).setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setTaxAmount(ValueUtil.getDecimalFromBigDecimal(grandTotal.subtract(totalLines.add(discountAmount)).setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setTotalLines(ValueUtil.getDecimalFromBigDecimal(totalLines.add(totalDiscountAmount).setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setGrandTotal(ValueUtil.getDecimalFromBigDecimal(grandTotal.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setDisplayCurrencyRate(ValueUtil.getDecimalFromBigDecimal(displayCurrencyRate.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setPaymentAmount(ValueUtil.getDecimalFromBigDecimal(paymentAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setOpenAmount(ValueUtil.getDecimalFromBigDecimal(openAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setRefundAmount(ValueUtil.getDecimalFromBigDecimal(refundAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setDateOrdered(ValueUtil.convertDateToString(order.getDateOrdered()))
 			.setCustomer(convertCustomer((MBPartner) order.getC_BPartner()))
 			.setCampaignUuid(ValueUtil.validateNull(RecordUtil.getUuidFromId(I_C_Campaign.Table_Name, order.getC_Campaign_ID())))
@@ -793,7 +794,7 @@ public class ConvertUtil {
 				paymentAmount = creditMemo.getGrandTotal();
 			}
 		}
-		paymentAmount = paymentAmount.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+		paymentAmount = paymentAmount.setScale(presicion, RoundingMode.HALF_UP);
 
 		MCPaymentMethod paymentMethod = MCPaymentMethod.getById(Env.getCtx(), payment.get_ValueAsInt("C_PaymentMethod_ID"), null);
 		PaymentMethod.Builder paymentMethodBuilder = convertPaymentMethod(paymentMethod);
@@ -802,7 +803,7 @@ public class ConvertUtil {
 		Currency.Builder currencyBuilder = convertCurrency(currency);
 		MOrder order = new MOrder(payment.getCtx(), payment.getC_Order_ID(), null);
 		BigDecimal convertedAmount = getConvetedAmount(order, payment, paymentAmount)
-			.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+			.setScale(presicion, RoundingMode.HALF_UP);
 		
 		//	Convert
 		builder
@@ -1032,32 +1033,32 @@ public class ConvertUtil {
 				.setProduct(convertProduct(orderLine.getM_Product_ID()))
 				.setCharge(convertCharge(orderLine.getC_Charge_ID()))
 				.setWarehouse(convertWarehouse(orderLine.getM_Warehouse_ID()))
-				.setQuantity(ValueUtil.getDecimalFromBigDecimal(quantityEntered.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setQuantityOrdered(ValueUtil.getDecimalFromBigDecimal(quantityOrdered.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setAvailableQuantity(ValueUtil.getDecimalFromBigDecimal(availableQuantity.setScale(standardPrecision, BigDecimal.ROUND_HALF_UP)))
+				.setQuantity(ValueUtil.getDecimalFromBigDecimal(quantityEntered.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setQuantityOrdered(ValueUtil.getDecimalFromBigDecimal(quantityOrdered.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setAvailableQuantity(ValueUtil.getDecimalFromBigDecimal(availableQuantity.setScale(standardPrecision, RoundingMode.HALF_UP)))
 				//	Prices
-				.setPriceList(ValueUtil.getDecimalFromBigDecimal(priceListAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setPrice(ValueUtil.getDecimalFromBigDecimal(priceAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setPriceBase(ValueUtil.getDecimalFromBigDecimal(priceBaseAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setPriceList(ValueUtil.getDecimalFromBigDecimal(priceListAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setPrice(ValueUtil.getDecimalFromBigDecimal(priceAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setPriceBase(ValueUtil.getDecimalFromBigDecimal(priceBaseAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 				//	Taxes
-				.setPriceListWithTax(ValueUtil.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setPriceBaseWithTax(ValueUtil.getDecimalFromBigDecimal(priceBaseWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setPriceWithTax(ValueUtil.getDecimalFromBigDecimal(priceWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setPriceListWithTax(ValueUtil.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setPriceBaseWithTax(ValueUtil.getDecimalFromBigDecimal(priceBaseWithTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setPriceWithTax(ValueUtil.getDecimalFromBigDecimal(priceWithTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 				//	Prices with taxes
-				.setListTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceListTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setBaseTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceBaseTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setListTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceListTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setBaseTaxAmount(ValueUtil.getDecimalFromBigDecimal(priceBaseTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 				//	Discounts
-				.setDiscountAmount(ValueUtil.getDecimalFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setDiscountRate(ValueUtil.getDecimalFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setDiscountAmount(ValueUtil.getDecimalFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setDiscountRate(ValueUtil.getDecimalFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 				.setTaxRate(ConvertUtil.convertTaxRate(tax))
 				//	Totals
-				.setTotalDiscountAmount(ValueUtil.getDecimalFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTotalTaxAmount(ValueUtil.getDecimalFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTotalBaseAmount(ValueUtil.getDecimalFromBigDecimal(totalBaseAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTotalBaseAmountWithTax(ValueUtil.getDecimalFromBigDecimal(totalBaseAmountWithTax.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTotalAmount(ValueUtil.getDecimalFromBigDecimal(totalAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-				.setTotalAmountWithTax(ValueUtil.getDecimalFromBigDecimal(totalAmountWithTax.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+				.setTotalDiscountAmount(ValueUtil.getDecimalFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTotalTaxAmount(ValueUtil.getDecimalFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTotalBaseAmount(ValueUtil.getDecimalFromBigDecimal(totalBaseAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTotalBaseAmountWithTax(ValueUtil.getDecimalFromBigDecimal(totalBaseAmountWithTax.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTotalAmount(ValueUtil.getDecimalFromBigDecimal(totalAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+				.setTotalAmountWithTax(ValueUtil.getDecimalFromBigDecimal(totalAmountWithTax.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setUom(ConvertUtil.convertProductConversion(uom))
 			.setProductUom(ConvertUtil.convertProductConversion(productUom))
 			.setResourceAssignment(TimeControlServiceImplementation.convertResourceAssignment(orderLine.getS_ResourceAssignment_ID()))

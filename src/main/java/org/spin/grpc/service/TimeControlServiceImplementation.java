@@ -15,6 +15,7 @@
 package org.spin.grpc.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -484,7 +485,7 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
 			int standardPrecision = uom.getStdPrecision();
 
 			BigDecimal quantity = BigDecimal.valueOf(minutesDiff).setScale(standardPrecision);
-			quantity = quantity.divide(BigDecimal.valueOf(60).setScale(standardPrecision), BigDecimal.ROUND_UP);
+			quantity = quantity.divide(BigDecimal.valueOf(60).setScale(standardPrecision), RoundingMode.UP);
 			
 			resourceAssignment.setQty(quantity);
 			resourceAssignment.saveEx();

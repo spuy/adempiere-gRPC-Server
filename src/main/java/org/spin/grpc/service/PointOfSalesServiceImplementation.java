@@ -16,6 +16,7 @@ package org.spin.grpc.service;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -2043,11 +2044,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			int presicion = MCurrency.getStdPrecision(paymentReference.getCtx(), paymentReference.get_ValueAsInt("C_Currency_ID"));
 
 			BigDecimal amount = (BigDecimal) paymentReference.get_Value("Amount");
-			amount.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+			amount.setScale(presicion, RoundingMode.HALF_UP);
 
 			MOrder order = new MOrder(Env.getCtx(), paymentReference.get_ValueAsInt("C_Order_ID"), null);
 			BigDecimal convertedAmount = ConvertUtil.getConvetedAmount(order, paymentReference, amount)
-				.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+				.setScale(presicion, RoundingMode.HALF_UP);
 
 			builder.setAmount(ValueUtil.getDecimalFromBigDecimal(amount))
 			.setDescription(ValueUtil.validateNull(paymentReference.get_ValueAsString("Description")))
@@ -4062,7 +4063,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		BigDecimal multiplier = Env.ONE.subtract(discount.divide(Env.ONEHUNDRED, MathContext.DECIMAL128));
 		//	B = A / 100
 		BigDecimal finalPrice = basePrice.multiply(multiplier);
-		finalPrice = finalPrice.setScale(precision, BigDecimal.ROUND_HALF_UP);
+		finalPrice = finalPrice.setScale(precision, RoundingMode.HALF_UP);
 		return finalPrice;
 	}
 	
@@ -4083,7 +4084,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			discount = discount.multiply(Env.ONEHUNDRED);
 		}
 		if (discount.scale() > precision) {
-			discount = discount.setScale(precision, BigDecimal.ROUND_HALF_UP);
+			discount = discount.setScale(precision, RoundingMode.HALF_UP);
 		}
 		return discount;
 	}
