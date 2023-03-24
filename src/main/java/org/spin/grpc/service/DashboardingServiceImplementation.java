@@ -53,7 +53,6 @@ import org.compiere.util.CLogger;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
 import org.jfree.data.category.CategoryDataset;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.dashboarding.Action;
@@ -94,8 +93,7 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListPendingDocumentsResponse.Builder pendingDocumentsList = convertPendingDocumentList(context, request);
+			ListPendingDocumentsResponse.Builder pendingDocumentsList = convertPendingDocumentList(Env.getCtx(), request);
 			responseObserver.onNext(pendingDocumentsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -113,8 +111,7 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListFavoritesResponse.Builder favoritesList = convertFavoritesList(context, request);
+			ListFavoritesResponse.Builder favoritesList = convertFavoritesList(Env.getCtx(), request);
 			responseObserver.onNext(favoritesList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -132,8 +129,8 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListDashboardsResponse.Builder dashboardsList = convertDashboarsList(context, request);
+			
+			ListDashboardsResponse.Builder dashboardsList = convertDashboarsList(Env.getCtx(), request);
 			responseObserver.onNext(dashboardsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -151,7 +148,7 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
+			
 			Chart.Builder chart = convertChart(request);
 			responseObserver.onNext(chart.build());
 			responseObserver.onCompleted();
@@ -582,8 +579,6 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 	}
 
 	private ListNotificationsResponse.Builder listNotifications(ListNotificationsRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		ListNotificationsResponse.Builder builderList = ListNotificationsResponse.newBuilder();
 
 		builderList.addNotifications(getNotificationNotice());

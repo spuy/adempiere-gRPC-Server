@@ -28,6 +28,7 @@ server:
        - user_customization
        - workflow
     log_level: WARNING
+    secret_key: "a0ccef68508c276749ada15cb568eb1f758128ddc11cfe7ebd628321d98ff78bd52fd6c3f0dca14845fcac5a883b25d5f2cbfb820ef974174be469c5e7d6af74"
 database:
     host: localhost
     port: 5432

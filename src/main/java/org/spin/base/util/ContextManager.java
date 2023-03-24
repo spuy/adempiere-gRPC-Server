@@ -20,26 +20,14 @@ import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Properties;
 
-import org.adempiere.exceptions.AdempiereException;
-import org.adempiere.core.domains.models.I_AD_Org;
-import org.adempiere.core.domains.models.I_AD_Session;
-import org.adempiere.core.domains.models.I_M_Warehouse;
 import org.compiere.model.MClient;
 import org.compiere.model.MCountry;
 import org.compiere.model.MLanguage;
-import org.compiere.model.MOrg;
-import org.compiere.model.MSession;
-import org.compiere.model.MWarehouse;
-import org.compiere.model.Query;
 import org.compiere.util.CCache;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Language;
 import org.compiere.util.Util;
-import org.spin.authentication.BearerToken;
-import org.spin.authentication.Constants;
-import org.spin.backend.grpc.client.ClientRequest;
-import org.spin.backend.grpc.dictionary.ApplicationRequest;
 
 /**
  * Class for handle Context
@@ -47,100 +35,8 @@ import org.spin.backend.grpc.dictionary.ApplicationRequest;
  */
 public class ContextManager {
 	
-	/**	Session Context	*/
-	private static CCache<String, Properties> sessionsContext = new CCache<String, Properties>("Session-gRPC-Service", 30, 0);	//	no time-out
 	/**	Language */
 	private static CCache<String, String> languageCache = new CCache<String, String>("Language-gRPC-Service", 30, 0);	//	no time-out
-	/**	Organization Cache	*/
-	private static CCache<String, MOrg> organizationCache = new CCache<String, MOrg>(I_AD_Org.Table_Name + "-gRPC-Service", 30, 0);	//	no time-out
-	/**	Warehouse Cache	*/
-	private static CCache<String, MWarehouse> warehouseCache = new CCache<String, MWarehouse>(I_M_Warehouse.Table_Name + "-gRPC-Service", 30, 0);	//	no time-out
-	
-	/**
-	 * Get Context without organization and warehouse
-	 * @param sessionUuid
-	 * @param language
-	 * @return
-	 */
-	public static Properties getContext(String sessionUuid, String language) {
-		return getContext(sessionUuid, language, null, null);
-	}
-
-	/**
-	 * Get context from session
-	 * @param ClientRequest client request with session uuid, language, organization uuid, and warehouse uuid
-	 * @return context
-	 */
-	public static Properties getContext(ClientRequest clientRequest) {
-		return getContext(
-			clientRequest.getSessionUuid(), 
-			clientRequest.getLanguage(), 
-			clientRequest.getOrganizationUuid(), 
-			clientRequest.getWarehouseUuid()
-		);
-	}
-
-	/**
-	 * Get context from session
-	 * @param appliactionRequest application request with session uuid, language, organization uuid, and warehouse uuid
-	 * @return context
-	 */
-	public static Properties getContext(ApplicationRequest appliactionRequest) {
-		return getContext(
-			appliactionRequest.getSessionUuid(), 
-			appliactionRequest.getLanguage()
-		);
-	}
-	
-	/**
-	 * Get context from session
-	 * @param sessionUuid
-	 * @param language
-	 * @param organizationUuid
-	 * @param warehouseUuid
-	 * @return
-	 */
-	public static Properties getContext(String sessionUuid, String language, String organizationUuid, String warehouseUuid) {
-		if (sessionUuid.startsWith(Constants.BEARER_TYPE)) {
-			sessionUuid = BearerToken.getTokenWithoutType(sessionUuid);
-		}
-
-		Properties context = sessionsContext.get(sessionUuid);
-		if(context != null
-				&& context.size() > 0) {
-			Env.setContext(context, Env.LANGUAGE, getDefaultLanguage(language));
-			setDefault(context, Env.getAD_Org_ID(context), organizationUuid, warehouseUuid);
-			Env.setCtx((Properties) context.clone());
-			return context;
-		}
-		context = (Properties) Env.getCtx().clone();
-		DB.validateSupportedUUIDFromDB();
-
-		final String whereClause = I_AD_Session.COLUMNNAME_UUID + " = ? AND "
-			+ I_AD_Session.COLUMNNAME_Processed + " = ? ";
-		MSession session = new Query(context, I_AD_Session.Table_Name, whereClause, null)
-			.setParameters(sessionUuid, false)
-			.first();
-		if(session == null
-				|| session.getAD_Session_ID() <= 0) {
-			throw new AdempiereException("@AD_Session_ID@ @NotFound@");
-		}
-		Env.setContext (context, "#AD_Session_ID", session.getAD_Session_ID());
-		Env.setContext(context, "#AD_User_ID", session.getCreatedBy());
-		Env.setContext(context, "#AD_Role_ID", session.getAD_Role_ID());
-		Env.setContext(context, "#AD_Client_ID", session.getAD_Client_ID());
-		setDefault(context, session.getAD_Org_ID(), organizationUuid, warehouseUuid);
-		Env.setContext(context, "#Date", new Timestamp(System.currentTimeMillis()));
-		Env.setContext(context, Env.LANGUAGE, getDefaultLanguage(language));
-		//	Save to Cache
-		sessionsContext.put(sessionUuid, context);
-		Env.setCtx((Properties) context.clone());
-		return context;
-	}
-
-	public static void removeSession(String sessionUuid) {
-		sessionsContext.remove(sessionUuid);
-	}
 
 	/**
 	 * Set context with attributes
@@ -176,44 +72,6 @@ public class ContextManager {
 	public static Properties setContextWithAttributes(int windowNo, Properties context, java.util.List<org.spin.backend.grpc.common.KeyValue> values) {
 		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(values);
 		return setContextWithAttributes(windowNo, context, attributes);
-	}
-	
-	/**
-	 * Set Default warehouse and organization
-	 * @param context
-	 * @param defaultOrganizationId
-	 * @param organizationUuid
-	 * @param warehouseUuid
-	 */
-	private static void setDefault(Properties context, int defaultOrganizationId, String organizationUuid, String warehouseUuid) {
-		int organizationId = defaultOrganizationId;
-		if(!Util.isEmpty(organizationUuid)) {
-			MOrg organization = organizationCache.get(organizationUuid);
-			if(organization == null) {
-				organization = new Query(context, I_AD_Org.Table_Name, I_AD_Org.COLUMNNAME_UUID + " = ?", null)
-						.setParameters(organizationUuid)
-						.first();
-			}
-			//	
-			if(organization != null) {
-				organizationId = organization.getAD_Org_ID();
-				organizationCache.put(organizationUuid, organization);
-			}
-		}
-		if(!Util.isEmpty(warehouseUuid)) {
-			MWarehouse warehouse = warehouseCache.get(warehouseUuid);
-			if(warehouse == null) {
-				warehouse = new Query(context, I_M_Warehouse.Table_Name, I_M_Warehouse.COLUMNNAME_UUID + " = ?", null)
-						.setParameters(warehouseUuid)
-						.first();
-			}
-			//	
-			if(warehouse != null) {
-				warehouseCache.put(warehouseUuid, warehouse);
-				Env.setContext(context, "#M_Warehouse_ID", organizationId);
-			}
-		}
-		Env.setContext(context, "#AD_Org_ID", organizationId);
 	}
 	
 	/**

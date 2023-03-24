@@ -17,7 +17,6 @@ package org.spin.grpc.service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_AD_Column;
 import org.adempiere.core.domains.models.I_AD_Ref_List;
@@ -73,8 +72,8 @@ import org.spin.backend.grpc.issue_management.RequestType;
 import org.spin.backend.grpc.issue_management.SalesRepresentative;
 import org.spin.backend.grpc.issue_management.UpdateIssueCommentRequest;
 import org.spin.backend.grpc.issue_management.UpdateIssueRequest;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
@@ -109,10 +108,8 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private ListRequestTypesResponse.Builder listRequestTypes(ListRequestTypesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		Query queryRequestTypes = new Query(
-			context,
+				Env.getCtx(),
 			I_R_RequestType.Table_Name,
 			null,
 			null
@@ -126,13 +123,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -194,7 +191,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 	
 	private ListSalesRepresentativesResponse.Builder listSalesRepresentatives(ListSalesRepresentativesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		final String whereClause = "EXISTS("
 			+ "SELECT * FROM C_BPartner bp WHERE "
@@ -202,7 +199,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			+ "AND (bp.IsEmployee='Y' OR bp.IsSalesRep='Y'))"
 		;
 		Query querySaleRepresentatives = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_User.Table_Name,
 			whereClause,
 			null
@@ -216,13 +213,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -280,11 +277,11 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private ListPrioritiesResponse.Builder listPriorities(ListPrioritiesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		final String whereClause = "AD_Reference_ID = ?";
 		Query queryRequests = new Query(
-			context,
+			Env.getCtx(),
 			MRefList.Table_Name,
 			whereClause,
 			null
@@ -300,13 +297,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -380,7 +377,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private ListStatusesResponse.Builder listStatuses(ListStatusesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		int requestTypeId = request.getRequestTypeId();
 		if (requestTypeId <= 0 && !Util.isEmpty(request.getRequestTypeUuid(), true)) {
@@ -396,7 +393,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			+ "AND rt.R_RequestType_ID = ?)"
 		;
 		Query queryRequests = new Query(
-			context,
+			Env.getCtx(),
 			I_R_Status.Table_Name,
 			whereClause,
 			null
@@ -412,13 +409,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -517,13 +514,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 	
 	private ExistsIssuesResponse.Builder existsIssues(ExistsIssuesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		if (Util.isEmpty(request.getTableName(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
 
-		MTable table = MTable.get(context, request.getTableName());
+		MTable table = MTable.get(Env.getCtx(), request.getTableName());
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -541,7 +538,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			+ "AND AD_Table_ID = ? "
 		;
 		int recordCount = new Query(
-			context,
+			Env.getCtx(),
 			I_R_Request.Table_Name,
 			whereClause,
 			null
@@ -577,7 +574,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private ListIssuesReponse.Builder listIssues(ListIssuesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		List<Object> parametersList = new ArrayList<>();
 		String whereClause = "";
@@ -587,7 +584,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			if (Util.isEmpty(request.getTableName(), true)) {
 				throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 			}
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			if (table == null || table.getAD_Table_ID() <= 0) {
 				throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 			}
@@ -605,8 +602,8 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			parametersList.add(recordId);
 			whereClause = "AD_Table_ID = ? AND Record_ID = ? ";
 		} else {
-			int userId = Env.getAD_User_ID(context);
-			int roleId = Env.getAD_Role_ID(context);
+			int userId = Env.getAD_User_ID(Env.getCtx());
+			int roleId = Env.getAD_Role_ID(Env.getCtx());
 
 			parametersList.add(userId);
 			parametersList.add(roleId);
@@ -618,7 +615,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		}
 
 		Query queryRequests = new Query(
-			context,
+			Env.getCtx(),
 			I_R_Request.Table_Name,
 			whereClause,
 			null
@@ -634,13 +631,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -727,9 +724,9 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private Issue.Builder createIssue(CreateIssueRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
-		MRequest requestRecord = new MRequest(context, 0, null);
+		MRequest requestRecord = new MRequest(Env.getCtx(), 0, null);
 
 		// create issue with record on window
 		if (!Util.isEmpty(request.getTableName(), true) || !Util.isEmpty(request.getRecordUuid(), true) || request.getRecordId() > 0) {
@@ -737,7 +734,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 				throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 			}
 
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			if (table == null || table.getAD_Table_ID() <= 0) {
 				throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 			}
@@ -746,7 +743,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			if (request.getRecordId() < 0 && Util.isEmpty(request.getRecordUuid(), true)) {
 				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 			}
-			PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
+			PO entity = RecordUtil.getEntity(Env.getCtx(), table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
 			if (entity == null) {
 				throw new AdempiereException("@PO@ @NotFound@");
 			}
@@ -825,7 +822,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private Issue.Builder updateIssue(UpdateIssueRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		// validate record
 		int recordId = request.getId();
@@ -859,7 +856,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			throw new AdempiereException("@SalesRep_ID@ @NotFound@");
 		}
 
-		MRequest requestRecord = new MRequest(context, recordId, null);
+		MRequest requestRecord = new MRequest(Env.getCtx(), recordId, null);
 		if (requestRecord == null || requestRecord.getR_Request_ID() <= 0) {
 			throw new AdempiereException("@R_Request_ID@ @NotFound@");
 		}
@@ -909,7 +906,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private Empty.Builder deleteIssue(DeleteIssueRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		Trx.run(transactionName -> {
 			// validate record
@@ -921,7 +918,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 				}
 			}
 
-			MRequest requestRecord = new MRequest(context, recordId, transactionName);
+			MRequest requestRecord = new MRequest(Env.getCtx(), recordId, transactionName);
 			if (requestRecord == null || requestRecord.getR_Request_ID() <= 0) {
 				throw new AdempiereException("@R_Request_ID@ @NotFound@");
 			}
@@ -930,7 +927,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 
 			// delete actions
 			List<MRequestAction> requestActionsList = new Query(
-				context,
+				Env.getCtx(),
 				I_R_RequestAction.Table_Name,
 				whereClause,
 				transactionName
@@ -943,7 +940,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 
 			// delete updates
 			List<MRequestUpdate> requestUpdatesList = new Query(
-				context,
+				Env.getCtx(),
 				I_R_RequestUpdate.Table_Name,
 				whereClause,
 				transactionName
@@ -982,7 +979,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private ListIssueCommentsReponse.Builder listIssueComments(ListIssueCommentsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		// validate parent record
 		int recordId = request.getIssueId();
@@ -993,14 +990,14 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 			}
 		}
 		
-		MRequest requestRecord = new MRequest(context, recordId, null);
+		MRequest requestRecord = new MRequest(Env.getCtx(), recordId, null);
 		if (requestRecord == null || requestRecord.getR_Request_ID() <= 0) {
 			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 		}
 
 		final String whereClause = "R_Request_ID = ? ";
 		Query queryRequestsUpdate = new Query(
-			context,
+			Env.getCtx(),
 			I_R_RequestUpdate.Table_Name,
 			whereClause,
 			null
@@ -1011,7 +1008,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		;
 
 		Query queryRequestsLog = new Query(
-			context,
+			Env.getCtx(),
 			I_R_RequestAction.Table_Name,
 			whereClause,
 			null
@@ -1026,13 +1023,13 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -1233,7 +1230,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private IssueComment.Builder createIssueComment(CreateIssueCommentRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		// validate parent record
 		int recordId = request.getIssueId();
@@ -1243,7 +1240,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 			}
 		}
-		MRequest requestRecord = new MRequest(context, recordId, null);
+		MRequest requestRecord = new MRequest(Env.getCtx(), recordId, null);
 		requestRecord.setResult(
 			ValueUtil.validateNull(request.getResult())
 		);
@@ -1273,7 +1270,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private IssueComment.Builder updateIssueComment(UpdateIssueCommentRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		// validate parent record
 		int recordId = request.getId();
@@ -1285,11 +1282,11 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		}
 
 		// validate entity
-		MRequestUpdate requestUpdate = new MRequestUpdate(context, recordId, null);
+		MRequestUpdate requestUpdate = new MRequestUpdate(Env.getCtx(), recordId, null);
 		if (requestUpdate == null || requestUpdate.getR_Request_ID() <= 0) {
 			throw new AdempiereException("@R_RequestUpdate_ID@ @NotFound@");
 		}
-		int userId = Env.getAD_User_ID(context);
+		int userId = Env.getAD_User_ID(Env.getCtx());
 		if (requestUpdate.getCreatedBy() != userId) {
 			throw new AdempiereException("@ActionNotAllowedHere@");
 		}
@@ -1326,7 +1323,7 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 	}
 
 	private Empty.Builder deleteIssueComment(DeleteIssueCommentRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 		
 		// validate record
 		int recordId = request.getId();
@@ -1338,11 +1335,11 @@ public class IssueManagementServiceImplementation extends IssueManagementImplBas
 		}
 
 		// validate entity
-		MRequestUpdate requestUpdate = new MRequestUpdate(context, recordId, null);
+		MRequestUpdate requestUpdate = new MRequestUpdate(Env.getCtx(), recordId, null);
 		if (requestUpdate == null || requestUpdate.getR_Request_ID() <= 0) {
 			throw new AdempiereException("@R_RequestUpdate_ID@ @NotFound@");
 		}
-		int userId = Env.getAD_User_ID(context);
+		int userId = Env.getAD_User_ID(Env.getCtx());
 		if (requestUpdate.getCreatedBy() != userId) {
 			throw new AdempiereException("@ActionNotAllowedHere@");
 		}

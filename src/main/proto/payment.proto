@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.payment";
 option java_outer_classname = "ADempierePayment";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 
 package payment;
@@ -33,7 +32,6 @@ service Payment {
 
 // List Payment Info Request
 message ListPaymentInfoRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters

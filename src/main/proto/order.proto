@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.order";
 option java_outer_classname = "ADempiereOrder";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 
 package order;
@@ -33,7 +32,6 @@ service Order {
 
 // List Order Info Request
 message ListOrderInfoRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters

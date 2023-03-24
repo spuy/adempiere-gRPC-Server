@@ -20,7 +20,6 @@ option java_outer_classname = "ADempierePaymentPrintExport";
 
 import "base_data_type.proto";
 import "business.proto";
-import "client.proto";
 import "core_functionality.proto";
 
 package payment_print_export;
@@ -75,7 +74,6 @@ message PaymentSelection {
 
 // List Payment Selections Request
 message ListPaymentSelectionsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -84,14 +82,12 @@ message ListPaymentSelectionsRequest {
 
 // Get Payment Selection Request
 message GetPaymentSelectionRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 }
 
 // List Payment Rules Request
 message ListPaymentRulesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -102,7 +98,6 @@ message ListPaymentRulesRequest {
 
 // Get Document No Request
 message GetDocumentNoRequest {
-	data.ClientRequest client_request = 1;
 	int32 bank_account_id = 2;
 	string bank_account_uuid = 3;
 	int32 payment_rule_id = 4;
@@ -115,7 +110,6 @@ message GetDocumentNoResponse {
 }
 
 message ListPaymentsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -149,7 +143,6 @@ message ListPaymentsResponse {
 
 // Process and Create EFT Payment Request
 message ProcessRequest {
-	data.ClientRequest client_request = 1;
 	int32 payment_selection_id = 2;
 	string payment_selection_uuid = 3;
 	int32 payment_rule_id = 4;
@@ -163,7 +156,6 @@ message ProcessResponse {
 
 // Export Payment Request
 message ExportRequest {
-	data.ClientRequest client_request = 1;
 	int32 payment_selection_id = 2;
 	string payment_selection_uuid = 3;
 	int32 payment_rule_id = 4;
@@ -177,7 +169,6 @@ message ExportResponse {
 
 // Print Payment Request
 message PrintRequest {
-	data.ClientRequest client_request = 1;
 	int32 payment_selection_id = 2;
 	string payment_selection_uuid = 3;
 	int32 payment_rule_id = 4;
@@ -191,7 +182,6 @@ message PrintResponse {
 
 // Confirm Print Request
 message ConfirmPrintRequest {
-	data.ClientRequest client_request = 1;
 	int32 payment_selection_id = 2;
 	string payment_selection_uuid = 3;
 	int32 payment_rule_id = 4;
@@ -205,7 +195,6 @@ message ConfirmPrintResponse {
 
 // Print Remittance Request
 message PrintRemittanceRequest {
-	data.ClientRequest client_request = 1;
 	int32 payment_selection_id = 2;
 	string payment_selection_uuid = 3;
 	int32 payment_rule_id = 4;

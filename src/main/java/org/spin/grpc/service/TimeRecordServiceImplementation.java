@@ -19,7 +19,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_C_Project;
 import org.adempiere.core.domains.models.I_R_Request;
@@ -47,11 +46,11 @@ import org.spin.backend.grpc.form.time_record.Project;
 import org.spin.backend.grpc.form.time_record.Resource;
 import org.spin.backend.grpc.form.time_record.ResourceAssignment;
 import org.spin.backend.grpc.form.time_record.ResourceType;
-import org.spin.backend.grpc.form.time_record.User;
 import org.spin.backend.grpc.form.time_record.TimeRecordGrpc.TimeRecordImplBase;
-import org.spin.base.util.ContextManager;
+import org.spin.backend.grpc.form.time_record.User;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
@@ -104,13 +103,11 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 	}
 
 	ListIssuesResponse.Builder listIssues(ListIssuesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		List<Object> parametersList = new ArrayList<>();
-		int userId = Env.getAD_User_ID(context);
+		int userId = Env.getAD_User_ID(Env.getCtx());
 		parametersList.add(userId);
 
-		int roleId = Env.getAD_Role_ID(context);
+		int roleId = Env.getAD_Role_ID(Env.getCtx());
 		parametersList.add(roleId);
 
 		final String whereClause = "Processed='N' "
@@ -120,7 +117,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 		;
 
 		Query queryRequests = new Query(
-			context,
+				Env.getCtx(),
 			I_R_Request.Table_Name,
 			whereClause,
 			null
@@ -138,13 +135,13 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -199,15 +196,13 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 	}
 
 	private ListProjectsResponse.Builder listProjects(ListProjectsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		List<Object> parametersList = new ArrayList<>();
 		parametersList.add(false); // N
 
 		final String whereClause = "Processed = ?";
 
 		Query queryRequests = new Query(
-			context,
+				Env.getCtx(),
 			I_C_Project.Table_Name,
 			whereClause,
 			null
@@ -224,13 +219,13 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -403,8 +398,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 	}
 
 	private ResourceAssignment.Builder createResourceAssignment(CreateTimeRecordRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		int orgId = Env.getAD_Org_ID(context);
+		int orgId = Env.getAD_Org_ID(Env.getCtx());
 		if (orgId <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Org_ID@");
 		}
@@ -417,7 +411,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 			throw new AdempiereException("@FillMandatory@ @Qty@");
 		}
 
-		int userId = Env.getAD_User_ID(context);
+		int userId = Env.getAD_User_ID(Env.getCtx());
 		MResource resource = new Query(
 			Env.getCtx(),
 			MResource.Table_Name,
@@ -433,7 +427,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 			throw new AdempiereException("@S_Resource_ID@ @NotFound@");
 		}
 
-		MResourceAssignment resourceAssignment = new MResourceAssignment(context, 0, null);
+		MResourceAssignment resourceAssignment = new MResourceAssignment(Env.getCtx(), 0, null);
 		resourceAssignment.setS_Resource_ID(resource.getS_Resource_ID());
 		resourceAssignment.getAD_Org_ID();
 		resourceAssignment.setName(request.getName());
@@ -503,11 +497,10 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 	}
 
 	private ListTimeRecordResponse.Builder listTimeRecord(ListTimeRecordRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		int userId = Env.getAD_User_ID(context);
+		int userId = Env.getAD_User_ID(Env.getCtx());
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
@@ -542,7 +535,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 		}
 
 		Query query = new Query(
-			context,
+				Env.getCtx(),
 			MResourceAssignment.Table_Name,
 			whereClause,
 			null
@@ -565,7 +558,7 @@ public class TimeRecordServiceImplementation extends TimeRecordImplBase {
 		builderList.setRecordCount(count);
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		// Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));

@@ -18,7 +18,6 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.store";
 option java_outer_classname = "ADempiereWebStore";
 
-import "client.proto";
 
 package store;
 
@@ -68,7 +67,6 @@ service WebStore {
 
 //	https://sfa-docs.now.sh/guide/default-modules/api.html#get-vsbridgeuserorder-history
 message ListOrdersRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	int32 page_size = 5;
 	string page_token = 6;
@@ -83,7 +81,6 @@ message ListOrdersResponse {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-cart-delete
 message DeleteCartItemRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	string sku = 4;
@@ -97,14 +94,12 @@ message Empty {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-cart-totals
 message GetCartTotalsRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 }
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-cart-shipping-information
 message GetShippingInformationRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	AddressRequest shipping_address = 4;
@@ -115,7 +110,6 @@ message GetShippingInformationRequest {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-user-me
 message UpdateCustomerRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	int32 business_partner_group_id = 3;
 	string created = 4;
@@ -189,7 +183,6 @@ message Rate {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-cart-shipping-methods
 message ListShippingMethodsRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	AddressRequest shipping_address = 4;
@@ -219,7 +212,6 @@ message ShippingMethod {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-cart-payment-methods
 message ListPaymentMethodsRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	int32 page_size = 4;
@@ -242,7 +234,6 @@ message PaymentMethod {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-order-create
 message CreateOrderRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	int32 customer_id = 4;
@@ -319,7 +310,6 @@ message OrderLine {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-cart-update
 message UpdateCartRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	bool is_guest = 4;
@@ -336,7 +326,6 @@ message ConfigurableItemOption {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-cart-pull
 message GetCartRequest {
-	data.ClientRequest client_request = 1;
 	int32 cart_id = 2;
 	string cart_uuid = 3;
 	bool is_guest = 4;
@@ -344,7 +333,6 @@ message GetCartRequest {
 
 // https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-cart-create
 message CreateCartRequest {
-	data.ClientRequest client_request = 1;
 	bool is_guest = 2;
 }
 
@@ -407,7 +395,6 @@ message CartItem {
 
 // https://docs.storefrontapi.com/guide/default-modules/api.html#image-module
 message GetResourceRequest {
-	data.ClientRequest client_request = 1;
 	string resource_uuid = 2;
 	string resource_name = 3;
 	int64 width = 4;
@@ -430,7 +417,6 @@ message Resource {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-user-create
 message CreateCustomerRequest {
-	data.ClientRequest client_request = 1;
 	string email = 2;
 	string first_name = 3;
 	string last_name = 4;
@@ -439,19 +425,16 @@ message CreateCustomerRequest {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-user-me
 message GetCustomerRequest {
-	data.ClientRequest client_request = 1;
 }
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-stock-check-sku
 message GetStockRequest {
-	data.ClientRequest client_request = 1;
 	string sku = 2;
 	string store_code = 3;
 }
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#get-api-stock-list
 message ListStocksRequest {
-	data.ClientRequest client_request = 1;
 	string sku = 2;
 	string store_code = 3;
 	int32 page_size = 4;
@@ -467,7 +450,6 @@ message ListStocksResponse {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#api-product-list
 message ListProductsRequest {
-	data.ClientRequest client_request = 1;
 	repeated string skus = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -540,7 +522,6 @@ message Product {
 
 //	https://docs.storefrontapi.com/guide/default-modules/api.html#api-product-list
 message ListRenderProductsRequest {
-	data.ClientRequest client_request = 1;
 	repeated string skus = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -702,7 +683,7 @@ message Region {
 
 // https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-user-reset-password
 message ResetPasswordRequest {
-  data.ClientRequest client_request = 1;
+  
 	string user_name = 2;
 	string email = 3;
 }
@@ -720,7 +701,7 @@ message ResetPasswordResponse {
 
 // https://docs.storefrontapi.com/guide/default-modules/api.html#post-api-user-change-password
 message ChangePasswordRequest {
-  data.ClientRequest client_request = 1;
+  
 	string current_password = 2;
 	string new_password = 3;
 }

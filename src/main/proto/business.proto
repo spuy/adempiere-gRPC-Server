@@ -19,7 +19,6 @@ option java_package = "org.spin.backend.grpc.common";
 option java_outer_classname = "ADempiereData";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package data;
 
@@ -109,7 +108,6 @@ service UserInterface {
 
 //	Role Access Request
 message GetRecordAccessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -117,7 +115,6 @@ message GetRecordAccessRequest {
 
 //	Set Access Request
 message SetRecordAccessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -146,7 +143,6 @@ message RecordAccessRole {
 
 // Request for set preference
 message SetPreferenceRequest {
-	ClientRequest client_request = 1;
 	string container_uuid = 2;
 	string column_name = 3;
 	bool is_for_current_user = 4;
@@ -164,7 +160,6 @@ message SetPreferenceRequest {
 
 // Request for delete preference
 message DeletePreferenceRequest {
-	ClientRequest client_request = 1;
 	string container_uuid = 2;
 	string column_name = 3;
 	bool is_for_current_user = 4;
@@ -202,21 +197,18 @@ message GetReportOutputRequest {
 	bool is_summary = 3;
 	string report_name = 5;
 	string report_type = 6;
-	ClientRequest client_request = 7;
 	// Query
-	Criteria criteria = 8;
+	Criteria criteria = 7;
 }
 
 // Create Entity Request
 message CreateEntityRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	repeated KeyValue attributes = 3;
 }
 
 // Create Private Access Request
 message LockPrivateAccessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -227,14 +219,12 @@ message GetEntityRequest {
 	string uuid = 1;
 	int32 id = 2;
 	string table_name = 3;
-	ClientRequest client_request = 4;
 	// Query
-	Criteria criteria = 5;
+	Criteria criteria = 4;
 }
 
 // Get Private Access Request
 message GetPrivateAccessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -242,7 +232,6 @@ message GetPrivateAccessRequest {
 
 // Delete Private Access Request
 message UnlockPrivateAccessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -258,7 +247,6 @@ message PrivateAccess {
 
 //  Empty message
 message RollbackEntityRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -267,7 +255,6 @@ message RollbackEntityRequest {
 
 // Update Entity Request
 message UpdateEntityRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -276,7 +263,6 @@ message UpdateEntityRequest {
 
 // Delete Entity Request
 message DeleteEntityRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -287,11 +273,10 @@ message DeleteEntityRequest {
 // Browser request
 message ListBrowserItemsRequest {
 	string uuid = 1;
-	ClientRequest client_request = 2;
-	Criteria criteria = 3;
-	repeated KeyValue context_attributes = 4;
-	int32 page_size = 5;
-	string page_token = 6;
+	Criteria criteria = 2;
+	repeated KeyValue context_attributes = 3;
+	int32 page_size = 4;
+	string page_token = 5;
 }
 
 // Browsers List
@@ -303,7 +288,6 @@ message ListBrowserItemsResponse {
 
 // Update Browser Entity Request
 message UpdateBrowserEntityRequest {
-	ClientRequest client_request = 1;
 	string uuid = 2;
 	int32 id = 3;
 	int32 record_id = 4;
@@ -320,20 +304,18 @@ message ContextInfoValue {
 message GetLookupItemRequest {
 	int32 id = 1;
 	string uuid = 2;
-	ClientRequest client_request = 3;
-	string process_parameter_uuid = 4;
-	string field_uuid = 5;
-	string browse_field_uuid = 6;
-	string reference_uuid = 7;
-	string column_uuid = 8;
-	string column_name = 9;
-	string table_name = 10;
-	repeated KeyValue context_attributes = 11;
+	string process_parameter_uuid = 3;
+	string field_uuid = 4;
+	string browse_field_uuid = 5;
+	string reference_uuid = 6;
+	string column_uuid = 7;
+	string column_name = 8;
+	string table_name = 9;
+	repeated KeyValue context_attributes = 10;
 }
 
 // Get Default Value Request
 message GetDefaultValueRequest {
-	ClientRequest client_request = 1;
 	// References
 	string process_parameter_uuid = 2;
 	string field_uuid = 3;
@@ -352,7 +334,6 @@ message DefaultValue {
 
 // Get Lookup Item
 message GetContextInfoValueRequest {
-	ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	// Query
@@ -369,7 +350,6 @@ message LookupItem {
 
 // List Lookup Item
 message ListLookupItemsRequest {
-	ClientRequest client_request = 1;
 	// References
 	string process_parameter_uuid = 2;
 	string field_uuid = 3;
@@ -393,7 +373,6 @@ message ListLookupItemsResponse {
 
 // Get Tab Entity Request
 message GetTabEntityRequest {
-	ClientRequest client_request = 1;
 	string window_uuid = 2;
 	string tab_uuid = 3;
 	int32 window_no = 4;
@@ -404,7 +383,6 @@ message GetTabEntityRequest {
 
 // Create Tab Entity Request
 message CreateTabEntityRequest {
-	ClientRequest client_request = 1;
 	string window_uuid = 2;
 	string tab_uuid = 3;
 	int32 window_no = 4;
@@ -413,7 +391,6 @@ message CreateTabEntityRequest {
 
 // Update Tab Entity Request
 message UpdateTabEntityRequest {
-	ClientRequest client_request = 1;
 	string window_uuid = 2;
 	string tab_uuid = 3;
 	int32 window_no = 4;
@@ -424,7 +401,6 @@ message UpdateTabEntityRequest {
 
 // List Tab Entities Request
 message ListTabEntitiesRequest {
-	ClientRequest client_request = 1;
 	string window_uuid = 2;
 	string tab_uuid = 3;
 	int32 window_no = 4;
@@ -446,7 +422,6 @@ message ListTabEntitiesResponse {
 
 // List Entities Request
 message ListEntitiesRequest {
-	ClientRequest client_request = 1;
 	// Query
 	Criteria criteria = 2;
 	repeated string columns = 3;
@@ -463,7 +438,6 @@ message ListEntitiesResponse {
 
 // Callout Request
 message RunCalloutRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string window_uuid = 3;
 	string tab_uuid = 4;
@@ -483,7 +457,6 @@ message Callout {
 
 // BusinessProcess Request
 message RunBusinessProcessRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string process_uuid = 3;
 	string uuid = 4;
@@ -499,7 +472,6 @@ message RunBusinessProcessRequest {
 
 // Translations Request
 message ListTranslationsRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -517,7 +489,6 @@ message ListTranslationsResponse {
 
 // Print Formats Request
 message ListPrintFormatsRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string report_view_uuid = 3;
 	string process_uuid = 4;
@@ -534,7 +505,6 @@ message ListPrintFormatsResponse {
 
 // Create Chat Entry Request
 message CreateChatEntryRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -574,7 +544,6 @@ message ChatEntry {
 
 // Report _views Request
 message ListReportViewsRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	string process_uuid = 3;
 	int32 page_size = 4;
@@ -590,7 +559,6 @@ message ListReportViewsResponse {
 
 // Drill table Request
 message ListDrillTablesRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -605,7 +573,6 @@ message ListDrillTablesResponse {
 
 // Exists References Request
 message ExistsReferencesRequest {
-	ClientRequest client_request = 1;
 	int32 tab_id = 2;
 	string tab_uuid = 3;
 	int32 record_id = 4;
@@ -623,9 +590,8 @@ message ListReferencesRequest {
 	string table_name = 2;
 	int32 id = 3;
 	string window_uuid = 4;
-	ClientRequest client_request = 5;
-	int32 page_size = 6;
-	string page_token = 7;
+	int32 page_size = 5;
+	string page_token = 6;
 }
 
 // List References Response
@@ -637,7 +603,6 @@ message ListReferencesResponse {
 
 // List General Info Request
 message ListGeneralInfoRequest {
-	ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -655,7 +620,6 @@ message ListGeneralInfoRequest {
 }
 
 message ListTabSequencesRequest {
-	ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string window_uuid = 4;
@@ -665,7 +629,6 @@ message ListTabSequencesRequest {
 }
 
 message SaveTabSequencesRequest {
-	ClientRequest client_request = 1;
 	string tab_uuid = 2;
 	repeated KeyValue context_attributes = 3;
 	repeated KeyValueSelection entities = 4;
@@ -674,7 +637,6 @@ message SaveTabSequencesRequest {
 
 // List Tree Nodes Request
 message ListTreeNodesRequest {
-	ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -714,7 +676,6 @@ message MailTemplate {
 }
 
 message ListMailTemplatesRequest {
-	ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;

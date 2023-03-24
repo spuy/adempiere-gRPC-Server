@@ -20,11 +20,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.core.domains.models.I_C_Invoice;
 import org.adempiere.core.domains.models.I_C_InvoiceLine;
 import org.adempiere.core.domains.models.I_C_Order;
@@ -40,6 +38,8 @@ import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Requisition;
 import org.adempiere.core.domains.models.I_M_RequisitionLine;
 import org.adempiere.core.domains.models.I_M_Warehouse;
+import org.adempiere.core.domains.models.X_M_Attribute;
+import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MAttribute;
 import org.compiere.model.MAttributeInstance;
 import org.compiere.model.MAttributeSet;
@@ -56,17 +56,10 @@ import org.compiere.model.MRole;
 import org.compiere.model.MTable;
 import org.compiere.model.MWarehouse;
 import org.compiere.model.Query;
-import org.adempiere.core.domains.models.X_M_Attribute;
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
-import org.spin.base.util.ContextManager;
-import org.spin.base.util.DictionaryUtil;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ReferenceInfo;
-import org.spin.base.util.ValueUtil;
-
 import org.spin.backend.grpc.common.ListEntitiesResponse;
 import org.spin.backend.grpc.material_management.GetProductAttributeSetInstanceRequest;
 import org.spin.backend.grpc.material_management.GetProductAttributeSetRequest;
@@ -86,6 +79,12 @@ import org.spin.backend.grpc.material_management.ProductAttributeSetInstance;
 import org.spin.backend.grpc.material_management.ProductAttributeValue;
 import org.spin.backend.grpc.material_management.SaveProductAttributeSetInstanceRequest;
 import org.spin.backend.grpc.material_management.Warehouse;
+import org.spin.base.util.ContextManager;
+import org.spin.base.util.DictionaryUtil;
+import org.spin.base.util.RecordUtil;
+import org.spin.base.util.ReferenceInfo;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -120,9 +119,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	private ListEntitiesResponse.Builder listProductStorage(ListProductStorageRequest request) {
 		//
 		String tableName = "RV_Storage";
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
-		MTable table = MTable.get(context, tableName);
+		MTable table = MTable.get(Env.getCtx(), tableName);
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
 		StringBuffer whereClause = new StringBuffer(" WHERE 1=1 ");
 
@@ -142,7 +139,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		sql.append(whereClause); 
 
 		// add where with access restriction
-		String parsedSQL = MRole.getDefault(context, false)
+		String parsedSQL = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(sql.toString(),
 				null,
 				MRole.SQL_FULLYQUALIFIED,
@@ -150,7 +147,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = 0;
@@ -160,13 +157,13 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		count = RecordUtil.countRecords(parsedSQL, tableName, parametersList);
 		//	Add Row Number
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, parametersList);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), tableName), parsedSQL, parametersList);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -279,8 +276,6 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ProductAttributeSet.Builder getProductAttributeSet(GetProductAttributeSetRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		int productAttributeSetId = request.getId();
 		if (productAttributeSetId <= 0) {
 			if (!Util.isEmpty(request.getUuid())) {
@@ -292,7 +287,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			if (request.getProductId() > 0 || !Util.isEmpty(request.getProductUuid(), true)) {
 				// get with product
 				MProduct product = (MProduct) RecordUtil.getEntity(
-					context,
+					Env.getCtx(),
 					I_M_Product.Table_Name,
 					request.getProductUuid(), 
 					request.getProductId(),
@@ -308,7 +303,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			} else if (request.getProductAttributeSetInstanceId() > 0 || !Util.isEmpty(request.getProductAttributeSetInstanceUuid(), true)) {
 				// get with attribute set instance
 				MAttributeSetInstance attributeSetInstance = (MAttributeSetInstance) RecordUtil.getEntity(
-					context,
+					Env.getCtx(),
 					I_M_AttributeSetInstance.Table_Name,
 					request.getProductAttributeSetInstanceUuid(), 
 					request.getProductAttributeSetInstanceId(),
@@ -353,8 +348,6 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ProductAttributeSetInstance.Builder getProductAttributeSetInstance(GetProductAttributeSetInstanceRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		int productAttributeSetInstanceId = request.getId();
 		if (productAttributeSetInstanceId <= 0) {
 			if (!Util.isEmpty(request.getUuid())) {
@@ -366,7 +359,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			if (request.getProductId() > 0 || !Util.isEmpty(request.getProductUuid(), true)) {
 				// get with product
 				MProduct product = (MProduct) RecordUtil.getEntity(
-					context,
+					Env.getCtx(),
 					I_M_Product.Table_Name,
 					request.getProductUuid(), 
 					request.getProductId(),
@@ -409,8 +402,6 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ListProductAttributeSetInstancesResponse.Builder listProductAttributeSetInstances(ListProductAttributeSetInstancesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		int productAttributeSetId = request.getProductAttributeSetId();
 		if (productAttributeSetId <= 0) {
 			if (!Util.isEmpty(request.getProductAttributeSetUuid())) {
@@ -421,7 +412,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		// get with product
 		if (productAttributeSetId <= 0 && (request.getProductId() > 0 || !Util.isEmpty(request.getProductUuid(), true))) {
 			MProduct product = (MProduct) RecordUtil.getEntity(
-				context,
+				Env.getCtx(),
 				I_M_Product.Table_Name,
 				request.getProductUuid(), 
 				request.getProductId(),
@@ -451,7 +442,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		}
 
 		Query query =  new Query(
-			context,
+			Env.getCtx(),
 			I_M_AttributeSetInstance.Table_Name,
 			whereClause,
 			null
@@ -465,7 +456,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		int count = query.count();
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
@@ -483,7 +474,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 
 		//  Set page token
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//  Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -684,8 +675,6 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ProductAttributeSetInstance.Builder saveProductAttributeSetInstance(SaveProductAttributeSetInstanceRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		AtomicReference<MAttributeSetInstance> attributeSetInstaceAtomic = new AtomicReference<MAttributeSetInstance>();
 
 		Trx.run(transactionName -> {
@@ -694,15 +683,15 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 				attributeSetInstanceId = RecordUtil.getIdFromUuid(I_M_AttributeSetInstance.Table_Name, request.getUuid(), transactionName);
 			}
 
-			MProduct product = (MProduct) RecordUtil.getEntity(context, I_M_Product.Table_Name, request.getProductUuid(), request.getProductId(), transactionName);
+			MProduct product = (MProduct) RecordUtil.getEntity(Env.getCtx(), I_M_Product.Table_Name, request.getProductUuid(), request.getProductId(), transactionName);
 			if (product.getM_AttributeSet_ID() < 1) {
 				throw new AdempiereException("@PAttributeNoAttributeSet@");
 			}
 			boolean isProductASI = product.getM_AttributeSetInstance_ID() > 0;
 
-			MAttributeSetInstance attributeSetInstace = MAttributeSetInstance.get(context, attributeSetInstanceId, product.getM_Product_ID());
+			MAttributeSetInstance attributeSetInstace = MAttributeSetInstance.get(Env.getCtx(), attributeSetInstanceId, product.getM_Product_ID());
 
-			MAttributeSet atttibuteSet = MAttributeSet.get(context, product.getM_AttributeSet_ID());
+			MAttributeSet atttibuteSet = MAttributeSet.get(Env.getCtx(), product.getM_AttributeSet_ID());
 			attributeSetInstace.setM_AttributeSet_ID(product.getM_AttributeSet_ID());
 			attributeSetInstace.saveEx();
 
@@ -720,7 +709,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 					if (currentValue != null) {
 						attributeId = (Integer) currentValue;
 					}
-					MAttributeValue attributeValue = new MAttributeValue(context, attributeId, transactionName);
+					MAttributeValue attributeValue = new MAttributeValue(Env.getCtx(), attributeId, transactionName);
 					if (attribute.isMandatory() && (attributeValue == null || attributeValue.getM_AttributeValue_ID() <= 0)) {
 						throw new AdempiereException("@M_Attribute_ID@: " + attribute.getName() + " @IsMandatory@");
 					}
@@ -786,8 +775,6 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ListAvailableWarehousesResponse.Builder listAvailableWarehouses(ListAvailableWarehousesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		String whereClause = "1 = 1";
 		List<Object> parameters = new ArrayList<Object>();
 
@@ -814,7 +801,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		}
 
 		Query query = new Query(
-			context,
+			Env.getCtx(),
 			I_M_Warehouse.Table_Name,
 			whereClause,
 			null
@@ -824,7 +811,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			.setApplyAccessFilter(true)
 		;
 
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = query.count();
@@ -850,7 +837,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		// Set page token
 		String nexPageToken = null;
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		// Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -907,11 +894,9 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 	}
 
 	private ListLocatorsResponse.Builder listLocators(ListLocatorsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
-		// Fill context
+		// Fill Env.getCtx()
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		String whereClause = "1 = 1";
 		List<Object> parameters = new ArrayList<Object>();
@@ -945,7 +930,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		if (reference != null) {
 			// validation code of field
 			String validationCode = DictionaryUtil.getValidationCodeWithAlias(I_M_Locator.Table_Name, reference.ValidationCode);
-			String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
+			String parsedValidationCode = Env.parseContext(Env.getCtx(), windowNo, validationCode, false);
 			if (!Util.isEmpty(reference.ValidationCode, true)) {
 				if (Util.isEmpty(parsedValidationCode, true)) {
 					throw new AdempiereException("@WhereClause@ @Unparseable@");
@@ -958,7 +943,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		}
 
 		Query query = new Query(
-			context,
+			Env.getCtx(),
 			I_M_Locator.Table_Name,
 			whereClause,
 			null
@@ -968,7 +953,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			.setApplyAccessFilter(true)
 		;
 
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = query.count();
@@ -994,7 +979,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		// Set page token
 		String nexPageToken = null;
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		// Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));

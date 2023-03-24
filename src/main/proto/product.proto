@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.product";
 option java_outer_classname = "ADempiereProduct";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 
 package product;
@@ -33,7 +32,6 @@ service Product {
 
 // List Product Info Request
 message ListProductInfoRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters

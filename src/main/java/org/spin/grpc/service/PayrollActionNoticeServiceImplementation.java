@@ -58,9 +58,9 @@ import org.spin.backend.grpc.form.ListPayrollMovementsRequest;
 import org.spin.backend.grpc.form.ListPayrollProcessRequest;
 import org.spin.backend.grpc.form.PayrollActionNoticeGrpc.PayrollActionNoticeImplBase;
 import org.spin.backend.grpc.form.SavePayrollMovementRequest;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
@@ -80,8 +80,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListLookupItemsResponse.Builder lookupsList = convertPayrollProcessList(context, request);
+			ListLookupItemsResponse.Builder lookupsList = convertPayrollProcessList(Env.getCtx(), request);
 			responseObserver.onNext(lookupsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -101,7 +100,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 
 		List<Object> parameters = new ArrayList<>();
 		sql = RecordUtil.addSearchValueAndGet(sql, MHRProcess.Table_Name, request.getSearchValue(), parameters);
-		sql = MRole.getDefault(context, false)
+		sql = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				sql,
 				MHRProcess.Table_Name,
@@ -112,7 +111,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		sql += " ORDER BY DocumentNo, Name";
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -157,7 +156,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Set page token
 		String nextPageToken = "";
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nextPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nextPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		lookupsList.setNextPageToken(nextPageToken);
 		
@@ -170,8 +169,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListLookupItemsResponse.Builder lookupsList = convertEmployeeValidList(context, request);
+			ListLookupItemsResponse.Builder lookupsList = convertEmployeeValidList(Env.getCtx(), request);
 			responseObserver.onNext(lookupsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -203,7 +201,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			+ "bp.Value || ' - ' || bp.Name || COALESCE(' ' || bp.Name2, '') AS DisplayColumn, UUID "
 			+ "FROM C_BPartner bp";
 		selectQuery = RecordUtil.addSearchValueAndGet(selectQuery, MHRProcess.Table_Name, "bp", request.getSearchValue(), parameters);
-		selectQuery = MRole.getDefault(context, false)
+		selectQuery = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				selectQuery,
 				"bp",
@@ -237,7 +235,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		String sql = selectQuery + whereClause + " ORDER BY " + LookupUtil.DISPLAY_COLUMN_KEY;
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -281,7 +279,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Set page token
 		String nextPageToken = "";
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nextPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nextPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		lookupsList.setNextPageToken(nextPageToken);
 
@@ -295,8 +293,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListLookupItemsResponse.Builder listLookups = convertPayrollConceptsList(context, request);
+			ListLookupItemsResponse.Builder listLookups = convertPayrollConceptsList(Env.getCtx(), request);
 			responseObserver.onNext(listLookups.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -344,7 +341,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			+ "FROM HR_Concept hrpc ";
 
 		selectQuery = RecordUtil.addSearchValueAndGet(selectQuery, MHRConcept.Table_Name, "hrpc", request.getSearchValue(), parameters);
-		selectQuery = MRole.getDefault(context, false)
+		selectQuery = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				selectQuery,
 				"hrpc",
@@ -385,7 +382,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		String sql = selectQuery + whereClause + " ORDER BY " + LookupUtil.DISPLAY_COLUMN_KEY;
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -427,7 +424,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Set page token
 		String nextPageToken = "";
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nextPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nextPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		listLookups.setNextPageToken(nextPageToken);
 
@@ -440,8 +437,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			Entity.Builder payrollConcept = convertPayrollConcept(context, request);
+			Entity.Builder payrollConcept = convertPayrollConcept(Env.getCtx(), request);
 			responseObserver.onNext(payrollConcept.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -458,10 +454,10 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 
 		MHRConcept conceptDefinition = null;
 		if(request.getId() > 0) {
-			conceptDefinition = MHRConcept.getById(context, request.getId(), null);
+			conceptDefinition = MHRConcept.getById(Env.getCtx(), request.getId(), null);
 		} else if(!Util.isEmpty(request.getUuid(), true)) {
 			conceptDefinition = new Query(
-					context,
+					Env.getCtx(),
 					tableName,
 					MHRConcept.COLUMNNAME_UUID + " = ? ",
 					null
@@ -500,7 +496,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		int referenceId = conceptDefinition.getAD_Reference_ID();
 		String referenceUuid = null;
 		if (referenceId > 0) {
-			X_AD_Reference reference = new X_AD_Reference(context, referenceId, null);			
+			X_AD_Reference reference = new X_AD_Reference(Env.getCtx(), referenceId, null);			
 			referenceUuid = reference.getUUID();
 		}
 		Value.Builder referenceIdValue = ValueUtil.getValueFromInteger(conceptDefinition.getAD_Reference_ID());
@@ -520,8 +516,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 				throw new AdempiereException("Object Request Null");
 			}
 			
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListEntitiesResponse.Builder entitiesList = convertListPayrollMovements(context, request);
+			ListEntitiesResponse.Builder entitiesList = convertListPayrollMovements(Env.getCtx(), request);
 			responseObserver.onNext(entitiesList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -678,8 +673,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			Entity.Builder entity = convertSaveMovement(context, request);
+			Entity.Builder entity = convertSaveMovement(Env.getCtx(), request);
 			responseObserver.onNext(entity.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -704,7 +698,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		if (payrollProcessId <= 0) {
 			throw new AdempiereException("Payroll Process ID Not Found");
 		}
-		MHRProcess payrollProcess = new MHRProcess(context, payrollProcessId, null);
+		MHRProcess payrollProcess = new MHRProcess(Env.getCtx(), payrollProcessId, null);
 		
 		int businessPartnerId = (int) contextAttributesList.get(MHRMovement.COLUMNNAME_C_BPartner_ID);
 		if (businessPartnerId <= 0) {
@@ -810,7 +804,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		// payroll period
 		movement.setPeriodNo(0);
 		if (payrollProcess.getHR_Period_ID() > 0) {
-			MHRPeriod period = MHRPeriod.getById(context, payrollProcess.getHR_Period_ID(), null);
+			MHRPeriod period = MHRPeriod.getById(Env.getCtx(), payrollProcess.getHR_Period_ID(), null);
 			movement.setPeriodNo(period.getPeriodNo());
 		}
 		// Valid From
@@ -835,7 +829,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			movement.setHR_Department_ID(employee.getHR_Department_ID());
 			movement.setHR_Job_ID(employee.getHR_Job_ID());
 			movement.setHR_SkillType_ID(employee.getHR_SkillType_ID());
-			MHRDepartment department = MHRDepartment.getById(context, employee.getHR_Department_ID(), null);
+			MHRDepartment department = MHRDepartment.getById(Env.getCtx(), employee.getHR_Department_ID(), null);
 			int activityId = employee.getC_Activity_ID() > 0 ? employee.getC_Activity_ID() : department.getC_Activity_ID();
 			movement.setC_Activity_ID(activityId);
 
@@ -975,8 +969,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			Empty.Builder entity = convertDeleteEntity(context, request);
+			Empty.Builder entity = convertDeleteEntity(Env.getCtx(), request);
 			responseObserver.onNext(entity.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -1005,7 +998,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 
 			// delete with id's
 			if (ids.size() > 0) {
-				MTable table = MTable.get(context, tableName);
+				MTable table = MTable.get(Env.getCtx(), tableName);
 				ids.stream().forEach(id -> {
 					PO entity = table.getPO(id, transactionName);
 					if (entity != null && entity.get_ID() > 0) {

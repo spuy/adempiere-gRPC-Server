@@ -61,9 +61,9 @@ import org.compiere.util.Msg;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.eevolution.services.dsl.ProcessBuilder;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.common.BusinessDataGrpc.BusinessDataImplBase;
 import org.spin.backend.grpc.common.CreateEntityRequest;
@@ -105,10 +105,6 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Entity.Builder entityValue = getEntity(request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
@@ -127,8 +123,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			Entity.Builder entityValue = createEntity(context, request);
+			Entity.Builder entityValue = createEntity(Env.getCtx(), request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -146,8 +141,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			Entity.Builder entityValue = updateEntity(context, request);
+			
+			Entity.Builder entityValue = updateEntity(Env.getCtx(), request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -166,8 +161,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getUuid());
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			Empty.Builder entityValue = deleteEntity(context, request);
+			
+			Empty.Builder entityValue = deleteEntity(Env.getCtx(), request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -185,8 +180,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListEntitiesResponse.Builder entityValueList = convertEntitiesList(context, request);
+			
+			ListEntitiesResponse.Builder entityValueList = convertEntitiesList(Env.getCtx(), request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -237,10 +232,10 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 	 * @throws FileNotFoundException 
 	 */
 	public static ProcessLog.Builder runBusinessProcess(RunBusinessProcessRequest request) throws FileNotFoundException, IOException {
-		Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
+		
 
 		//	Get Process definition
-		MProcess process = MProcess.get(context, RecordUtil.getIdFromUuid(I_AD_Process.Table_Name, request.getProcessUuid(), null));
+		MProcess process = MProcess.get(Env.getCtx(), RecordUtil.getIdFromUuid(I_AD_Process.Table_Name, request.getProcessUuid(), null));
 		if(process == null
 				|| process.getAD_Process_ID() <= 0) {
 			throw new AdempiereException("@AD_Process_ID@ @NotFound@");
@@ -253,7 +248,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		int tableId = 0;
 		int recordId = request.getId();
 		if(!Util.isEmpty(request.getTableName())) {
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			if(table != null && table.getAD_Table_ID() > 0) {
 				tableId = table.getAD_Table_ID();
 			}
@@ -268,7 +263,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			if(recordId != 0) {
 				uuid = null;
 			}
-			entity = RecordUtil.getEntity(context, request.getTableName(), uuid, recordId, null);
+			entity = RecordUtil.getEntity(Env.getCtx(), request.getTableName(), uuid, recordId, null);
 			if(entity != null) {
 				recordId = entity.get_ID();
 			}
@@ -287,7 +282,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		//	Add to recent Item
 		addToRecentItem(MMenu.ACTION_Process, process.getAD_Process_ID());
 		//	Call process builder
-		ProcessBuilder builder = ProcessBuilder.create(context)
+		ProcessBuilder builder = ProcessBuilder.create(Env.getCtx())
 				.process(process.getAD_Process_ID())
 				.withRecordId(tableId, recordId)
 				.withoutPrintPreview()
@@ -358,7 +353,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		String tableName = null;
 		//	Get process instance from identifier
 		if(result.getAD_PInstance_ID() != 0) {
-			MPInstance instance = new Query(context, I_AD_PInstance.Table_Name, I_AD_PInstance.COLUMNNAME_AD_PInstance_ID + " = ?", null)
+			MPInstance instance = new Query(Env.getCtx(), I_AD_PInstance.Table_Name, I_AD_PInstance.COLUMNNAME_AD_PInstance_ID + " = ?", null)
 					.setParameters(result.getAD_PInstance_ID())
 					.first();
 			response.setInstanceUuid(ValueUtil.validateNull(instance.getUUID()));
@@ -376,27 +371,27 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 				//	Get from report view or print format
 				MPrintFormat printFormat = null;
 				if(!Util.isEmpty(printFormatUuid)) {
-					printFormat = new Query(context, I_AD_PrintFormat.Table_Name, I_AD_PrintFormat.COLUMNNAME_UUID + " = ?", null)
+					printFormat = new Query(Env.getCtx(), I_AD_PrintFormat.Table_Name, I_AD_PrintFormat.COLUMNNAME_UUID + " = ?", null)
 							.setParameters(printFormatUuid)
 							.first();
 					tableName = printFormat.getAD_Table().getTableName();
 					if(printFormat.getAD_ReportView_ID() != 0) {
-						MReportView reportView = MReportView.get(context, printFormat.getAD_ReportView_ID());
+						MReportView reportView = MReportView.get(Env.getCtx(), printFormat.getAD_ReportView_ID());
 						reportViewUuid = reportView.getUUID();
 					}
 				} else if(printFormatId != 0) {
-					printFormat = MPrintFormat.get(context, printFormatId, false);
+					printFormat = MPrintFormat.get(Env.getCtx(), printFormatId, false);
 					printFormatUuid = printFormat.getUUID();
 					tableName = printFormat.getAD_Table().getTableName();
 					if(printFormat.getAD_ReportView_ID() != 0) {
-						MReportView reportView = MReportView.get(context, printFormat.getAD_ReportView_ID());
+						MReportView reportView = MReportView.get(Env.getCtx(), printFormat.getAD_ReportView_ID());
 						reportViewUuid = reportView.getUUID();
 					}
 				} else if(reportViewId != 0) {
-					MReportView reportView = MReportView.get(context, reportViewId);
+					MReportView reportView = MReportView.get(Env.getCtx(), reportViewId);
 					reportViewUuid = reportView.getUUID();
 					tableName = reportView.getAD_Table().getTableName();
-					printFormat = MPrintFormat.get(context, reportViewId, 0);
+					printFormat = MPrintFormat.get(Env.getCtx(), reportViewId, 0);
 					if(printFormat != null) {
 						printFormatUuid = printFormat.getUUID();
 					}
@@ -414,7 +409,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		//	
 		response.setIsError(result.isError());
 		if(!Util.isEmpty(result.getSummary())) {
-			response.setSummary(Msg.parseTranslation(context, result.getSummary()));
+			response.setSummary(Msg.parseTranslation(Env.getCtx(), result.getSummary()));
 		}
 		//	
 		response.setResultTableName(ValueUtil.validateNull(result.getResultTableName()));
@@ -673,7 +668,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		}
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -721,7 +716,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
@@ -43,6 +42,7 @@ import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import org.spin.backend.grpc.common.Condition;
@@ -93,14 +93,13 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		if(request.getId() == 0 && Util.isEmpty(request.getUuid()) && Util.isEmpty(request.getValue())) {
 			throw new AdempiereException("@Record_ID@ @NotFound@");
 		}
-		Properties context = ContextManager.getContext(request.getClientRequest());
 
 		MAccount accoutingCombination = null;
 		if(request.getId() > 0) {
-			accoutingCombination = MAccount.getValidCombination(context, request.getId(), null);
+			accoutingCombination = MAccount.getValidCombination(Env.getCtx(), request.getId(), null);
 		} else if(!Util.isEmpty(request.getUuid(), true)) {
 			accoutingCombination = new Query(
-					context,
+					Env.getCtx(),
 					this.tableName,
 					MAccount.COLUMNNAME_UUID + " = ? ",
 					null
@@ -110,7 +109,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		} else if (!Util.isEmpty(request.getValue(), true)) {
 			// Value as combination
 			accoutingCombination = new Query(
-					context,
+					Env.getCtx(),
 					this.tableName,
 					MAccount.COLUMNNAME_Combination + " = ? ",
 					null
@@ -160,11 +159,10 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		}
 
 		//
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
-		MTable table = MTable.get(context, this.tableName);
+		MTable table = MTable.get(Env.getCtx(), this.tableName);
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
 
 		// add where with access restriction
@@ -188,7 +186,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, this.tableName, request.getSearchValue(), params);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -198,13 +196,13 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		count = RecordUtil.countRecords(parsedSQL, this.tableName, params);
 		//	Add Row Number
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, this.tableName), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), this.tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -232,9 +230,8 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 
 	private Entity.Builder convertAccountingCombination(SaveAccountingCombinationRequest request) {
 		// set context values
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		Map<String, Object> contextAttributesList = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
 		if (contextAttributesList.get(MAccount.COLUMNNAME_AD_Org_ID) == null) {
@@ -253,7 +250,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 			throw new AdempiereException("@FillMandatory@ @C_AcctSchema_ID@");
 		}
 		int accoutingSchemaId = (int) contextAttributesList.get(MAccount.COLUMNNAME_C_AcctSchema_ID);
-		MAcctSchema accoutingSchema = MAcctSchema.get(context, accoutingSchemaId, null);
+		MAcctSchema accoutingSchema = MAcctSchema.get(Env.getCtx(), accoutingSchemaId, null);
 
 		String accountingCombinationAlias = ValueUtil.validateNull((String) contextAttributesList.get(MAccount.COLUMNNAME_Alias));
 		
@@ -262,7 +259,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		Map<String, Object> attributesList = ValueUtil.convertValuesToObjects(request.getAttributesList());
 		StringBuffer sql = generateSQL(acctingSchemaElements, attributesList);
 
-		int clientId = Env.getContextAsInt(context, windowNo, MAccount.COLUMNNAME_AD_Client_ID);
+		int clientId = Env.getContextAsInt(Env.getCtx(), windowNo, MAccount.COLUMNNAME_AD_Client_ID);
 
 		int accountingCombinationId = 0;
 		String accountingAlias = "";
@@ -558,8 +555,6 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 	}
 	
 	ListEntitiesResponse.Builder convertListAccountingFacts(ListAccoutingFactsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		ArrayList<Condition> conditionsList = new ArrayList<Condition>(request.getFilters().getConditionsList());
 		Optional<Condition> maybeAccoutingSchemaId  = conditionsList.stream()
 			.filter(condition -> {
@@ -600,7 +595,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		filter.addAllConditions(conditionsList);
 
 		//
-		MTable table = MTable.get(context, I_Fact_Acct.Table_Name);
+		MTable table = MTable.get(Env.getCtx(), I_Fact_Acct.Table_Name);
 
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
 		StringBuffer whereClause = new StringBuffer(" WHERE 1=1 ");
@@ -616,7 +611,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		sql.append(whereClause);
 
 		// add where with access restriction
-		String parsedSQL = MRole.getDefault(context, false)
+		String parsedSQL = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(sql.toString(),
 				null,
 				MRole.SQL_FULLYQUALIFIED,
@@ -624,7 +619,7 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 			);
 
 		//  Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -635,13 +630,13 @@ public class GeneralLedgerServiceImplementation extends GeneralLedgerImplBase {
 		count = RecordUtil.countRecords(parsedSQL, I_Fact_Acct.Table_Name, params);
 		//  Add Row Number
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, I_Fact_Acct.Table_Name), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), I_Fact_Acct.Table_Name), parsedSQL, params);
 		//
 		builder.setRecordCount(count);
 		//  Set page token
 		String nexPageToken = null;
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//  Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

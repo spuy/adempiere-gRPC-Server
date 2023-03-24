@@ -69,7 +69,6 @@ import org.compiere.util.Env;
 import org.compiere.util.Language;
 import org.compiere.util.Util;
 import org.compiere.wf.MWorkflow;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceUtil;
@@ -163,8 +162,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Reference.Builder fieldBuilder = convertReference(context, request);
+			Reference.Builder fieldBuilder = convertReference(Env.getCtx(), request);
 			responseObserver.onNext(fieldBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -188,8 +186,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			ValidationRule.Builder fieldBuilder = convertValidationRule(context, request);
+			
+			ValidationRule.Builder fieldBuilder = convertValidationRule(Env.getCtx(), request);
 			responseObserver.onNext(fieldBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -213,8 +211,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Process.Builder processBuilder = convertProcess(context, request.getUuid(), request.getId(), true);
+			
+			Process.Builder processBuilder = convertProcess(Env.getCtx(), request.getUuid(), request.getId(), true);
 			responseObserver.onNext(processBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -238,8 +236,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Browser.Builder browserBuilder = convertBrowser(context, request.getUuid(), true);
+			
+			Browser.Builder browserBuilder = convertBrowser(Env.getCtx(), request.getUuid(), true);
 			responseObserver.onNext(browserBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -263,8 +261,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Form.Builder formBuilder = convertForm(context, request.getUuid(), request.getId());
+			
+			Form.Builder formBuilder = convertForm(Env.getCtx(), request.getUuid(), request.getId());
 			responseObserver.onNext(formBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -292,8 +290,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Window.Builder windowBuilder = convertWindow(context, request.getUuid(), request.getId(), withTabs);
+			
+			Window.Builder windowBuilder = convertWindow(Env.getCtx(), request.getUuid(), request.getId(), withTabs);
 			responseObserver.onNext(windowBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -322,8 +320,8 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 					|| Util.isEmpty(applicationInfo.getSessionUuid())) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getApplicationRequest().getSessionUuid(), request.getApplicationRequest().getLanguage());
-			Tab.Builder tabBuilder = convertTab(context, request.getUuid(), withFields);
+			
+			Tab.Builder tabBuilder = convertTab(Env.getCtx(), request.getUuid(), withFields);
 			responseObserver.onNext(tabBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -1235,35 +1233,34 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @return
 	 */
 	private Field.Builder getField(FieldRequest request) {
-		Properties context = ContextManager.getContext(request.getApplicationRequest());
 		Field.Builder builder = Field.newBuilder();
 		//	For UUID
 		if(!Util.isEmpty(request.getFieldUuid())) {
-			builder = convertField(context, request.getFieldUuid());
+			builder = convertField(Env.getCtx(), request.getFieldUuid());
 		} else if(!Util.isEmpty(request.getColumnUuid())) {
-			MColumn column = new Query(context, I_AD_Column.Table_Name, I_AD_Column.COLUMNNAME_UUID + " = ?", null)
+			MColumn column = new Query(Env.getCtx(), I_AD_Column.Table_Name, I_AD_Column.COLUMNNAME_UUID + " = ?", null)
 					.setParameters(request.getColumnUuid())
 					.setOnlyActiveRecords(true)
 					.first();
-			builder = convertField(context, column);
+			builder = convertField(Env.getCtx(), column);
 		} else if(!Util.isEmpty(request.getElementUuid())) {
-			M_Element element = new Query(context, I_AD_Element.Table_Name, I_AD_Element.COLUMNNAME_UUID + " = ?", null)
+			M_Element element = new Query(Env.getCtx(), I_AD_Element.Table_Name, I_AD_Element.COLUMNNAME_UUID + " = ?", null)
 					.setParameters(request.getElementUuid())
 					.setOnlyActiveRecords(true)
 					.first();
-			builder = convertField(context, element);
+			builder = convertField(Env.getCtx(), element);
 		} else if(!Util.isEmpty(request.getElementColumnName())) {
-			M_Element element = new Query(context, I_AD_Element.Table_Name, I_AD_Element.COLUMNNAME_ColumnName+ " = ?", null)
+			M_Element element = new Query(Env.getCtx(), I_AD_Element.Table_Name, I_AD_Element.COLUMNNAME_ColumnName+ " = ?", null)
 					.setParameters(request.getElementColumnName())
 					.setOnlyActiveRecords(true)
 					.first();
-			builder = convertField(context, element);
+			builder = convertField(Env.getCtx(), element);
 		} else if(!Util.isEmpty(request.getTableName()) 
 				&& !Util.isEmpty(request.getColumnName())) {
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			if(table != null) {
 				MColumn column = table.getColumn(request.getColumnName());
-				builder = convertField(context, column);
+				builder = convertField(Env.getCtx(), column);
 			}
 		}
 		return builder;
@@ -1934,8 +1931,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			
-			Properties context = ContextManager.getContext(request.getApplicationRequest());
-			ListFieldsResponse.Builder fielsListBuilder = getIdentifierFields(context, request);
+			ListFieldsResponse.Builder fielsListBuilder = getIdentifierFields(Env.getCtx(), request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -2040,8 +2036,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			
-			Properties context = ContextManager.getContext(request.getApplicationRequest());
-			ListFieldsResponse.Builder fielsListBuilder = getTableSearchFields(context, request);
+			ListFieldsResponse.Builder fielsListBuilder = getTableSearchFields(Env.getCtx(), request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {

@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.form";
 option java_outer_classname = "ADempierePayrollActionNotice";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 
 package payroll_action_notice;
@@ -45,7 +44,6 @@ service PayrollActionNotice {
 
 // List Payroll Process Request
 message ListPayrollProcessRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -55,7 +53,6 @@ message ListPayrollProcessRequest {
 
 // List Employee Request
 message ListEmployeeValidRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -65,7 +62,6 @@ message ListEmployeeValidRequest {
 
 // List Payroll Conceps Request
 message ListPayrollConceptsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -75,14 +71,12 @@ message ListPayrollConceptsRequest {
 
 // Get Payroll Concept Definition Request
 message GetPayrollConceptDefinitionRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 }
 
 // List Payroll Movements Request
 message ListPayrollMovementsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -93,7 +87,6 @@ message ListPayrollMovementsRequest {
 
 // Save Payroll Movement Request
 message SavePayrollMovementRequest {
-	data.ClientRequest client_request = 1;
 	repeated data.KeyValue context_attributes = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -102,7 +95,6 @@ message SavePayrollMovementRequest {
 
 // Delete Payroll Movements Request
 message DeletePayrollMovementsRequest {
-	data.ClientRequest client_request = 1;
 	repeated data.KeyValue context_attributes = 2;
 	repeated string uuids = 3;
 	repeated int32 ids = 4;

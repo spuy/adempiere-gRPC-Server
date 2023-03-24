@@ -17,6 +17,8 @@ package org.spin.authentication;
 import java.util.Arrays;
 import java.util.List;
 
+import org.spin.base.util.SessionManager;
+
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.Metadata;
@@ -48,11 +50,7 @@ public class AuthorizationServerInterceptor implements ServerInterceptor {
             status = Status.UNAUTHENTICATED.withDescription("Unknown authorization type");
         } else {
             try {
-				// String token = BearerToken.getTokenWithoutType(value);
-				// System.out.println("Token: " + token);
-
-				// Create ADempiere session, throw a error if it not exists
-				// Context ctx = Context.current().withValue(Constants.CLIENT_ID_CONTEXT_KEY, claims.getBody().getSubject());
+            	SessionManager.createSessionFromToken(value);
                 return Contexts.interceptCall(Context.current(), serverCall, metadata, serverCallHandler);
             } catch (Exception e) {
                 status = Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e);

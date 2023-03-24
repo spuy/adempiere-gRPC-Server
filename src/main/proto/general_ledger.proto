@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.general_ledger";
 option java_outer_classname = "ADempiereGeneralLedger";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 
 package general_ledger;
@@ -41,7 +40,6 @@ service GeneralLedger {
 
 // Get Accounting Combination Request
 message GetAccountingCombinationRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string value = 4;
@@ -49,7 +47,6 @@ message GetAccountingCombinationRequest {
 
 // List Accounting Combination Request
 message ListAccountingCombinationsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -60,7 +57,6 @@ message ListAccountingCombinationsRequest {
 
 // Save Accounting Combination Request
 message SaveAccountingCombinationRequest {
-	data.ClientRequest client_request = 1;
 	repeated data.KeyValue context_attributes = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -69,7 +65,6 @@ message SaveAccountingCombinationRequest {
 
 // List Accouting Facts Request
 message ListAccoutingFactsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -81,7 +76,6 @@ message ListAccoutingFactsRequest {
 
 // Start Re-Post Request
 message StartRePostRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 record_id = 3;
 	string record_uuid = 4;

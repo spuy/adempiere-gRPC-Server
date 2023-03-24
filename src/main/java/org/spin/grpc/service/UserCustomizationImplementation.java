@@ -17,7 +17,6 @@ package org.spin.grpc.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_AD_Browse;
 import org.adempiere.core.domains.models.I_AD_Browse_Field;
@@ -72,8 +71,8 @@ import org.spin.backend.grpc.user_customization.SaveProcessCustomizationRequest;
 import org.spin.backend.grpc.user_customization.SaveWindowCustomizationRequest;
 import org.spin.backend.grpc.user_customization.User;
 import org.spin.backend.grpc.user_customization.UserCustomizationGrpc.UserCustomizationImplBase;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
@@ -109,8 +108,6 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private ListUsersResponse.Builder listUsers(ListUsersRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		List<Object> parameters = new ArrayList<>();
 		String whereClause = "";
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
@@ -124,7 +121,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 
 		whereClause += "AD_User_ID > 0";
 		Query query = new Query(
-			context,
+				Env.getCtx(),
 			I_AD_User.Table_Name,
 			whereClause,
 			null
@@ -138,13 +135,13 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -204,8 +201,6 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private ListRolesResponse.Builder listRoles(ListRolesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		List<Object> parameters = new ArrayList<>();
 		String whereClause = "";
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
@@ -217,7 +212,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 		}
 
 		Query query = new Query(
-			context,
+				Env.getCtx(),
 			I_AD_Role.Table_Name,
 			whereClause,
 			null
@@ -231,13 +226,13 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -294,8 +289,6 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private ListCustomizationsLevelResponse.Builder listCustomizationsLevel(ListCustomizationsLevelRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		List<Object> parameters = new ArrayList<>();
 		String whereClause = "";
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
@@ -307,7 +300,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 		}
 
 		Query query = new Query(
-			context,
+				Env.getCtx(),
 			I_ASP_Level.Table_Name,
 			null,
 			null
@@ -321,13 +314,13 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 
@@ -410,19 +403,17 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private Empty.Builder saveWindowCustomization(SaveWindowCustomizationRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		if (Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
 		Trx.run(transactionName -> {
 			int tabId = RecordUtil.getIdFromUuid(I_AD_Tab.Table_Name, request.getTabUuid(), transactionName);
-			MTab tab = MTab.get(context, tabId);
+			MTab tab = MTab.get(Env.getCtx(), tabId);
 			if (tab == null || tab.getAD_Tab_ID() <= 0) {
 				throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 			}
-			MTable table = MTable.get(context, tab.getAD_Table_ID());
+			MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 
 			// validate level, role, user
 			PO entity = getEntityToCustomizationType(request.getLevel().getNumber(), request.getLevelId(), request.getLevelUuid());
@@ -438,7 +429,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			MWindowCustom customWindow = null;
 			if (customWindowId < 1) {
 				// Add Window, Tabs and Fields (if IsGenerateFields)
-				customWindow = new MWindowCustom(context, 0, transactionName);
+				customWindow = new MWindowCustom(Env.getCtx(), 0, transactionName);
 				// customWindow.setASP_Level_ID(getLevelId());
 				customWindow.set_ValueOfColumn(columnKey, entity.get_ID());
 				customWindow.setAD_Window_ID(tab.getAD_Window_ID());
@@ -446,7 +437,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 				customWindow.saveEx();
 				// customWindowId = customWindow.getAD_WindowCustom_ID();
 			} else {
-				customWindow = new MWindowCustom(context, customWindowId, transactionName);
+				customWindow = new MWindowCustom(Env.getCtx(), customWindowId, transactionName);
 			}
 
 			// instance tab
@@ -469,7 +460,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			request.getFieldAttributesList().forEach(fieldAttributes -> {
 				if (Util.isEmpty(fieldAttributes.getColumnName(), true)) {
 					log.warning(
-						Msg.getMsg(context, "@ColumnName@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+						Msg.getMsg(Env.getCtx(), "@ColumnName@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 					);
 					return;
 				}
@@ -477,14 +468,14 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 				int columnId = MColumn.getColumn_ID(table.getTableName(), fieldAttributes.getColumnName());
 				if (columnId <= 0) {
 					log.warning(
-						Msg.getMsg(context, "@AD_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+						Msg.getMsg(Env.getCtx(), "@AD_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 					);
 					return;
 				}
 
 				// instance field
 				MField field = new Query(
-					context,
+						Env.getCtx(),
 					I_AD_Field.Table_Name,
 					I_AD_Field.COLUMNNAME_AD_Column_ID + " = ? AND " + I_AD_Field.COLUMNNAME_AD_Tab_ID + " = ?",
 					transactionName
@@ -495,7 +486,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 				;
 				if (field == null || field.getAD_Field_ID() <= 0) {
 					log.warning(
-						Msg.getMsg(context, "@AD_Field_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+						Msg.getMsg(Env.getCtx(), "@AD_Field_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 					);
 					return;
 				}
@@ -547,13 +538,11 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private Empty.Builder saveBrowseCustomization(SaveBrowseCustomizationRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		if (Util.isEmpty(request.getBrowseUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Browse_ID@");
 		}
 		int browseId = RecordUtil.getIdFromUuid(I_AD_Browse.Table_Name, request.getBrowseUuid(), null);
-		MBrowse browse = MBrowse.get(context, browseId);
+		MBrowse browse = MBrowse.get(Env.getCtx(), browseId);
 		if (browse == null || browse.getAD_Browse_ID() <= 0) {
 			throw new AdempiereException("@AD_Browse_ID@ @NotFound@");
 		}
@@ -573,27 +562,27 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 
 		MBrowseCustom customBrowse = null;
 		if (customBrowseId < 0) {
-			customBrowse = new MBrowseCustom(context, 0, null);
+			customBrowse = new MBrowseCustom(Env.getCtx(), 0, null);
 			// customBrowse.setASP_Level_ID(getLevelId());
 			customBrowse.set_ValueOfColumn(columnKey, entity.get_ID());
 			customBrowse.setAD_Browse_ID(browse.getAD_Browse_ID());
 			customBrowse.setHierarchyType(MBrowseCustom.HIERARCHYTYPE_Overwrite);
 			customBrowse.saveEx();
 		} else {
-			customBrowse = new MBrowseCustom(context, customBrowseId, null);
+			customBrowse = new MBrowseCustom(Env.getCtx(), customBrowseId, null);
 		}
 		List<MBrowseFieldCustom> customBrowseFieldList = customBrowse.getFields();
 		request.getFieldAttributesList().forEach(fieldAttributes -> {
 			if (Util.isEmpty(fieldAttributes.getColumnName(), true)) {
 				log.warning(
-					Msg.getMsg(context, "@AD_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+					Msg.getMsg(Env.getCtx(), "@AD_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 				);
 				return;
 			}
 
 			// instance view column
 			MViewColumn viewColumn = new Query(
-				context,
+					Env.getCtx(),
 				I_AD_View_Column.Table_Name,
 				"AD_View_ID = ? AND ColumnName = ?",
 				null
@@ -604,14 +593,14 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			;
 			if (viewColumn == null || viewColumn.getAD_View_Column_ID() <= 0) {
 				log.warning(
-					Msg.getMsg(context, "@AD_View_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+					Msg.getMsg(Env.getCtx(), "@AD_View_Column_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 				);
 				return;
 			}
 
 			// instance browse field
 			MBrowseField browseField = new Query(
-				context,
+					Env.getCtx(),
 				I_AD_Browse_Field.Table_Name,
 				"AD_Browse_ID = ? AND AD_View_Column_ID = ?",
 				null
@@ -622,7 +611,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			;
 			if (browseField == null || browseField.getAD_Browse_Field_ID() <= 0) {
 				log.warning(
-					Msg.getMsg(context, "@AD_Browse_Field_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+					Msg.getMsg(Env.getCtx(), "@AD_Browse_Field_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 				);
 				return;
 			}
@@ -673,13 +662,11 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 	}
 
 	private Empty.Builder saveProcessCustomization(SaveProcessCustomizationRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		if (Util.isEmpty(request.getProcessUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Process_ID@");
 		}
 		int processId = RecordUtil.getIdFromUuid(I_AD_Process.Table_Name, request.getProcessUuid(), null);
-		MProcess process = MProcess.get(context, processId);
+		MProcess process = MProcess.get(Env.getCtx(), processId);
 		if (process == null || process.getAD_Process_ID() <= 0) {
 			throw new AdempiereException("@AD_Process_ID@ @NotFound@");
 		}
@@ -699,7 +686,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 
 		MProcessCustom customProcess = null;
 		if (customProcessId < 1) {
-			customProcess = new MProcessCustom(context, 0, null);
+			customProcess = new MProcessCustom(Env.getCtx(), 0, null);
 			// customProcess.setASP_Level_ID(getLevelId());
 			customProcess.set_ValueOfColumn(columnKey, entity.get_ID());
 			customProcess.setAD_Process_ID(process.getAD_Process_ID());
@@ -707,20 +694,20 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			customProcess.saveEx();
 			customProcessId = customProcess.getAD_ProcessCustom_ID();
 		} else {
-			customProcess = new MProcessCustom(context, customProcessId, null);
+			customProcess = new MProcessCustom(Env.getCtx(), customProcessId, null);
 		}
 
 		List<MProcessParaCustom> customProcessParametersList = customProcess.getParameters();
 		request.getFieldAttributesList().forEach(fieldAttributes -> {
 			if (Util.isEmpty(fieldAttributes.getColumnName(), true)) {
 				log.warning(
-					Msg.getMsg(context, "@AD_Process_Para_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+					Msg.getMsg(Env.getCtx(), "@AD_Process_Para_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 				);
 				return;
 			}
 			// instance process parameter
 			MProcessPara processParameter = new Query(
-				context,
+					Env.getCtx(),
 				I_AD_Process_Para.Table_Name,
 				"AD_Process_ID = ? AND ColumnName = ?",
 				null
@@ -731,7 +718,7 @@ public class UserCustomizationImplementation extends UserCustomizationImplBase {
 			;
 			if (processParameter == null || processParameter.getAD_Process_Para_ID() <= 0) {
 				log.warning(
-					Msg.getMsg(context, "@AD_Process_Para_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
+					Msg.getMsg(Env.getCtx(), "@AD_Process_Para_ID@ (" + fieldAttributes.getColumnName() + ") @NotFound@")
 				);
 				return;
 			}

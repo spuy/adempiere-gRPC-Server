@@ -21,7 +21,6 @@ option java_outer_classname = "ADempiereTimeRecord";
 
 import "base_data_type.proto";
 import "core_functionality.proto";
-import "client.proto";
 import "business.proto";
 
 package time_record;
@@ -45,7 +44,6 @@ message Issue {
 }
 
 message ListIssuesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -67,7 +65,6 @@ message Project {
 }
 
 message ListProjectsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -120,7 +117,6 @@ message ResourceAssignment {
 }
 
 message CreateTimeRecordRequest {
-	data.ClientRequest client_request = 1;
 	int32 request_id = 2;
 	string request_uuid = 3;
 	int32 project_id = 4;
@@ -132,7 +128,6 @@ message CreateTimeRecordRequest {
 }
 
 message ListTimeRecordRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;

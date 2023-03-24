@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.logs";
 option java_outer_classname = "ADempiereLogs";
 
 import "base_data_type.proto";
-import "client.proto";
 import "business.proto";
 import "workflow.proto";
 
@@ -47,7 +46,6 @@ service Logs {
 
 // BusinessProcess Activity Request
 message ListProcessLogsRequest {
-	data.ClientRequest client_request = 1;
 	string user_uuid = 2;
 	string instance_uuid = 3;
 	string table_name = 4;
@@ -66,7 +64,6 @@ message ListProcessLogsResponse {
 
 // Record Log Request
 message ListEntityLogsRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -83,7 +80,6 @@ message ListEntityLogsResponse {
 
 // Exists References Request
 message ExistsChatEntriesRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 record_id = 4;
 	string record_uuid = 5;
@@ -96,7 +92,6 @@ message ExistsChatEntriesResponse {
 
 // Record Chat Request
 message ListEntityChatsRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -139,7 +134,6 @@ message EntityChat {
 
 // Record Chat Entry Request
 message ListChatEntriesRequest {
-	data.ClientRequest client_request = 1;
 	string uuid = 2;
 	int32 id = 3;
 	int32 page_size = 4;
@@ -155,7 +149,6 @@ message ListChatEntriesResponse {
 
 // Recent Items Request
 message ListRecentItemsRequest {
-	data.ClientRequest client_request = 1;
 	string user_uuid = 2;
 	string role_uuid = 3;
 	bool current_session = 4;
@@ -189,7 +182,6 @@ message RecentItem {
 
 // Workflow Activities Request
 message ListWorkflowLogsRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
