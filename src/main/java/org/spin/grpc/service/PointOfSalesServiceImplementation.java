@@ -853,9 +853,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
 			}
 			log.fine("Print Ticket = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest());
-
-			//	
 			MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 			int userId = Env.getAD_User_ID(pos.getCtx());
 			if (!getBooleanValueFromPOS(pos, userId, "IsAllowsPreviewDocument")) {
