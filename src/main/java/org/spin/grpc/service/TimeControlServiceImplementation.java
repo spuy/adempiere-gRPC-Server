@@ -15,16 +15,16 @@
 package org.spin.grpc.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.core.domains.models.I_S_ResourceType;
+import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MResource;
 import org.compiere.model.MResourceAssignment;
 import org.compiere.model.MResourceType;
@@ -45,9 +45,9 @@ import org.spin.backend.grpc.time_control.ResourceAssignment;
 import org.spin.backend.grpc.time_control.ResourceType;
 import org.spin.backend.grpc.time_control.TimeControlGrpc.TimeControlImplBase;
 import org.spin.backend.grpc.time_control.UpdateResourceAssignmentRequest;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
@@ -211,10 +211,8 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
             throw new AdempiereException("@S_Resource_ID@ @NotFound@");
 		}
 		
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		
-		MResourceAssignment resourceAssignment = new MResourceAssignment(context, 0, null);
-		resourceAssignment.setAD_Org_ID(Env.getAD_Org_ID(context));
+		MResourceAssignment resourceAssignment = new MResourceAssignment(Env.getCtx(), 0, null);
+		resourceAssignment.setAD_Org_ID(Env.getAD_Org_ID(Env.getCtx()));
 		resourceAssignment.setName(request.getName());
 		resourceAssignment.setDescription(ValueUtil.validateNull(request.getDescription()));
 		resourceAssignment.setAssignDateFrom(new Timestamp(System.currentTimeMillis()));
@@ -246,7 +244,7 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
 	
 	private ListResourcesAssignmentResponse.Builder listResourcesAssignment(ListResourcesAssignmentRequest request) {
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -298,7 +296,6 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
 			whereClause += " AND AssignDateTo = ? ";
 		}
 
-		ContextManager.getContext(request.getClientRequest());
 		Query query =  new Query(
 			Env.getCtx(),
 			MResourceAssignment.Table_Name,
@@ -322,7 +319,7 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
 		builderList.setRecordCount(count);
 		//  Set page token
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//  Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -488,7 +485,7 @@ public class TimeControlServiceImplementation extends TimeControlImplBase {
 			int standardPrecision = uom.getStdPrecision();
 
 			BigDecimal quantity = BigDecimal.valueOf(minutesDiff).setScale(standardPrecision);
-			quantity = quantity.divide(BigDecimal.valueOf(60).setScale(standardPrecision), BigDecimal.ROUND_UP);
+			quantity = quantity.divide(BigDecimal.valueOf(60).setScale(standardPrecision), RoundingMode.UP);
 			
 			resourceAssignment.setQty(quantity);
 			resourceAssignment.saveEx();

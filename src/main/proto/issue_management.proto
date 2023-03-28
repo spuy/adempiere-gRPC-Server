@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.issue_management";
 option java_outer_classname = "ADempiereIssueManagement";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package issue_management;
 
@@ -57,7 +56,6 @@ message RequestType {
 }
 
 message ListRequestTypesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 }
@@ -77,7 +75,6 @@ message SalesRepresentative {
 }
 
 message ListSalesRepresentativesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 }
@@ -98,7 +95,6 @@ message Priority {
 }
 
 message ListPrioritiesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 }
@@ -118,7 +114,6 @@ message Status {
 }
 
 message ListStatusesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	int32 request_type_id = 4;
@@ -160,7 +155,6 @@ message Issue {
 }
 
 message ExistsIssuesRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 record_id = 3;
 	string record_uuid = 4;
@@ -171,7 +165,6 @@ message ExistsIssuesResponse {
 }
 
 message ListIssuesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string table_name = 4;
@@ -186,7 +179,6 @@ message ListIssuesReponse {
 }
 
 message CreateIssueRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 record_id = 3;
 	string record_uuid = 4;
@@ -203,7 +195,6 @@ message CreateIssueRequest {
 }
 
 message UpdateIssueRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string subject = 5;
@@ -219,7 +210,6 @@ message UpdateIssueRequest {
 }
 
 message DeleteIssueRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 }
@@ -246,7 +236,6 @@ message IssueComment {
 }
 
 message ListIssueCommentsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	int32 issue_id = 4;
@@ -260,21 +249,18 @@ message ListIssueCommentsReponse {
 }
 
 message CreateIssueCommentRequest {
-	data.ClientRequest client_request = 1;
 	int32 issue_id = 2;
 	string issue_uuid = 3;
 	string result = 4;
 }
 
 message UpdateIssueCommentRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string result = 4;
 }
 
 message DeleteIssueCommentRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 }

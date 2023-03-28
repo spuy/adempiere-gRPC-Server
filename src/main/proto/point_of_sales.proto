@@ -20,7 +20,6 @@ option java_outer_classname = "ADempierePOS";
 
 import "core_functionality.proto";
 import "base_data_type.proto";
-import "client.proto";
 import "file_management.proto";
 import "time_control.proto";
 
@@ -160,7 +159,6 @@ service Store {
 
 //	Delete Refund reference request
 message DeletePaymentReferenceRequest {
-	ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string pos_uuid = 4;
@@ -168,21 +166,18 @@ message DeletePaymentReferenceRequest {
 
 //	Allocate Seller Request
 message AllocateSellerRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string sales_representative_uuid = 3;
 }
 
 //	Deallocate Seller Request
 message DeallocateSellerRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string sales_representative_uuid = 3;
 }
 
 //	List allocated sellers for POS
 message ListAvailableSellersRequest {
-	ClientRequest client_request = 1;
 	bool is_only_allocated = 2;
 	string pos_uuid = 3;
 	int32 page_size = 4;
@@ -210,7 +205,6 @@ message AvailableSeller {
 
 //	Refund reference request
 message CreatePaymentReferenceRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string sales_representative_uuid = 3;
 	string description = 4;
@@ -253,7 +247,6 @@ message PaymentReference {
 
 //	List Refund Reference Request
 message ListPaymentReferencesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string customer_uuid = 3;
 	string order_uuid = 4;
@@ -280,7 +273,6 @@ message PaymentSummary {
 
 //	List Cash Movements Request
 message ListCashMovementsRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string business_partner_uuid = 3;
 	bool is_only_processed = 4;
@@ -299,7 +291,6 @@ message ListCashMovementsResponse {
 
 //	List Cash Summary Movements Request
 message ListCashSummaryMovementsRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	bool is_only_processed = 3;
 	bool is_only_refund = 4;
@@ -318,7 +309,6 @@ message ListCashSummaryMovementsResponse {
 
 //	Cash closing
 message CashClosing {
-	ClientRequest client_request = 1;
 	string uuid = 2;
 	int32 id = 3;
 	string document_no = 4;
@@ -329,7 +319,6 @@ message CashClosing {
 
 //	Request for create cash closing
 message CashClosingRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -339,7 +328,6 @@ message CashClosingRequest {
 
 //	Request for create cash withdrawal
 message CashWithdrawalRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string collecting_agent_uuid = 3;
 	string description = 4;
@@ -348,7 +336,6 @@ message CashWithdrawalRequest {
 
 //	Request for create cash opening
 message CashOpeningRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string collecting_agent_uuid = 3;
 	string description = 4;
@@ -357,7 +344,6 @@ message CashOpeningRequest {
 
 // Request for create a Shipment from Order
 message CreateShipmentRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string sales_representative_uuid = 3;
 	string pos_uuid = 4;
@@ -366,28 +352,24 @@ message CreateShipmentRequest {
 
 // Request for create a Shipment from Order
 message GetOpenShipmentRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for delete a Shipment
 message DeleteShipmentRequest {
-	ClientRequest client_request = 1;
 	string shipment_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for delete a Shipment Line
 message DeleteShipmentLineRequest {
-	ClientRequest client_request = 1;
 	string shipment_line_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for delete a Shipment Line
 message UpdateShipmentLineRequest {
-	ClientRequest client_request = 1;
 	string shipment_line_uuid = 2;
 	string description = 5;
 	Decimal quantity = 6;
@@ -396,7 +378,6 @@ message UpdateShipmentLineRequest {
 
 // Request for Create a Shipment Line
 message CreateShipmentLineRequest {
-	ClientRequest client_request = 1;
 	string shipment_uuid = 2;
 	string order_line_uuid = 3;
 	string description = 5;
@@ -406,7 +387,6 @@ message CreateShipmentLineRequest {
 
 //	List Shipment Lines Request
 message ListShipmentLinesRequest {
-	ClientRequest client_request = 1;
 	string shipment_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -435,7 +415,6 @@ message Shipment {
 
 // Request for Process a Shipment
 message ProcessShipmentRequest {
-	ClientRequest client_request = 1;
 	string shipment_uuid = 2;
 	string description = 3;
 	string document_action = 4;
@@ -444,7 +423,6 @@ message ProcessShipmentRequest {
 
 // Request for Reverse a Sales Transaction
 message ReverseSalesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string order_uuid = 3;
 	string description = 4;
@@ -464,7 +442,6 @@ message ShipmentLine {
 
 //	List Customer Accounts Request
 message ListCustomerBankAccountsRequest {
-	ClientRequest client_request = 1;
 	string customer_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -480,7 +457,6 @@ message ListCustomerBankAccountsResponse {
 
 //	Create Customer Account
 message CreateCustomerBankAccountRequest {
-	ClientRequest client_request = 1;
 	string customer_uuid = 2;
 	string pos_uuid = 3;
 	string city = 4;
@@ -505,7 +481,6 @@ message CreateCustomerBankAccountRequest {
 
 //	Update Customer Account
 message UpdateCustomerBankAccountRequest {
-	ClientRequest client_request = 1;
 	string customer_bank_account_uuid = 2;
 	string city = 3;
 	string country = 4;
@@ -530,14 +505,12 @@ message UpdateCustomerBankAccountRequest {
 
 //	Delete Customer Account
 message DeleteCustomerBankAccountRequest {
-	ClientRequest client_request = 1;
 	string customer_bank_account_uuid = 2;
 	string pos_uuid = 3;
 }
 
 //	Get Customer Account
 message GetCustomerBankAccountRequest {
-	ClientRequest client_request = 1;
 	string customer_bank_account_uuid = 2;
 	string pos_uuid = 3;
 }
@@ -569,7 +542,6 @@ message CustomerBankAccount {
 
 //	Print Ticket
 message PrintTicketRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string order_uuid = 3;
 }
@@ -581,7 +553,6 @@ message PrintTicketResponse {
 
 //	Print Preview Ticket
 message PrintPreviewRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string order_uuid = 3;
 	string report_type = 4;
@@ -595,7 +566,6 @@ message PrintPreviewResponse {
 
 //	Print Preview Ticket for Shipment
 message PrintShipmentPreviewRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string shipment_uuid = 3;
 	string report_type = 4;
@@ -609,7 +579,6 @@ message PrintShipmentPreviewResponse {
 
 //	Request Daily Refund
 message GetAvailableRefundRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string date = 3;
 }
@@ -654,7 +623,6 @@ message AddressRequest {
 
 // Request for create Customer
 message CreateCustomerRequest {
-	ClientRequest client_request = 1;
 	string value = 2;
 	string tax_id = 3;
 	string duns = 4;
@@ -671,7 +639,6 @@ message CreateCustomerRequest {
 
 // Request for update Customer
 message UpdateCustomerRequest {
-	ClientRequest client_request = 1;
 	string uuid = 2;
 	string value = 3;
 	string tax_id = 4;
@@ -688,7 +655,6 @@ message UpdateCustomerRequest {
 
 // Request Get a Customer
 message GetCustomerRequest {
-	ClientRequest client_request = 1;
 	string search_value = 2;
 	string value = 3;
 	string name = 4;
@@ -794,7 +760,6 @@ message PaymentMethod {
 
 //	List discount schema for POS
 message ListAvailableDiscountsRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -836,7 +801,6 @@ message AvailablePriceList {
 
 //	List warehouses for POS
 message ListAvailableWarehousesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -844,7 +808,6 @@ message ListAvailableWarehousesRequest {
 
 //	List document types for POS
 message ListAvailableDocumentTypesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -859,7 +822,6 @@ message ListAvailableWarehousesResponse {
 
 //	List payment type for POS
 message ListAvailablePaymentMethodsRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -881,7 +843,6 @@ message ListAvailableDocumentTypesResponse {
 
 //	List price list for POS
 message ListAvailablePriceListRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -896,7 +857,6 @@ message ListAvailablePriceListResponse {
 
 //	List warehouses for POS
 message ListAvailableCurrenciesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -932,7 +892,6 @@ message ListOrdersResponse {
 
 // List Orders Request
 message ListOrdersRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string document_no = 3;
 	string business_partner_uuid = 4;
@@ -961,7 +920,6 @@ message ListOrderLinesResponse {
 
 // List Orders Request
 message ListOrderLinesRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -970,7 +928,6 @@ message ListOrderLinesRequest {
 
 // List Product Price Request
 message ListProductPriceRequest {
-	ClientRequest client_request = 1;
 	string search_value = 2;
 	string business_partner_uuid = 3;
 	string valid_from = 4;
@@ -985,7 +942,6 @@ message ListProductPriceRequest {
 
 // POS from user uuid
 message ListPointOfSalesRequest {
-	ClientRequest client_request = 1;
 	string user_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;
@@ -994,7 +950,6 @@ message ListPointOfSalesRequest {
 
 // Point of Sales request
 message PointOfSalesRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 }
 
@@ -1054,7 +1009,6 @@ message PointOfSales {
 
 // Request for create a order
 message CreateOrderRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string customer_uuid = 3;
 	string document_type_uuid = 4;
@@ -1066,7 +1020,6 @@ message CreateOrderRequest {
 
 // Request for release a order
 message ReleaseOrderRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string sales_representative_uuid = 3;
 	string order_uuid = 4;
@@ -1074,7 +1027,6 @@ message ReleaseOrderRequest {
 
 // Request for hold a order
 message HoldOrderRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string sales_representative_uuid = 3;
 	string order_uuid = 4;
@@ -1082,7 +1034,6 @@ message HoldOrderRequest {
 
 // Request for process a order
 message ProcessOrderRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string order_uuid = 3;
 	bool create_payments = 4;
@@ -1092,7 +1043,6 @@ message ProcessOrderRequest {
 
 //	Create Payment
 message CreatePaymentRequest {
-	ClientRequest client_request = 1;
 	string uuid = 2;
 	int32 id = 3;
 	string pos_uuid = 4;
@@ -1115,7 +1065,6 @@ message CreatePaymentRequest {
 
 //	Update Payment
 message UpdatePaymentRequest {
-	ClientRequest client_request = 1;
 	string payment_uuid = 2;
 	string bank_uuid = 3;
 	string reference_no = 4;
@@ -1131,14 +1080,12 @@ message UpdatePaymentRequest {
 
 // Request for delete a payment
 message DeletePaymentRequest {
-	ClientRequest client_request = 1;
 	string payment_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // List Payments Request
 message ListPaymentsRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string order_uuid = 3;
 	bool is_only_refund = 4;
@@ -1151,7 +1098,6 @@ message ListPaymentsRequest {
 
 // Validate PIN Request
 message ValidatePINRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	string pin = 3;
 	string requested_access = 4;
@@ -1197,21 +1143,18 @@ message Payment {
 
 // Request for delete a order
 message DeleteOrderRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for delete a order
 message DeleteOrderLineRequest {
-	ClientRequest client_request = 1;
 	string order_line_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for create a order line
 message CreateOrderLineRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string product_uuid = 3;
 	string charge_uuid = 4;
@@ -1226,7 +1169,6 @@ message CreateOrderLineRequest {
 
 // Request for update a order
 message UpdateOrderRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string pos_uuid = 3;
 	string customer_uuid = 4;
@@ -1243,7 +1185,6 @@ message UpdateOrderRequest {
 
 // Request for update a order line
 message UpdateOrderLineRequest {
-	ClientRequest client_request = 1;
 	string order_line_uuid = 2;
 	string description = 3;
 	Decimal quantity = 4;
@@ -1257,14 +1198,12 @@ message UpdateOrderLineRequest {
 
 // Request for get a order
 message GetOrderRequest {
-	ClientRequest client_request = 1;
 	string order_uuid = 2;
 	string pos_uuid = 3;
 }
 
 // Request for get a key layout
 message GetKeyLayoutRequest {
-	ClientRequest client_request = 1;
 	string key_layout_uuid = 2;
 	string pos_uuid = 3;
 }
@@ -1336,7 +1275,6 @@ message OrderLine {
 
 // Request Product Price
 message GetProductPriceRequest {
-	ClientRequest client_request = 1;
 	string search_value = 2;
 	string upc = 3;
 	string value = 4;
@@ -1410,7 +1348,6 @@ message Stock {
 }
 
 message ListStocksRequest {
-	ClientRequest client_request = 1;
 	string sku = 2;
 	string value = 3;
 	int32 page_size = 4;
@@ -1427,7 +1364,6 @@ message ListStocksResponse {
 
 //	List Cash Register for POS
 message ListAvailableCashRequest {
-	ClientRequest client_request = 1;
 	string pos_uuid = 2;
 	int32 page_size = 3;
 	string page_token = 4;

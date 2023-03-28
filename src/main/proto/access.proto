@@ -26,25 +26,27 @@ service Security {
   rpc RunLogin(LoginRequest) returns (Session) {}
   // Request a Role from uuid
   rpc RunLogout(LogoutRequest) returns (Session) {}
-  // Request user roles from Session
+  // Request user roles from SessionInfo
   rpc GetUserInfo(UserInfoRequest) returns (UserInfo) {}
   // Request Menu from Parent UUID
   rpc GetMenu(MenuRequest) returns (Menu) {}
   // Request change role
-  rpc RunChangeRole(ChangeRoleRequest) returns (Session) {}
+  rpc RunChangeRole(ChangeRoleRequest) returns (SessionInfo) {}
   // Request session
-  rpc GetSession(SessionRequest) returns (Session) {}
+  rpc GetSessionInfo(SessionInfoRequest) returns (SessionInfo) {}
   // List Roles
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {}
 }
 
+//	Token after session
+message Session {
+	string token = 1;
+}
+
 // Translations Request
 message ListRolesRequest {
-	string session_uuid = 1;
-	string language = 2;
-	string client_version = 3;
-	int32 page_size = 4;
-	string page_token = 5;
+	int32 page_size = 1;
+	string page_token = 2;
 }
 
 //	Roles List
@@ -54,7 +56,7 @@ message ListRolesResponse {
 	string next_page_token = 3;
 }
 
-// Request a Login Session
+// Request a Login SessionInfo
 message LoginRequest {
 	string user_name = 1;
 	string user_pass = 2;
@@ -68,40 +70,30 @@ message LoginRequest {
 
 // Request a Logout
 message LogoutRequest {
-	string session_uuid = 1;
-	string language = 2;
-	string client_version = 3;
+	
 }
 
-// Request a Session
-message SessionRequest {
-	string session_uuid = 1;
-	string language = 2;
-	string client_version = 3;
+// Request a SessionInfo
+message SessionInfoRequest {
+	
 }
 
 // Request a Change Role
 message ChangeRoleRequest {
-	string session_uuid = 1;
-	string role_uuid = 2;
-	string organization_uuid = 3;
-	string warehouse_uuid = 4;
-	string language = 5;
-	string client_version = 6;
+	string role_uuid = 1;
+	string organization_uuid = 2;
+	string warehouse_uuid = 3;
+	string language = 4;
 }
 
 // Request User Info
 message UserInfoRequest {
-	string session_uuid = 1;
-	string language = 2;
-	string client_version = 3;
+	
 }
 
 // Request Menu
 message MenuRequest {
-	string session_uuid = 1;
-	string language = 2;
-	string client_version = 3;
+	
 }
 
 // User information
@@ -116,8 +108,8 @@ message UserInfo {
 }
 
 
-// Session
-message Session {
+// SessionInfo
+message SessionInfo {
 	int32 id = 1;
 	string uuid = 2;
 	string name = 3;

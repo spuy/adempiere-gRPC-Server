@@ -26,15 +26,22 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.adempiere.exceptions.AdempiereException;
+import org.adempiere.core.domains.models.I_AD_AttachmentReference;
 import org.adempiere.core.domains.models.I_AD_User;
 import org.adempiere.core.domains.models.I_C_City;
 import org.adempiere.core.domains.models.I_C_Order;
+import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.adempiere.core.domains.models.I_C_Region;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Storage;
 import org.adempiere.core.domains.models.I_W_Basket;
+import org.adempiere.core.domains.models.I_W_DeliveryViaRuleAllocation;
 import org.adempiere.core.domains.models.I_W_Store;
+import org.adempiere.core.domains.models.X_C_Bank;
+import org.adempiere.core.domains.models.X_C_Payment;
+import org.adempiere.core.domains.models.X_W_Basket;
+import org.adempiere.core.domains.models.X_W_BasketLine;
+import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MBPartner;
 import org.compiere.model.MBPartnerLocation;
 import org.compiere.model.MBank;
@@ -69,10 +76,6 @@ import org.compiere.model.MUser;
 import org.compiere.model.MUserMail;
 import org.compiere.model.MWarehouse;
 import org.compiere.model.Query;
-import org.adempiere.core.domains.models.X_C_Bank;
-import org.adempiere.core.domains.models.X_C_Payment;
-import org.adempiere.core.domains.models.X_W_Basket;
-import org.adempiere.core.domains.models.X_W_BasketLine;
 import org.compiere.util.CCache;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
@@ -87,10 +90,6 @@ import org.compiere.util.Util;
 import org.eevolution.freight.engine.FreightEngine;
 import org.eevolution.freight.engine.FreightEngineFactory;
 import org.eevolution.freight.engine.FreightInfo;
-import org.spin.base.util.ContextManager;
-import org.spin.base.util.DocumentUtil;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.store.Address;
 import org.spin.backend.grpc.store.AddressRequest;
 import org.spin.backend.grpc.store.Attribute;
@@ -146,17 +145,18 @@ import org.spin.backend.grpc.store.TotalSegment;
 import org.spin.backend.grpc.store.UpdateCartRequest;
 import org.spin.backend.grpc.store.UpdateCustomerRequest;
 import org.spin.backend.grpc.store.WebStoreGrpc.WebStoreImplBase;
-import org.adempiere.core.domains.models.I_AD_AttachmentReference;
+import org.spin.base.util.DocumentUtil;
+import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
 import org.spin.model.MADAttachmentReference;
 import org.spin.model.MADToken;
 import org.spin.model.MADTokenDefinition;
-import org.adempiere.core.domains.models.I_C_PaymentMethod;
-import org.adempiere.core.domains.models.I_W_DeliveryViaRuleAllocation;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.model.MWDeliveryViaRuleAllocation;
+import org.spin.store.util.VueStoreFrontUtil;
 import org.spin.util.AttachmentUtil;
 import org.spin.util.TokenGeneratorHandler;
-import org.spin.store.util.VueStoreFrontUtil;
 
 import com.google.protobuf.ByteString;
 
@@ -184,10 +184,6 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getEmail());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Customer.Builder customer = createCustomer(request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
@@ -207,10 +203,6 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getEmail());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ResetPasswordResponse.Builder resetPasswordResponse = resetPassword(request);
 			responseObserver.onNext(resetPasswordResponse.build());
 			responseObserver.onCompleted();
@@ -229,11 +221,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ChangePasswordResponse.Builder changePasswordResponse = changePassword(request);
 			responseObserver.onNext(changePasswordResponse.build());
 			responseObserver.onCompleted();
@@ -252,11 +240,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Customer.Builder customer = getCustomerInfo(request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
@@ -275,11 +259,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Stock.Builder stock = getStockFromSku(request);
 			responseObserver.onNext(stock.build());
 			responseObserver.onCompleted();
@@ -298,11 +278,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListStocksResponse.Builder stocks = listStocks(request);
 			responseObserver.onNext(stocks.build());
 			responseObserver.onCompleted();
@@ -321,11 +297,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListProductsResponse.Builder products = listProducts(request);
 			responseObserver.onNext(products.build());
 			responseObserver.onCompleted();
@@ -344,11 +316,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListRenderProductsResponse.Builder products = listRenderProducts(request);
 			responseObserver.onNext(products.build());
 			responseObserver.onCompleted();
@@ -367,11 +335,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Trx.run(transactionName -> {
 				Cart.Builder cart = convertCart(createCart(request.getIsGuest(), transactionName), transactionName);
 				responseObserver.onNext(cart.build());
@@ -392,11 +356,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Trx.run(transactionName -> {
 				Cart.Builder cart = convertCart(getCart(request.getCartId(), request.getCartUuid(), request.getIsGuest(), 0, transactionName), transactionName);
 				responseObserver.onNext(cart.build());
@@ -417,11 +377,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			CartItem.Builder cartItem = convertCartItem(updateCart(request));
 			responseObserver.onNext(cartItem.build());
 			responseObserver.onCompleted();
@@ -440,11 +396,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListPaymentMethodsResponse.Builder products = listPaymentMethods(request);
 			responseObserver.onNext(products.build());
 			responseObserver.onCompleted();
@@ -463,11 +415,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListShippingMethodsResponse.Builder freughtRules = listShippingMethods(request);
 			responseObserver.onNext(freughtRules.build());
 			responseObserver.onCompleted();
@@ -486,11 +434,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ShippingInformation.Builder shippingInformation = getShippingInformation(request);
 			responseObserver.onNext(shippingInformation.build());
 			responseObserver.onCompleted();
@@ -510,11 +454,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			CartTotals.Builder cartInformation = getCartTotals(request);
 			responseObserver.onNext(cartInformation.build());
 			responseObserver.onCompleted();
@@ -533,11 +473,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Empty.Builder deleteConfirmation = deleteCartItem(request);
 			responseObserver.onNext(deleteConfirmation.build());
 			responseObserver.onCompleted();
@@ -557,10 +493,6 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getEmail());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Customer.Builder customer = updateCustomer(request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
@@ -582,11 +514,6 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Download Requested = " + request.getResourceUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Get resource
 			getResource(request.getResourceUuid(), request.getResourceName(), responseObserver);
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
@@ -603,11 +530,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			Trx.run(transactionName -> {
 				Order.Builder orderBuilder = createOrder(request, transactionName);
 				responseObserver.onNext(orderBuilder.build());
@@ -628,11 +551,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
 			ListOrdersResponse.Builder orders = listOrders(request);
 			responseObserver.onNext(orders.build());
 			responseObserver.onCompleted();
@@ -1351,7 +1270,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 	private ListOrdersResponse.Builder listOrders(ListOrdersRequest request) {
 		ListOrdersResponse.Builder builder = ListOrdersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Get Orders list
@@ -1371,7 +1290,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1396,7 +1315,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		int locationToId = getLocationToId(request, store);
 		//	Validate Price List
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		StringBuffer whereClause = new StringBuffer(I_M_Product.COLUMNNAME_SKU + " IN(");
@@ -1414,7 +1333,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1572,7 +1491,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		}
 		//	Validate Price List
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(Env.getCtx(), I_C_PaymentMethod.Table_Name, "EXISTS(SELECT 1 FROM C_PaymentMethodAllocation a "
@@ -1592,7 +1511,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2047,7 +1966,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 	private Customer.Builder getCustomerInfo(GetCustomerRequest request) {
 		AtomicReference<Customer.Builder> builder = new AtomicReference<Customer.Builder>(Customer.newBuilder());
 		//	EMail
-		if(Util.isEmpty(request.getClientRequest().getSessionUuid())) {
+		if(Util.isEmpty(SessionManager.getSessionUuid())) {
 			throw new AdempiereException("@AD_Session_ID@ @IsMandatory@");
 		}
 		//	
@@ -2150,7 +2069,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 	 */
 	private ChangePasswordResponse.Builder changePassword(ChangePasswordRequest request) {
 		//	User Name
-		if(Util.isEmpty(request.getClientRequest().getSessionUuid())) {
+		if(Util.isEmpty(SessionManager.getSessionUuid())) {
 			throw new AdempiereException("@UserName@ / @EMail@ @IsMandatory@");
 		}
 		ChangePasswordResponse.Builder builder = ChangePasswordResponse.newBuilder();
@@ -2314,7 +2233,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		//	Get Valid From
 		Timestamp validFrom = TimeUtil.getDay(System.currentTimeMillis());
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		StringBuffer whereClause = new StringBuffer(I_M_Product.COLUMNNAME_SKU + " IN(");
@@ -2344,7 +2263,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2372,7 +2291,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		//	Get Valid From
 		Timestamp validFrom = TimeUtil.getDay(System.currentTimeMillis());
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		StringBuffer whereClause = new StringBuffer(I_M_Product.COLUMNNAME_SKU + " IN(");
@@ -2400,7 +2319,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2606,7 +2525,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		MProduct product = getProductFromSku(request.getSku());
 		ListStocksResponse.Builder builder = ListStocksResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(Env.getCtx(), I_M_Storage.Table_Name, 
@@ -2621,7 +2540,7 @@ public class WebStoreServiceImplementation extends WebStoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

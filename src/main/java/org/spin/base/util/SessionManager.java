@@ -19,7 +19,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
 
@@ -28,22 +27,32 @@ import org.compiere.model.MAcctSchema;
 import org.compiere.model.MClient;
 import org.compiere.model.MClientInfo;
 import org.compiere.model.MCountry;
+import org.compiere.model.MOrg;
 import org.compiere.model.MRole;
 import org.compiere.model.MSession;
 import org.compiere.model.MUser;
+import org.compiere.model.MWarehouse;
 import org.compiere.model.ModelValidationEngine;
+import org.compiere.util.CCache;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Ini;
+import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
 import org.spin.authentication.BearerToken;
 import org.spin.authentication.Constants;
+import org.spin.base.setup.SetupLoader;
 import org.spin.model.MADToken;
 import org.spin.model.MADTokenDefinition;
 import org.spin.util.IThirdPartyAccessGenerator;
 import org.spin.util.ITokenGenerator;
 import org.spin.util.TokenGeneratorHandler;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtParser;
+import io.jsonwebtoken.Jwts;
 
 /**
  * Class for handle Session for Third Party Access
@@ -51,58 +60,113 @@ import org.spin.util.TokenGeneratorHandler;
  */
 public class SessionManager {
 	
+	/**	Session Context	*/
+	private static CCache<String, Properties> sessionsContext = new CCache<String, Properties>("Session-gRPC-Service", 30, 0);	//	no time-out
 	/**	Logger			*/
 	private static CLogger log = CLogger.getCLogger(SessionManager.class);
+	
+	
+	public static void removeSession(String sessionUuid) {
+		sessionsContext.remove(sessionUuid);
+	}
+	
 	/**
 	 * Load session from token
 	 * @param tokenValue
 	 */
 	public static void createSessionFromToken(String tokenValue) {
-		//	Get Session
-		Properties context = Env.getCtx();
-		//	Validate if is token based
-		int userId = -1;
-		int roleId = -1;
-		int organizationId = -1;
-		int warehouseId = -1;
 		if (tokenValue.startsWith(Constants.BEARER_TYPE)) {
 			tokenValue = BearerToken.getTokenWithoutType(tokenValue);
 		}
-		MADToken token = getSessionFromToken(tokenValue);
-		if(Optional.ofNullable(token).isPresent()) {
-			userId = token.getAD_User_ID();
-			roleId = token.getAD_Role_ID();
-			organizationId = token.getAD_Org_ID();
+		String [] values = tokenValue.split("[.]");
+		//	Is a JWT
+		if(values != null && values.length == 3) {
+			JwtParser parser = Jwts.parserBuilder().setSigningKey(SetupLoader.getInstance().getServer().getSecret_key()).build();
+	        Jws<Claims> claims = parser.parseClaimsJws(tokenValue);
+	        int userId = claims.getBody().get("AD_User_ID", Integer.class);
+			int roleId = claims.getBody().get("AD_Role_ID", Integer.class);
+			int organizationId = claims.getBody().get("AD_Org_ID", Integer.class);
+			int warehouseId = claims.getBody().get("M_Warehouse_ID", Integer.class);
+			String language = claims.getBody().get("AD_Language", String.class);
+	        Properties context = sessionsContext.get(tokenValue);
+			if(context != null
+					&& context.size() > 0) {
+				Env.setContext(context, Env.LANGUAGE, ContextManager.getDefaultLanguage(language));
+				setDefault(context, Env.getAD_Org_ID(context), organizationId, warehouseId);
+				Env.setCtx((Properties) context.clone());
+			} else {
+				context = (Properties) Env.getCtx().clone();
+				DB.validateSupportedUUIDFromDB();
+				//	
+				if(organizationId < 0) {
+					organizationId = 0;
+				}
+				if(warehouseId < 0) {
+					warehouseId = 0;
+				}
+				//	Get Values from role
+				if(roleId < 0) {
+					throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
+				}
+				Env.setContext (context, "#Date", TimeUtil.getDay(System.currentTimeMillis()));
+				Env.setContext(Env.getCtx(), "#AD_Session_ID", Integer.parseInt(claims.getBody().getId()));
+				MRole role = MRole.get(context, roleId);
+				//	Warehouse / Org
+				Env.setContext (context, "#M_Warehouse_ID", warehouseId);
+				Env.setContext(context, "#AD_Client_ID", role.getAD_Client_ID());
+				Env.setContext(context, "#AD_Org_ID", organizationId);
+				//	Role Info
+				Env.setContext(context, "#AD_Role_ID", roleId);
+				//	User Info
+				Env.setContext(context, "#AD_User_ID", userId);
+				//	
+				MSession session = MSession.get(context, false);
+				if(session == null
+						|| session.getAD_Session_ID() <= 0) {
+					throw new AdempiereException("@AD_Session_ID@ @NotFound@");
+				}
+				//	Load preferences
+				loadDefaultSessionValues(context, null);
+				Env.setContext (context, "#AD_Session_ID", session.getAD_Session_ID());
+				Env.setContext (context, "#Session_UUID", session.getUUID());
+				Env.setContext(context, "#AD_User_ID", session.getCreatedBy());
+				Env.setContext(context, "#AD_Role_ID", session.getAD_Role_ID());
+				Env.setContext(context, "#AD_Client_ID", session.getAD_Client_ID());
+				Env.setContext(context, "#Date", new Timestamp(System.currentTimeMillis()));
+				setDefault(context, Env.getAD_Org_ID(context), organizationId, warehouseId);
+				Env.setContext(context, Env.LANGUAGE, ContextManager.getDefaultLanguage(language));
+				//	Save to Cache
+				sessionsContext.put(tokenValue, context);
+				Env.setCtx((Properties) context.clone());	
+			}
+		} else {
+			throw new AdempiereException("@Invalid@ @Token@");
 		}
-		//	
-		if(organizationId < 0) {
-			organizationId = 0;
+	}
+	
+	/**
+	 * Set Default warehouse and organization
+	 * @param context
+	 * @param defaultOrganizationId
+	 * @param newOrganizationId
+	 * @param warehouseId
+	 */
+	private static void setDefault(Properties context, int defaultOrganizationId, int newOrganizationId, int warehouseId) {
+		int organizationId = defaultOrganizationId;
+		if(newOrganizationId >= 0) {
+			MOrg organization = MOrg.get(context, newOrganizationId);
+			//	
+			if(organization != null) {
+				organizationId = organization.getAD_Org_ID();
+			}
 		}
-		if(warehouseId < 0) {
-			warehouseId = 0;
+		if(warehouseId >= 0) {
+			MWarehouse warehouse = MWarehouse.get(context, warehouseId);
+			if(warehouse != null) {
+				Env.setContext(context, "#M_Warehouse_ID", organizationId);
+			}
 		}
-		//	Get Values from role
-		if(roleId < 0) {
-			throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
-		}
-		MRole role = MRole.get(context, roleId);
-		//	Warehouse / Org
-		Env.setContext (context, "#M_Warehouse_ID", warehouseId);
-		Env.setContext (context, "#AD_Session_ID", 0);
-		//  Client Info
-		MClient client = MClient.get(context, role.getAD_Client_ID());
-		Env.setContext(context, "#AD_Client_ID", client.getAD_Client_ID());
 		Env.setContext(context, "#AD_Org_ID", organizationId);
-		//	Role Info
-		Env.setContext(context, "#AD_Role_ID", roleId);
-		//	User Info
-		Env.setContext(context, "#AD_User_ID", userId);
-		//	
-		MSession session = MSession.get(context, true);
-		Env.setContext (context, "#AD_Session_ID", session.getAD_Session_ID());
-		Env.setContext (context, "#Session_UUID", session.getUUID());
-		//	Load preferences
-		loadDefaultSessionValues(context, null);
 	}
 	
 	/**

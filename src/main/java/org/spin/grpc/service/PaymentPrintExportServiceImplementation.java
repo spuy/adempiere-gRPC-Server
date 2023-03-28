@@ -17,7 +17,6 @@ package org.spin.grpc.service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_AD_Ref_List;
 import org.adempiere.core.domains.models.I_C_BankAccount;
@@ -59,19 +58,18 @@ import org.spin.backend.grpc.payment_print_export.ListPaymentsRequest;
 import org.spin.backend.grpc.payment_print_export.ListPaymentsResponse;
 import org.spin.backend.grpc.payment_print_export.Payment;
 import org.spin.backend.grpc.payment_print_export.PaymentPrintExportGrpc.PaymentPrintExportImplBase;
-import org.spin.base.util.ContextManager;
-import org.spin.base.util.ConvertUtil;
-import org.spin.base.util.LookupUtil;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
-
 import org.spin.backend.grpc.payment_print_export.PaymentSelection;
+import org.spin.backend.grpc.payment_print_export.PrintRemittanceRequest;
+import org.spin.backend.grpc.payment_print_export.PrintRemittanceResponse;
 import org.spin.backend.grpc.payment_print_export.PrintRequest;
 import org.spin.backend.grpc.payment_print_export.PrintResponse;
 import org.spin.backend.grpc.payment_print_export.ProcessRequest;
 import org.spin.backend.grpc.payment_print_export.ProcessResponse;
-import org.spin.backend.grpc.payment_print_export.PrintRemittanceRequest;
-import org.spin.backend.grpc.payment_print_export.PrintRemittanceResponse;
+import org.spin.base.util.ConvertUtil;
+import org.spin.base.util.LookupUtil;
+import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -105,7 +103,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 	}
 
 	private PaymentSelection.Builder getPaymentSelection(GetPaymentSelectionRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		// validate key values
 		if(request.getId() == 0 && Util.isEmpty(request.getUuid())) {
 			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
@@ -122,7 +119,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 		}
 
 		MPaySelection paymentSelection = new Query(
-			context,
+			Env.getCtx(),
 			I_C_PaySelection.Table_Name,
 			" C_PaySelection_ID = ? ",
 			null
@@ -226,8 +223,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 	}
 	
 	private ListLookupItemsResponse.Builder listPaymentSelections(ListPaymentSelectionsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		//	Add DocStatus for validation
 		final String validationCode = " C_PaySelection.C_BankAccount_ID IS NOT NULL "
 			+ "AND C_PaySelection.DocStatus = 'CO' "
@@ -238,7 +233,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			+ "		AND (psc.C_Payment_ID IS NULL OR p.DocStatus NOT IN('CO', 'CL'))"
 			+ ")";
 		Query query = new Query(
-			context,
+			Env.getCtx(),
 			I_C_PaySelection.Table_Name,
 			validationCode,
 			null
@@ -299,8 +294,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 	}
 
 	private ListLookupItemsResponse.Builder listPaymentRules(ListPaymentRulesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		int paymentSelectionId = request.getPaymentSelectionId();
 		if (paymentSelectionId <= 0) {
 			if (!Util.isEmpty(request.getPaymentSelectionUuid(), true)) {
@@ -311,7 +304,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			}
 		}
 		MPaySelection paymentSelection = new Query(
-			context,
+			Env.getCtx(),
 			I_C_PaySelection.Table_Name,
 			" C_PaySelection_ID = ? ",
 			null
@@ -375,8 +368,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 	}
 
 	private GetDocumentNoResponse.Builder getDocumentNo(GetDocumentNoRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		// Bank Account
 		int bankAccountId = request.getBankAccountId();
 		if (bankAccountId <= 0) {
@@ -388,7 +379,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			}
 		}
 		MBankAccount bankAccount = new Query(
-			context,
+			Env.getCtx(),
 			I_C_BankAccount.Table_Name,
 			" C_BankAccount_ID = ? ",
 			null
@@ -410,7 +401,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			}
 		}
 		MRefList paymentRule = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_Ref_List.Table_Name,
 			" AD_Ref_List_ID = ? ",
 			null
@@ -509,8 +500,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 	}
 
 	private ListPaymentsResponse.Builder listPayments(ListPaymentsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		// validate payment selection
 		int paymentSelectionId = request.getPaymentSelectionId();
 		if (paymentSelectionId <= 0) {
@@ -522,7 +511,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			}
 		}
 		MPaySelection paymentSelection = new Query(
-			context,
+			Env.getCtx(),
 			I_C_PaySelection.Table_Name,
 			" C_PaySelection_ID = ? ",
 			null
@@ -544,7 +533,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 			}
 		}
 		MRefList paymentRule = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_Ref_List.Table_Name,
 			" AD_Ref_List_ID = ? ",
 			null
@@ -556,7 +545,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 		}
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -591,7 +580,7 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 		builderList.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(
 			ValueUtil.validateNull(nexPageToken)
@@ -622,8 +611,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 
 	// TODO: To Be Defined
 	private ProcessResponse.Builder process(ProcessRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		return ProcessResponse.newBuilder();
 	}
 
@@ -649,8 +636,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 
 	// TODO: To Be Defined
 	private ExportResponse.Builder export(ExportRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		return ExportResponse.newBuilder();
 	}
 
@@ -676,8 +661,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 
 	// TODO: To Be Defined
 	private PrintResponse.Builder print(PrintRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		return PrintResponse.newBuilder();
 	}
 
@@ -703,8 +686,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 
 	// TODO: To Be Defined
 	private ConfirmPrintResponse.Builder print(ConfirmPrintRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		return ConfirmPrintResponse.newBuilder();
 	}
 
@@ -730,8 +711,6 @@ public class PaymentPrintExportServiceImplementation extends PaymentPrintExportI
 
 	// TODO: To Be Defined
 	private PrintRemittanceResponse.Builder printRemittance(PrintRemittanceRequest request) {
-		ContextManager.getContext(request.getClientRequest());
-
 		return PrintRemittanceResponse.newBuilder();
 	}
 

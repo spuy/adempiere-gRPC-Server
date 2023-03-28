@@ -19,7 +19,6 @@ option java_package = "org.spin.backend.grpc.dashboarding";
 option java_outer_classname = "ADempiereDashboarding";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package dashboarding;
 
@@ -58,7 +57,6 @@ message Dashboard {
 
 // Dashboards Request
 message ListDashboardsRequest {
-	data.ClientRequest client_request = 1;
 	string role_uuid = 2;
 	int32 role_id = 3;
 	int32 page_size = 4;
@@ -74,7 +72,6 @@ message ListDashboardsResponse {
 
 // Favorites Items Request
 message ListFavoritesRequest {
-	data.ClientRequest client_request = 1;
 	string user_uuid = 2;
 	int32 user_id = 3;
 	int32 page_size = 4;
@@ -99,7 +96,6 @@ message ListFavoritesResponse {
 
 // Document Statuses Request
 message ListPendingDocumentsRequest {
-	data.ClientRequest client_request = 1;
 	string user_uuid = 2;
 	int32 user_id = 3;
 	string role_uuid = 4;
@@ -129,7 +125,6 @@ message PendingDocument {
 
 // Chart Request
 message GetChartRequest {
-	data.ClientRequest client_request = 1;
 	string uuid = 2;
 	int32 id = 3;
 }
@@ -184,7 +179,6 @@ message Notification {
 }
 
 message ListNotificationsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;

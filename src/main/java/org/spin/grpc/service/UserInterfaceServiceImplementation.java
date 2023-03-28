@@ -130,6 +130,7 @@ import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ReferenceUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.common.ChatEntry;
 import org.spin.backend.grpc.common.Condition.Operator;
@@ -232,10 +233,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Rollback Requested = " + request.getId());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Entity.Builder entityValue = rollbackLastEntityAction(request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
@@ -255,10 +252,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Lookup Requested = " + request.getUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			LookupItem.Builder lookupValue = convertLookupItem(request);
 			responseObserver.onNext(lookupValue.build());
 			responseObserver.onCompleted();
@@ -318,11 +311,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				throw new AdempiereException("Requested is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			Properties context = ContextManager.getContext(
-				request.getClientRequest()
-			);
-
-			Entity.Builder entityValue = updateBrowserEntity(context, request);
+			Entity.Builder entityValue = updateBrowserEntity(Env.getCtx(), request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -336,12 +325,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 	/**
 	 * Update Browser Entity
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
 	private Entity.Builder updateBrowserEntity(Properties context, UpdateBrowserEntityRequest request) {
-		MBrowse browser = ASPUtil.getInstance(context).getBrowse(RecordUtil.getIdFromUuid(I_AD_Browse.Table_Name, request.getUuid(), null));
+		MBrowse browser = ASPUtil.getInstance(Env.getCtx()).getBrowse(RecordUtil.getIdFromUuid(I_AD_Browse.Table_Name, request.getUuid(), null));
 
 		if (!browser.isUpdateable()) {
 			throw new AdempiereException("Smart Browser not updateable record");
@@ -351,13 +340,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("No Table defined in the Smart Browser");
 		}
 
-		PO entity = RecordUtil.getEntity(context, browser.getAD_Table_ID(), null, request.getRecordId(), null);
+		PO entity = RecordUtil.getEntity(Env.getCtx(), browser.getAD_Table_ID(), null, request.getRecordId(), null);
 		if (entity == null || entity.get_ID() <= 0) {
 			// Return
 			return ConvertUtil.convertEntity(entity);
 		}
 
-		MView view = new MView(context, browser.getAD_View_ID());
+		MView view = new MView(Env.getCtx(), browser.getAD_View_ID());
 		List<MViewColumn> viewColumnsList = view.getViewColumns();
 
 		request.getAttributesList().forEach(attribute -> {
@@ -374,13 +363,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if (viewColumn == null) {
 				return;
 			}
-			MViewDefinition viewDefinition = MViewDefinition.get(context, viewColumn.getAD_View_Definition_ID());
+			MViewDefinition viewDefinition = MViewDefinition.get(Env.getCtx(), viewColumn.getAD_View_Definition_ID());
 
 			// not same table setting in smart browser and view definition
 			if (browser.getAD_Table_ID() != viewDefinition.getAD_Table_ID()) {
 				return;
 			}
-			String columnName = MColumn.getColumnName(context, viewColumn.getAD_Column_ID());
+			String columnName = MColumn.getColumnName(Env.getCtx(), viewColumn.getAD_Column_ID());
 
 			int referenceId = DictionaryServiceImplementation.getReferenceId(entity.get_Table_ID(), columnName);
 
@@ -421,12 +410,11 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 	/**
 	 * Convert references to gRPC
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
 	private ListReferencesResponse.Builder listReferences(ListReferencesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		ListReferencesResponse.Builder builder = ListReferencesResponse.newBuilder();
 		//	Get entity
 		if (request.getId() <= 0 && Util.isEmpty(request.getUuid())) {
@@ -436,7 +424,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if(Util.isEmpty(request.getTableName())) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
-		MTable table = MTable.get(context, request.getTableName());
+		MTable table = MTable.get(Env.getCtx(), request.getTableName());
 		if (table == null || table.getAD_Table_ID() < 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -457,7 +445,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@Record_ID@ @NotFound@");
 		}
 		PO entity = new Query(
-			context,
+			Env.getCtx(),
 			table.getTableName(),
 			whereClause.toString(),
 			null
@@ -469,7 +457,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 
 		MWindow window = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_Window.Table_Name,
 			I_AD_Window.COLUMNNAME_UUID + " = ?",
 			null
@@ -490,7 +478,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				//
 				RecordReferenceInfo.Builder recordReferenceBuilder = RecordReferenceInfo.newBuilder();
 
-				MWindow referenceWindow = MWindow.get(context, zoomInfo.windowId);
+				MWindow referenceWindow = MWindow.get(Env.getCtx(), zoomInfo.windowId);
 				MTab tab = Arrays.stream(referenceWindow.getTabs(false, null))
 					.filter(tabItem -> {
 						return zoomQuery.getZoomTableName().equals(tabItem.getAD_Table().getTableName());
@@ -549,13 +537,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 
 	private ExistsReferencesResponse.Builder existsReferences(ExistsReferencesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		// validate tab
 		if (request.getTabId() <= 0 && Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@AD_Tab_ID@ @Mandatory@");
 		}
-		MTab tab = (MTab) RecordUtil.getEntity(context, I_AD_Tab.Table_Name, request.getTabUuid(), request.getTabId(), null);
+		MTab tab = (MTab) RecordUtil.getEntity(Env.getCtx(), I_AD_Tab.Table_Name, request.getTabUuid(), request.getTabId(), null);
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
@@ -563,7 +551,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		// builder
 		ExistsReferencesResponse.Builder builder = ExistsReferencesResponse.newBuilder();
 
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 		// validate multiple keys as accounting tables and translation tables
 		if (!table.isSingleKey()) {
 			return builder;
@@ -573,7 +561,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if(request.getRecordId() <= 0 && Util.isEmpty(request.getRecordUuid())) {
 			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 		}
-		PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
+		PO entity = RecordUtil.getEntity(Env.getCtx(), table.getTableName(), request.getRecordUuid(), request.getRecordId(), null);
 		// if (entity == null) {
 		// 	throw new AdempiereException("@Record_ID@ @NotFound@");
 		// }
@@ -602,7 +590,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest());
 			DefaultValue.Builder defaultValue = getInfoFromDefaultValueRequest(request);
 			responseObserver.onNext(defaultValue.build());
 			responseObserver.onCompleted();
@@ -636,10 +623,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				recordId = RecordUtil.getIdFromUuid(request.getTableName(), request.getUuid(), null);
 			}
 
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-
-			MUser user = MUser.get(context);
-			PrivateAccess.Builder privateaccess = lockUnlockPrivateAccess(context, request.getTableName(), recordId, user.getAD_User_ID(), true, null);
+			MUser user = MUser.get(Env.getCtx());
+			PrivateAccess.Builder privateaccess = lockUnlockPrivateAccess(Env.getCtx(), request.getTableName(), recordId, user.getAD_User_ID(), true, null);
 			responseObserver.onNext(privateaccess.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -671,11 +656,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if (recordId <= 0) {
 				recordId = RecordUtil.getIdFromUuid(request.getTableName(), request.getUuid(), null);
 			}
-
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-
-			MUser user = MUser.get(context);
-			PrivateAccess.Builder privateaccess = lockUnlockPrivateAccess(context, request.getTableName(), recordId, user.getAD_User_ID(), false, null);
+			MUser user = MUser.get(Env.getCtx());
+			PrivateAccess.Builder privateaccess = lockUnlockPrivateAccess(Env.getCtx(), request.getTableName(), recordId, user.getAD_User_ID(), false, null);
 			responseObserver.onNext(privateaccess.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -702,17 +684,16 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				recordId = RecordUtil.getIdFromUuid(request.getTableName(), request.getUuid(), null);
 			}
 
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			MUser user = MUser.get(context);
-			MPrivateAccess privateAccess = getPrivateAccess(context, request.getTableName(), recordId, user.getAD_User_ID(), null);
+			MUser user = MUser.get(Env.getCtx());
+			MPrivateAccess privateAccess = getPrivateAccess(Env.getCtx(), request.getTableName(), recordId, user.getAD_User_ID(), null);
 			if(privateAccess == null
 					|| privateAccess.getAD_Table_ID() == 0) {
-				MTable table = MTable.get(context, request.getTableName());
+				MTable table = MTable.get(Env.getCtx(), request.getTableName());
 				//	Set values
-				privateAccess = new MPrivateAccess(context, user.getAD_User_ID(), table.getAD_Table_ID(), recordId);
+				privateAccess = new MPrivateAccess(Env.getCtx(), user.getAD_User_ID(), table.getAD_Table_ID(), recordId);
 				privateAccess.setIsActive(false);
 			}
-			PrivateAccess.Builder privateaccess = convertPrivateAccess(context, privateAccess);
+			PrivateAccess.Builder privateaccess = convertPrivateAccess(Env.getCtx(), privateAccess);
 			responseObserver.onNext(privateaccess.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -730,8 +711,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ContextInfoValue.Builder contextInfoValue = convertContextInfoValue(context, request);
+			ContextInfoValue.Builder contextInfoValue = convertContextInfoValue(Env.getCtx(), request);
 			responseObserver.onNext(contextInfoValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -749,8 +729,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListTranslationsResponse.Builder translationsList = convertTranslationsList(context, request);
+			ListTranslationsResponse.Builder translationsList = convertTranslationsList(Env.getCtx(), request);
 			responseObserver.onNext(translationsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -768,8 +747,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListPrintFormatsResponse.Builder printFormatsList = convertPrintFormatsList(context, request);
+			ListPrintFormatsResponse.Builder printFormatsList = convertPrintFormatsList(Env.getCtx(), request);
 			responseObserver.onNext(printFormatsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -787,8 +765,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListReportViewsResponse.Builder reportViewsList = convertReportViewsList(context, request);
+			
+			ListReportViewsResponse.Builder reportViewsList = convertReportViewsList(Env.getCtx(), request);
 			responseObserver.onNext(reportViewsList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -806,10 +784,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListDrillTablesResponse.Builder drillTablesList = convertDrillTablesList(request);
 			responseObserver.onNext(drillTablesList.build());
 			responseObserver.onCompleted();
@@ -828,10 +802,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ReportOutput.Builder reportOutput = getReportOutput(request);
 			responseObserver.onNext(reportOutput.build());
 			responseObserver.onCompleted();
@@ -868,11 +838,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Create Preference
 			MPreference preference = getPreference(request.getTypeValue(), request.getColumnName(), request.getIsForCurrentClient(), request.getIsForCurrentOrganization(), request.getIsForCurrentUser(), request.getIsForCurrentContainer(), request.getContainerUuid());
 			if(preference == null
 					|| preference.getAD_Preference_ID() <= 0) {
@@ -897,11 +862,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Delete Preference
 			Empty.Builder empty = Empty.newBuilder();
 			MPreference preference = getPreference(request.getTypeValue(), request.getColumnName(), request.getIsForCurrentClient(), request.getIsForCurrentOrganization(), request.getIsForCurrentUser(), request.getIsForCurrentContainer(), request.getContainerUuid());
 			if(preference != null
@@ -925,11 +885,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			
 			RecordAccess.Builder recordAccess = convertRecordAccess(request);
 			responseObserver.onNext(recordAccess.build());
 			responseObserver.onCompleted();
@@ -948,11 +903,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			
 			RecordAccess.Builder recordAccess = saveRecordAccess(request);
 			responseObserver.onNext(recordAccess.build());
 			responseObserver.onCompleted();
@@ -989,12 +939,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private Entity.Builder getEntity(GetTabEntityRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 		if (Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 		MTab tab = new Query(
-			context,
+			Env.getCtx(),
 			MTab.Table_Name,
 			MTab.COLUMNNAME_UUID + " = ? ",
 			null
@@ -1004,7 +954,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 		String tableName = table.getTableName();
 
 		String sql = DictionaryUtil.getQueryWithReferencesFromTab(tab);
@@ -1108,22 +1058,22 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private ListEntitiesResponse.Builder listTabEntities(ListTabEntitiesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 		int tabId = RecordUtil.getIdFromUuid(I_AD_Tab.Table_Name, request.getTabUuid(), null);
 		if(tabId <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 		//	
-		MTab tab = MTab.get(context, tabId);
-		String tableName = MTable.getTableName(context, tab.getAD_Table_ID());
+		MTab tab = MTab.get(Env.getCtx(), tabId);
+		String tableName = MTable.getTableName(Env.getCtx(), tab.getAD_Table_ID());
 
-		//	Fill context
+		//	Fill Env.getCtx()
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		// get where clause including link column and parent column
-		String where = DictionaryUtil.getSQLWhereClauseFromTab(context, tab, null);
-		String parsedWhereClause = Env.parseContext(context, windowNo, where, false);
+		String where = DictionaryUtil.getSQLWhereClauseFromTab(Env.getCtx(), tab, null);
+		String parsedWhereClause = Env.parseContext(Env.getCtx(), windowNo, where, false);
 		
 		if(Util.isEmpty(parsedWhereClause)
 				&& !Util.isEmpty(where)) {
@@ -1153,7 +1103,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -1186,12 +1136,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
 		//	Add Order By
 		parsedSQL = parsedSQL + orderByClause;
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1219,14 +1169,14 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 	}
 	private Entity.Builder createTabEntity(CreateTabEntityRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		if (Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
 		MTab tab = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_Tab.Table_Name,
 			"UUID = ?",
 			null
@@ -1236,7 +1186,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 		PO entity = table.getPO(0, null);
 		if (entity == null) {
 			throw new AdempiereException("@Error@ PO is null");
@@ -1257,7 +1207,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 
 		GetTabEntityRequest.Builder getEntityBuilder = GetTabEntityRequest.newBuilder()
-			.setClientRequest(request.getClientRequest())
 			.setTabUuid(request.getTabUuid())
 			.setId(entity.get_ID())
 			.setUuid(entity.get_UUID())
@@ -1287,14 +1236,14 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 	}
 	private Entity.Builder updateTabEntity(UpdateTabEntityRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		if (Util.isEmpty(request.getTabUuid(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
 		MTab tab = new Query(
-			context,
+			Env.getCtx(),
 			I_AD_Tab.Table_Name,
 			"UUID = ?",
 			null
@@ -1304,8 +1253,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
-		PO entity = RecordUtil.getEntity(context, table.getTableName(), request.getUuid(), request.getId(), null);
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
+		PO entity = RecordUtil.getEntity(Env.getCtx(), table.getTableName(), request.getUuid(), request.getId(), null);
 		if (entity == null) {
 			throw new AdempiereException("@Error@ @PO@ @NotFound@");
 		}
@@ -1326,7 +1275,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 
 		GetTabEntityRequest.Builder getEntityBuilder = GetTabEntityRequest.newBuilder()
-			.setClientRequest(request.getClientRequest())
 			.setTabUuid(request.getTabUuid())
 			.setId(entity.get_ID())
 			.setUuid(entity.get_UUID())
@@ -1369,8 +1317,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
 
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		MTable table = MTable.get(context, tableName);
+		
+		MTable table = MTable.get(Env.getCtx(), tableName);
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -1386,13 +1334,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		);
 
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		//
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
 
 		// add where with access restriction
-		String sqlWithRoleAccess = MRole.getDefault(context, false)
+		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				sql.toString(),
 				null,
@@ -1404,7 +1352,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 		// validation code of field
 		String validationCode = DictionaryUtil.getValidationCodeWithAlias(tableName, reference.ValidationCode);
-		String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
+		String parsedValidationCode = Env.parseContext(Env.getCtx(), windowNo, validationCode, false);
 		if (!Util.isEmpty(reference.ValidationCode, true)) {
 			if (Util.isEmpty(parsedValidationCode, true)) {
 				throw new AdempiereException("@WhereClause@ @Unparseable@");
@@ -1427,7 +1375,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, tableName, request.getSearchValue(), false, params);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -1437,13 +1385,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		count = RecordUtil.countRecords(parsedSQL, tableName, params);
 		//	Add Row Number
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, tableName), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1831,7 +1779,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	
 	/**
 	 * Get private access from table, record id and user id
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param tableName
 	 * @param recordId
 	 * @param userUuid
@@ -1839,7 +1787,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private MPrivateAccess getPrivateAccess(Properties context, String tableName, int recordId, int userId, String transactionName) {
-		return new Query(context, I_AD_Private_Access.Table_Name, "EXISTS(SELECT 1 FROM AD_Table t WHERE t.AD_Table_ID = AD_Private_Access.AD_Table_ID AND t.TableName = ?) "
+		return new Query(Env.getCtx(), I_AD_Private_Access.Table_Name, "EXISTS(SELECT 1 FROM AD_Table t WHERE t.AD_Table_ID = AD_Private_Access.AD_Table_ID AND t.TableName = ?) "
 				+ "AND Record_ID = ? "
 				+ "AND AD_User_ID = ?", transactionName)
 			.setParameters(tableName, recordId, userId)
@@ -1849,32 +1797,32 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 	/**
 	 * Lock and unlock private access
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @param lock
 	 * @param transactionName
 	 * @return
 	 */
 	private PrivateAccess.Builder lockUnlockPrivateAccess(Properties context, String tableName, int recordId, int userId, boolean lock, String transactionName) {
-		MPrivateAccess privateAccess = getPrivateAccess(context, tableName, recordId, userId, transactionName);
+		MPrivateAccess privateAccess = getPrivateAccess(Env.getCtx(), tableName, recordId, userId, transactionName);
 		//	Create new
 		if(privateAccess == null
 				|| privateAccess.getAD_Table_ID() == 0) {
-			MTable table = MTable.get(context, tableName);
+			MTable table = MTable.get(Env.getCtx(), tableName);
 			//	Set values
-			privateAccess = new MPrivateAccess(context, userId, table.getAD_Table_ID(), recordId);
+			privateAccess = new MPrivateAccess(Env.getCtx(), userId, table.getAD_Table_ID(), recordId);
 		}
 		//	Set active
 		privateAccess.setIsActive(lock);
 		privateAccess.saveEx(transactionName);
 		//	Convert Private Access
-		return convertPrivateAccess(context, privateAccess);
+		return convertPrivateAccess(Env.getCtx(), privateAccess);
 	}
 
 
 	/**
 	 * Convert languages to gRPC
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
@@ -1885,8 +1833,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@TableName@ @NotFound@");
 		}
 		Trx.run(transactionName -> {
-			MTable table = MTable.get(context, tableName);
-			PO entity = RecordUtil.getEntity(context, tableName, request.getUuid(), request.getId(), transactionName);
+			MTable table = MTable.get(Env.getCtx(), tableName);
+			PO entity = RecordUtil.getEntity(Env.getCtx(), tableName, request.getUuid(), request.getId(), transactionName);
 			List<Object> parameters = new ArrayList<>();
 			StringBuffer whereClause = new StringBuffer(entity.get_KeyColumns()[0] + " = ?");
 			parameters.add(entity.get_ID());
@@ -1894,7 +1842,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				whereClause.append(" AND AD_Language = ?");
 				parameters.add(request.getLanguage());
 			}
-			new Query(context, tableName + "_Trl", whereClause.toString(), transactionName)
+			new Query(Env.getCtx(), tableName + "_Trl", whereClause.toString(), transactionName)
 				.setParameters(parameters)
 				.<PO>list()
 				.forEach(translation -> {
@@ -1925,7 +1873,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	
 	/**
 	 * Convert Report View to gRPC
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
@@ -1940,7 +1888,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		List<Object> parameters = new ArrayList<>();
 		//	For Table Name
 		if(!Util.isEmpty(request.getTableName())) {
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			if(table == null) {
 				throw new AdempiereException("@TableName@ @NotFound@");
 			}
@@ -1951,9 +1899,9 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			parameters.add(request.getProcessUuid());
 		}
 
-		String language = context.getProperty(Env.LANGUAGE);
+		String language = Env.getCtx().getProperty(Env.LANGUAGE);
 		//	Get List
-		new Query(context, I_AD_ReportView.Table_Name, whereClause, null)
+		new Query(Env.getCtx(), I_AD_ReportView.Table_Name, whereClause, null)
 			.setParameters(parameters)
 			.setOrderBy(I_AD_ReportView.COLUMNNAME_PrintName + ", " + I_AD_ReportView.COLUMNNAME_Name)
 			.<MReportView>list().forEach(reportViewReference -> {
@@ -1962,7 +1910,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				String description = reportViewReference.getDescription();
 				
 				// add translation
-				if(!Util.isEmpty(language) && !Env.isBaseLanguage(context, "")) {
+				if(!Util.isEmpty(language) && !Env.isBaseLanguage(Env.getCtx(), "")) {
 					/*
 					String translation = reportViewReference.get_Translation("Name");
 					if(!Util.isEmpty(translation)) {
@@ -1976,7 +1924,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 					// TODO: Remove with fix the issue https://github.com/solop-develop/backend/issues/31
 					PO translation = new Query(
-							context, 
+							Env.getCtx(), 
 							I_AD_ReportView.Table_Name + "_Trl",
 							I_AD_ReportView.COLUMNNAME_AD_ReportView_ID + " = ? AND " +
 							"IsTranslated = ? AND AD_Language = ?",
@@ -2001,7 +1949,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				reportViewBuilder.setUuid(ValueUtil.validateNull(reportViewReference.getUUID()));
 				reportViewBuilder.setName(ValueUtil.validateNull(name));
 				reportViewBuilder.setDescription(ValueUtil.validateNull(description));
-				MTable table = MTable.get(context, reportViewReference.getAD_Table_ID());
+				MTable table = MTable.get(Env.getCtx(), reportViewReference.getAD_Table_ID());
 				reportViewBuilder.setTableName(ValueUtil.validateNull(table.getTableName()));
 				//	add
 				builder.addReportViews(reportViewBuilder);
@@ -2076,7 +2024,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	
 	/**
 	 * Convert print formats to gRPC
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
@@ -2092,21 +2040,21 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		List<Object> parameters = new ArrayList<>();
 		//	For Table Name
 		if(!Util.isEmpty(request.getTableName())) {
-			MTable table = MTable.get(context, request.getTableName());
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
 			whereClause = "AD_Table_ID = ?";
 			parameters.add(table.getAD_Table_ID());
 		} else if(!Util.isEmpty(request.getProcessUuid())) {
 			whereClause = "EXISTS(SELECT 1 FROM AD_Process p WHERE p.UUID = ? AND (p.AD_PrintFormat_ID = AD_PrintFormat.AD_PrintFormat_ID OR p.AD_ReportView_ID = AD_PrintFormat.AD_ReportView_ID))";
 			parameters.add(request.getProcessUuid());
 		} else if(!Util.isEmpty(request.getReportViewUuid())) {
-			MReportView reportView = new Query(context, I_AD_ReportView.Table_Name, I_AD_ReportView.COLUMNNAME_UUID + " = ?", null)
+			MReportView reportView = new Query(Env.getCtx(), I_AD_ReportView.Table_Name, I_AD_ReportView.COLUMNNAME_UUID + " = ?", null)
 				.setParameters(request.getReportViewUuid())
 				.first();
 			whereClause = "AD_ReportView_ID = ?";
 			parameters.add(reportView.getUUID());
 		}
 		//	Get List
-		new Query(context, I_AD_PrintFormat.Table_Name, whereClause, null)
+		new Query(Env.getCtx(), I_AD_PrintFormat.Table_Name, whereClause, null)
 			.setParameters(parameters)
 			.setOrderBy(I_AD_PrintFormat.COLUMNNAME_Name)
 			.setClient_ID()
@@ -2116,10 +2064,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				printFormatBuilder.setName(ValueUtil.validateNull(printFormatReference.getName()));
 				printFormatBuilder.setDescription(ValueUtil.validateNull(printFormatReference.getDescription()));
 				printFormatBuilder.setIsDefault(printFormatReference.isDefault());
-				MTable table = MTable.get(context, printFormatReference.getAD_Table_ID());
+				MTable table = MTable.get(Env.getCtx(), printFormatReference.getAD_Table_ID());
 				printFormatBuilder.setTableName(ValueUtil.validateNull(table.getTableName()));
 				if(printFormatReference.getAD_ReportView_ID() != 0) {
-					MReportView reportView = MReportView.get(context, printFormatReference.getAD_ReportView_ID());
+					MReportView reportView = MReportView.get(Env.getCtx(), printFormatReference.getAD_ReportView_ID());
 					printFormatBuilder.setReportViewUuid(ValueUtil.validateNull(reportView.getUUID()));
 				}
 				//	add
@@ -2321,12 +2269,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	
 	/**
 	 * Create Chat Entry
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
 	private ChatEntry.Builder addChatEntry(CreateChatEntryRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		if (Util.isEmpty(request.getTableName())) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
@@ -2334,11 +2282,11 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		AtomicReference<MChatEntry> entryReference = new AtomicReference<>();
 		Trx.run(transactionName -> {
 			String tableName = request.getTableName();
-			MTable table = MTable.get(context, tableName);
+			MTable table = MTable.get(Env.getCtx(), tableName);
 			if (table == null || table.getAD_Table_ID() <= 0) {
 				throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 			}
-			PO entity = RecordUtil.getEntity(context, tableName, request.getUuid(), request.getId(), transactionName);
+			PO entity = RecordUtil.getEntity(Env.getCtx(), tableName, request.getUuid(), request.getId(), transactionName);
 			//	
 			StringBuffer whereClause = new StringBuffer();
 			List<Object> parameters = new ArrayList<>();
@@ -2350,19 +2298,19 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			//	Set parameters
 			parameters.add(table.getAD_Table_ID());
 			parameters.add(request.getId());
-			MChat chat = new Query(context, I_CM_Chat.Table_Name, whereClause.toString(), transactionName)
+			MChat chat = new Query(Env.getCtx(), I_CM_Chat.Table_Name, whereClause.toString(), transactionName)
 					.setParameters(parameters)
 					.setClient_ID()
 					.first();
 			//	Add or create chat
 			if (chat == null 
 					|| chat.getCM_Chat_ID() == 0) {
-				chat = new MChat (context, table.getAD_Table_ID(), entity.get_ID(), entity.getDisplayValue(), transactionName);
+				chat = new MChat (Env.getCtx(), table.getAD_Table_ID(), entity.get_ID(), entity.getDisplayValue(), transactionName);
 				chat.saveEx();
 			}
 			//	Add entry PO
 			MChatEntry entry = new MChatEntry(chat, request.getComment());
-			entry.setAD_User_ID(Env.getAD_User_ID(context));
+			entry.setAD_User_ID(Env.getAD_User_ID(Env.getCtx()));
 			entry.saveEx(transactionName);
 			entryReference.set(entry);
 		});
@@ -2536,17 +2484,17 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		}
 		Object defaultValueAsObject = null;
 
-		// Fill context
-		Properties context = Env.getCtx();
+		// Fill Env.getCtx()
+		
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, contextAttributes);
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), contextAttributes);
 
 		if(defaultValue.trim().startsWith("@SQL=")) {
 			defaultValue = defaultValue.replace("@SQL=", "");
-			defaultValue = Env.parseContext(context, windowNo, defaultValue, false);
+			defaultValue = Env.parseContext(Env.getCtx(), windowNo, defaultValue, false);
 			defaultValueAsObject = convertDefaultValue(defaultValue);
 		} else {
-			defaultValueAsObject = Env.parseContext(context, windowNo, defaultValue, false);
+			defaultValueAsObject = Env.parseContext(Env.getCtx(), windowNo, defaultValue, false);
 		}
 		//	 For lookups
 		if(defaultValueAsObject == null) {
@@ -2651,7 +2599,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if(id <= 0) {
 			id = RecordUtil.getIdFromUuid(I_AD_ContextInfo.Table_Name, request.getUuid(), null);
 		}
-		MADContextInfo contextInfo = MADContextInfo.getById(context, id);
+		MADContextInfo contextInfo = MADContextInfo.getById(Env.getCtx(), id);
 		if(contextInfo != null
 				&& contextInfo.getAD_ContextInfo_ID() > 0) {
 			try {
@@ -2688,10 +2636,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			return builder;
 		}
 		//	Table
-		MTable table = MTable.get(context, privateAccess.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), privateAccess.getAD_Table_ID());
 		//	Set values
 		builder.setTableName(table.getTableName());
-		MUser user = MUser.get(context, privateAccess.getAD_User_ID());
+		MUser user = MUser.get(Env.getCtx(), privateAccess.getAD_User_ID());
 		builder.setUuid(ValueUtil.validateNull(user.getUUID()));
 		builder.setId(privateAccess.getRecord_ID());
 		builder.setIsLocked(privateAccess.isActive());
@@ -2718,13 +2666,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Reference_ID@ @NotFound@");
 		}
 
-		//	Fill context
-		Properties context = Env.getCtx();
+		//	Fill Env.getCtx()
+		
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		String sql = reference.QueryDirect;
-		sql = Env.parseContext(context, windowNo, sql, false);
+		sql = Env.parseContext(Env.getCtx(), windowNo, sql, false);
 		if(Util.isEmpty(sql)
 				&& !Util.isEmpty(reference.QueryDirect)) {
 			throw new AdempiereException("@AD_Tab_ID@ @WhereClause@ @Unparseable@");
@@ -2793,18 +2741,18 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Reference_ID@ @NotFound@");
 		}
 
-		//	Fill context
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		//	Fill Env.getCtx()
+		
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		String sql = reference.Query;
-		sql = Env.parseContext(context, windowNo, sql, false);
+		sql = Env.parseContext(Env.getCtx(), windowNo, sql, false);
 		if(Util.isEmpty(sql)
 				&& !Util.isEmpty(reference.Query)) {
 			throw new AdempiereException("@AD_Tab_ID@ @WhereClause@ @Unparseable@");
 		}
-		String sqlWithRoleAccess = MRole.getDefault(context, false)
+		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				sql,
 				reference.TableName,
@@ -2817,7 +2765,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -2874,7 +2822,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3070,7 +3018,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private ListBrowserItemsResponse.Builder listBrowserItems(ListBrowserItemsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		ListBrowserItemsResponse.Builder builder = ListBrowserItemsResponse.newBuilder();
 		MBrowse browser = getBrowser(request.getUuid());
@@ -3084,9 +3032,9 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			parameterMap.put(condition.getColumnName(), ValueUtil.getObjectFromValue(condition.getValue()));
 		});
 
-		//	Fill context
+		//	Fill Env.getCtx()
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, parameterMap);
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), parameterMap);
 
 		List<Object> values = new ArrayList<Object>();
 		String whereClause = getBrowserWhereClause(browser, browser.getWhereClause(), request.getContextAttributesList(), parameterMap, values);
@@ -3095,7 +3043,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		String orderByClause = DictionaryUtil.getSQLOrderBy(browser);
 		StringBuilder sql = new StringBuilder(query);
 		if (!Util.isEmpty(whereClause)) {
-			whereClause = Env.parseContext(context, windowNo, whereClause, false);
+			whereClause = Env.parseContext(Env.getCtx(), windowNo, whereClause, false);
 			sql.append(" WHERE ").append(whereClause); // includes first AND
 		} else {
 			sql.append(" WHERE 1=1");
@@ -3120,7 +3068,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		//	Get page and count
 		int count = RecordUtil.countRecords(parsedSQL, tableName, tableNameAlias, values);
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
@@ -3210,7 +3158,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	
 	/**
 	 * get browser
-	 * @param context
+	 * @param Env.getCtx()
 	 * @param uuid
 	 * @return
 	 */
@@ -3240,7 +3188,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Callout Requested = " + request.getCallout());
-			ContextManager.getContext(request.getClientRequest());
 			org.spin.backend.grpc.common.Callout.Builder calloutResponse = runcallout(request);
 			responseObserver.onNext(calloutResponse.build());
 			responseObserver.onCompleted();
@@ -3287,7 +3234,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				windowNo = windowNoEmulation.getAndIncrement();
 			}
 
-			// set values on context
+			// set values on Env.getCtx()
 			Map<String, Object> attributes = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
 			ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), attributes);
 
@@ -3327,7 +3274,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 
 	/**
-	 * Set additonal context used by callouts
+	 * Set additonal Env.getCtx() used by callouts
 	 * TODO: Remove this method on future
 	 * @param calloutClass
 	 * @param windowNo
@@ -3461,11 +3408,11 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 				ScriptEngine engine = rule.getScriptEngine();
 
-				// Window context are    W_
-				// Login context  are    G_
+				// Window Env.getCtx() are    W_
+				// Login Env.getCtx()  are    G_
 				MRule.setContext(engine, Env.getCtx(), windowNo);
 				// now add the callout parameters windowNo, tab, field, value, oldValue to the engine 
-				// Method arguments context are A_
+				// Method arguments Env.getCtx() are A_
 				engine.put(MRule.ARGUMENTS_PREFIX + "WindowNo", windowNo);
 				engine.put(MRule.ARGUMENTS_PREFIX + "Tab", this);
 				engine.put(MRule.ARGUMENTS_PREFIX + "Field", field);
@@ -3576,13 +3523,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 
-		//  Fill context
+		//  Fill Env.getCtx()
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 		
 		MTab tab = new Query(
-				context,
+				Env.getCtx(),
 				I_AD_Tab.Table_Name,
 				"UUID = ?",
 				null
@@ -3596,10 +3543,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if (!tab.isSortTab()) {
 			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
 		}
-		String sortColumnName = MColumn.getColumnName(context, tab.getAD_ColumnSortOrder_ID());
-		String includedColumnName = MColumn.getColumnName(context, tab.getAD_ColumnSortYesNo_ID());
+		String sortColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortOrder_ID());
+		String includedColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortYesNo_ID());
 
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 		List<MColumn> columnsList = table.getColumnsAsList();
 		MColumn keyColumn = columnsList.stream()
 			.filter(column -> {
@@ -3615,10 +3562,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			.findFirst()
 			.orElse(null);
 
-		int parentRecordId = Env.getContextAsInt(context, windowNo, parentColumn.getColumnName());
+		int parentRecordId = Env.getContextAsInt(Env.getCtx(), windowNo, parentColumn.getColumnName());
 
 		Query query = new Query(
-				context,
+				Env.getCtx(),
 				table.getTableName(),
 				parentColumn.getColumnName() + " = ?",
 				null
@@ -3630,7 +3577,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		int count = query.count();
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 
@@ -3672,7 +3619,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//  Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3705,13 +3652,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 
-		//  Fill context
+		//  Fill Env.getCtx()
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 		
 		MTab tab = new Query(
-				context,
+				Env.getCtx(),
 				I_AD_Tab.Table_Name,
 				"UUID = ?",
 				null
@@ -3726,7 +3673,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
 		}
 
-		MTable table = MTable.get(context, tab.getAD_Table_ID());
+		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
 		List<MColumn> columnsList = table.getColumnsAsList();
 		MColumn keyColumn = columnsList.stream()
 			.filter(column -> {
@@ -3734,8 +3681,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			})
 			.findFirst()
 			.orElse(null);
-		String sortColumnName = MColumn.getColumnName(context, tab.getAD_ColumnSortOrder_ID());
-		String includedColumnName = MColumn.getColumnName(context, tab.getAD_ColumnSortYesNo_ID());
+		String sortColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortOrder_ID());
+		String includedColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortYesNo_ID());
 
 		ListEntitiesResponse.Builder builderList = ListEntitiesResponse.newBuilder()
 			.setRecordCount(request.getEntitiesList().size());
@@ -3816,12 +3763,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 
 	private ListTreeNodesResponse.Builder listTreeNodes(ListTreeNodesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
+		
 
 		if (Util.isEmpty(request.getTableName(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
-		MTable table = MTable.get(context, request.getTableName());
+		MTable table = MTable.get(Env.getCtx(), request.getTableName());
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -3835,7 +3782,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			elementId = RecordUtil.getIdFromUuid(I_C_Element.Table_Name, request.getElementUuid(), null);
 		}
 
-		int clientId = Env.getAD_Client_ID(context);
+		int clientId = Env.getAD_Client_ID(Env.getCtx());
 		int treeId = getDefaultTreeIdFromTableName(clientId, table.getTableName(), elementId);
 		MTree tree = new MTree(Env.getCtx(), treeId, false, false, null, null);
 
@@ -3964,10 +3911,8 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	}
 
 	private ListMailTemplatesResponse.Builder listMailTemplates(ListMailTemplatesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-		
 		Query query = new Query(
-				context,
+				Env.getCtx(),
 				I_R_MailText.Table_Name,
 				null,
 				null
@@ -3981,13 +3926,13 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		builderList.setRecordCount(recordCount);
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		// Set page token
 		if (RecordUtil.isValidNextPageToken(recordCount, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 

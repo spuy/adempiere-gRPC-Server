@@ -44,23 +44,14 @@ service Dictionary {
 	rpc ListTableSearchFields(ListFieldsRequest) returns (ListFieldsResponse) {}
 }
 
-
-// The client request contains client info for request.
-message ApplicationRequest {
-	string session_uuid = 1;
-	string language = 2;
-}
-
 // Object request
 message EntityRequest {
 	int32 id = 1;
 	string uuid = 2;
-	ApplicationRequest application_request = 3;
 }
 
 // Field request
 message FieldRequest {
-	ApplicationRequest application_request = 1;
 	string field_uuid = 2;
 	string column_uuid = 3;
 	string element_uuid = 4;
@@ -72,7 +63,6 @@ message FieldRequest {
 
 // Reference request
 message ReferenceRequest {
-	ApplicationRequest application_request = 1;
 	string reference_uuid = 2;
 	// Table_name + column_name assumed that it is Table Direct
 	string column_name = 3;
@@ -358,7 +348,6 @@ message ReportExportType {
 }
 
 message ListFieldsRequest {
-	ApplicationRequest application_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// with table

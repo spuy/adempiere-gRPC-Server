@@ -18,7 +18,6 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.material_management";
 option java_outer_classname = "ADempiereMaterialManagement";
 
-import "client.proto";
 import "base_data_type.proto";
 import "business.proto";
 
@@ -42,7 +41,6 @@ service MaterialManagement {
 
 // Get Accounting Combination Request
 message ListProductStorageRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -124,7 +122,6 @@ message ProductAttributeSetInstance {
 }
 
 message GetProductAttributeSetRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	int32 product_id = 4;
@@ -134,7 +131,6 @@ message GetProductAttributeSetRequest {
 }
 
 message ListProductAttributesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -148,7 +144,6 @@ message ListProductAttributesRequest {
 }
 
 message ListProductAttributeValuesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -160,7 +155,6 @@ message ListProductAttributeValuesRequest {
 }
 
 message GetProductAttributeSetInstanceRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	int32 product_id = 4;
@@ -168,7 +162,6 @@ message GetProductAttributeSetInstanceRequest {
 }
 
 message ListProductAttributeSetInstancesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters
@@ -190,7 +183,6 @@ message ListProductAttributeSetInstancesResponse {
 
 // Save Product Attribute Set Instance Request
 message SaveProductAttributeSetInstanceRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	int64 guarantee_date = 4;
@@ -216,7 +208,6 @@ message Warehouse {
 }
 
 message ListAvailableWarehousesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -243,7 +234,6 @@ message Locator {
 }
 
 message ListLocatorsRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	// filters

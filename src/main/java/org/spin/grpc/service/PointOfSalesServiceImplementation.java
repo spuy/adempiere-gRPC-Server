@@ -31,12 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import org.adempiere.core.domains.models.I_S_ResourceAssignment;
-import org.adempiere.exceptions.AdempiereException;
-import org.adempiere.model.GenericPO;
-import org.adempiere.pos.process.ReverseTheSalesTransaction;
-import org.adempiere.pos.services.CPOS;
-import org.adempiere.pos.util.POSTicketHandler;
 import org.adempiere.core.domains.models.I_AD_PrintFormatItem;
 import org.adempiere.core.domains.models.I_AD_Process;
 import org.adempiere.core.domains.models.I_AD_Ref_List;
@@ -60,6 +54,7 @@ import org.adempiere.core.domains.models.I_C_OrderLine;
 import org.adempiere.core.domains.models.I_C_POS;
 import org.adempiere.core.domains.models.I_C_POSKeyLayout;
 import org.adempiere.core.domains.models.I_C_Payment;
+import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.adempiere.core.domains.models.I_C_Region;
 import org.adempiere.core.domains.models.I_C_UOM;
 import org.adempiere.core.domains.models.I_M_InOut;
@@ -69,6 +64,11 @@ import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Storage;
 import org.adempiere.core.domains.models.I_M_Warehouse;
 import org.adempiere.core.domains.models.I_S_ResourceAssignment;
+import org.adempiere.exceptions.AdempiereException;
+import org.adempiere.model.GenericPO;
+import org.adempiere.pos.process.ReverseTheSalesTransaction;
+import org.adempiere.pos.services.CPOS;
+import org.adempiere.pos.util.POSTicketHandler;
 import org.compiere.model.MAllocationHdr;
 import org.compiere.model.MAllocationLine;
 import org.compiere.model.MAttributeSetInstance;
@@ -120,11 +120,6 @@ import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.eevolution.services.dsl.ProcessBuilder;
-import org.spin.base.util.ContextManager;
-import org.spin.base.util.ConvertUtil;
-import org.spin.base.util.DocumentUtil;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.common.Empty;
 import org.spin.backend.grpc.common.KeyValue;
 import org.spin.backend.grpc.common.ProcessLog;
@@ -132,16 +127,13 @@ import org.spin.backend.grpc.common.ProductPrice;
 import org.spin.backend.grpc.common.RunBusinessProcessRequest;
 import org.spin.backend.grpc.pos.*;
 import org.spin.backend.grpc.pos.StoreGrpc.StoreImplBase;
-import org.adempiere.core.domains.models.I_C_PaymentMethod;
-import org.spin.backend.grpc.pos.UpdateCustomerBankAccountRequest;
-import org.spin.backend.grpc.pos.UpdateCustomerRequest;
-import org.spin.backend.grpc.pos.UpdateOrderLineRequest;
-import org.spin.backend.grpc.pos.UpdateOrderRequest;
-import org.spin.backend.grpc.pos.UpdatePaymentRequest;
-import org.spin.backend.grpc.pos.ValidatePINRequest;
-import org.adempiere.core.domains.models.I_C_PaymentMethod;
-import org.spin.store.model.MCPaymentMethod;
+import org.spin.base.util.ConvertUtil;
+import org.spin.base.util.DocumentUtil;
+import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
 import org.spin.pos.service.CashManagement;
+import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
 
 import io.grpc.Status;
@@ -164,10 +156,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getSearchValue());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ProductPrice.Builder productPrice = getProductPrice(request);
 			responseObserver.onNext(productPrice.build());
 			responseObserver.onCompleted();
@@ -187,10 +175,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Order = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = createOrder(request);
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -210,10 +194,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get Point of Sales = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			PointOfSales.Builder pos = getPosBuilder(request);
 			responseObserver.onNext(pos.build());
 			responseObserver.onCompleted();
@@ -233,10 +213,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get Point of Sales List = " + request.getUserUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListPointOfSalesResponse.Builder posList = convertPointOfSalesList(request);
 			responseObserver.onNext(posList.build());
 			responseObserver.onCompleted();
@@ -256,10 +232,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			OrderLine.Builder orderLine = createAndConvertOrderLine(request);
 			responseObserver.onNext(orderLine.build());
 			responseObserver.onCompleted();
@@ -279,10 +251,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getOrderLineUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder orderLine = deleteOrderLine(request);
 			responseObserver.onNext(orderLine.build());
 			responseObserver.onCompleted();
@@ -302,10 +270,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder order = deleteOrder(request);
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -325,10 +289,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getOrderLineUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			OrderLine.Builder orderLine = updateAndConvertOrderLine(request);
 			responseObserver.onNext(orderLine.build());
 			responseObserver.onCompleted();
@@ -348,10 +308,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getSearchValue());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListProductPriceResponse.Builder productPriceList = getProductPriceList(request);
 			responseObserver.onNext(productPriceList.build());
 			responseObserver.onCompleted();
@@ -371,10 +327,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = ConvertUtil.convertOrder(getOrder(request.getOrderUuid(), null));
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -394,10 +346,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Payment.Builder payment = ConvertUtil.convertPayment(createPayment(request));
 			responseObserver.onNext(payment.build());
 			responseObserver.onCompleted();
@@ -417,10 +365,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Order = " + request.getPaymentUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Payment.Builder payment = ConvertUtil.convertPayment(updatePayment(request));
 			responseObserver.onNext(payment.build());
 			responseObserver.onCompleted();
@@ -440,10 +384,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Order = " + request.getPaymentUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = deletePayment(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -463,10 +403,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Payment = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListPaymentsResponse.Builder paymentList = listPayments(request);
 			responseObserver.onNext(paymentList.build());
 			responseObserver.onCompleted();
@@ -486,10 +422,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListOrdersResponse.Builder ordersList = listOrders(request);
 			responseObserver.onNext(ordersList.build());
 			responseObserver.onCompleted();
@@ -509,10 +441,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Order Lines from order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListOrderLinesResponse.Builder orderLinesList = listOrderLines(request);
 			responseObserver.onNext(orderLinesList.build());
 			responseObserver.onCompleted();
@@ -532,10 +460,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get Key Layout = " + request.getKeyLayoutUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			KeyLayout.Builder keyLayout = ConvertUtil.convertKeyLayout(RecordUtil.getIdFromUuid(I_C_POSKeyLayout.Table_Name, request.getKeyLayoutUuid(), null));
 			responseObserver.onNext(keyLayout.build());
 			responseObserver.onCompleted();
@@ -555,10 +479,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = ConvertUtil.convertOrder(updateOrder(request));
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -578,10 +498,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = ConvertUtil.convertOrder(changeOrderAssigned(request.getOrderUuid(), null));
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -601,10 +517,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = ConvertUtil.convertOrder(changeOrderAssigned(request.getOrderUuid(), request.getSalesRepresentativeUuid()));
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -624,10 +536,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Available Refund = " + request.getDate());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			AvailableRefund.Builder availableRefund = getAvailableRefund(request);
 			responseObserver.onNext(availableRefund.build());
 			responseObserver.onCompleted();
@@ -657,10 +565,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update Order = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = ConvertUtil.convertOrder(processOrder(request));
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -680,10 +584,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Validate PIN = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = validatePIN(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -704,10 +604,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Warehouses = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailableWarehousesResponse.Builder warehouses = listWarehouses(request);
 			responseObserver.onNext(warehouses.build());
 			responseObserver.onCompleted();
@@ -728,10 +624,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Price List = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailablePriceListResponse.Builder priceList = listPriceList(request);
 			responseObserver.onNext(priceList.build());
 			responseObserver.onCompleted();
@@ -752,10 +644,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Tender Types = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailablePaymentMethodsResponse.Builder tenderTypes = listPaymentMethods(request);
 			responseObserver.onNext(tenderTypes.build());
 			responseObserver.onCompleted();
@@ -776,10 +664,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Tender Types = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailableDocumentTypesResponse.Builder documentTypes = listDocumentTypes(request);
 			responseObserver.onNext(documentTypes.build());
 			responseObserver.onCompleted();
@@ -800,10 +684,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Warehouses = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailableCurrenciesResponse.Builder currencies = listCurrencies(request);
 			responseObserver.onNext(currencies.build());
 			responseObserver.onCompleted();
@@ -823,8 +703,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create customer = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			Customer.Builder customer = createCustomer(context, request);
+			Customer.Builder customer = createCustomer(Env.getCtx(), request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -843,10 +722,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update customer = " + request.getUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Customer.Builder customer = updateCustomer(request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
@@ -866,10 +741,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get customer = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Customer.Builder customer = getCustomer(request);
 			responseObserver.onNext(customer.build());
 			responseObserver.onCompleted();
@@ -889,11 +760,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@C_Order_ID@ @NotFound@");
 			}
 			log.fine("Print Ticket = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	
 			MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 			int orderId = RecordUtil.getIdFromUuid(I_C_Order.Table_Name, request.getOrderUuid(), null);
 			Env.clearWinContext(1);
@@ -926,9 +792,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@C_Order_ID@ @NotFound@");
 			}
 			log.fine("Print Ticket = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest());
-
-			//	
 			MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 			int userId = Env.getAD_User_ID(pos.getCtx());
 			if (!getBooleanValueFromPOS(pos, userId, "IsAllowsPreviewDocument")) {
@@ -965,8 +828,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				.setReportType(reportType)
 			;
 
-			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runProcess(context, processRequest.build());
-
+			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runBusinessProcess(processRequest.build());
+			
 			// preview document
 			ticket.setProcessLog(processLog.build());
 
@@ -982,7 +845,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			);
 		}
 	}
-
+	
 	@Override
 	public void printShipmentPreview(PrintShipmentPreviewRequest request, StreamObserver<PrintShipmentPreviewResponse> responseObserver) {
 		try {
@@ -992,7 +855,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			log.fine("Print Ticket = " + request);
 			Properties context = ContextManager.getContext(request.getClientRequest());
 
-			//
+			//	
 			MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 			int userId = Env.getAD_User_ID(pos.getCtx());
 			if (!getBooleanValueFromPOS(pos, userId, "IsAllowsPreviewDocument")) {
@@ -1000,10 +863,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			}
 
 			int shipmentId = RecordUtil.getIdFromUuid(I_M_InOut.Table_Name, request.getShipmentUuid(), null);
-
+			
 			PrintShipmentPreviewResponse.Builder ticket = PrintShipmentPreviewResponse.newBuilder()
 				.setResult("Ok");
-
+			
 			// Rpt M_InOut
 			int processId = 117;
 			String processUuid = RecordUtil.getUuidFromId(I_AD_Process.Table_Name, processId, null);
@@ -1018,7 +881,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				.setReportType(reportType)
 			;
 
-			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runProcess(context, processRequest.build());
+			ProcessLog.Builder processLog = BusinessDataServiceImplementation.runBusinessProcess(processRequest.build());
 			
 			// preview document
 			ticket.setProcessLog(processLog.build());
@@ -1043,11 +906,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get customer = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Validate name
 			if(Util.isEmpty(request.getCustomerUuid())) {
 				throw new AdempiereException("@C_BPartner_ID@ @IsMandatory@");
 			}
@@ -1099,11 +957,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Update customer bank account = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Validate name
 			if(Util.isEmpty(request.getCustomerBankAccountUuid())) {
 				throw new AdempiereException("@C_BPBankAccount_ID@ @IsMandatory@");
 			}
@@ -1153,11 +1006,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get customer bank account = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Validate name
 			if(Util.isEmpty(request.getCustomerBankAccountUuid())) {
 				throw new AdempiereException("@C_BP_BankAccount_ID@ @IsMandatory@");
 			}
@@ -1181,11 +1029,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Delete customer bank account = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Validate name
 			if(Util.isEmpty(request.getCustomerBankAccountUuid())) {
 				throw new AdempiereException("@C_BP_BankAccount_ID@ @IsMandatory@");
 			}
@@ -1210,11 +1053,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("list customer bank accounts = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
-			//	Validate name
 			if(Util.isEmpty(request.getCustomerUuid())) {
 				throw new AdempiereException("@C_BPartner_ID@ @IsMandatory@");
 			}
@@ -1222,7 +1060,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			ListCustomerBankAccountsResponse.Builder builder = ListCustomerBankAccountsResponse.newBuilder();
 			int customerId = RecordUtil.getIdFromUuid(I_C_BPartner.Table_Name, request.getCustomerUuid(), null);
 			String nexPageToken = null;
-			int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+			int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 			int limit = RecordUtil.getPageSize(request.getPageSize());
 			int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 			//	Dynamic where clause
@@ -1242,7 +1080,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			builder.setRecordCount(count);
 			//	Set page token
 			if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-				nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+				nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 			}
 			//	Set next page
 			builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1264,7 +1102,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create Shipment = " + request.getOrderUuid());
-			ContextManager.getContext(request.getClientRequest());
 			Shipment.Builder shipment = createShipment(request);
 			responseObserver.onNext(shipment.build());
 			responseObserver.onCompleted();
@@ -1284,10 +1121,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getShipmentUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ShipmentLine.Builder shipmentLine = createAndConvertShipmentLine(request);
 			responseObserver.onNext(shipmentLine.build());
 			responseObserver.onCompleted();
@@ -1307,10 +1140,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Delete Shipment Line = " + request.getShipmentLineUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder nothing = deleteShipmentLine(request);
 			responseObserver.onNext(nothing.build());
 			responseObserver.onCompleted();
@@ -1330,10 +1159,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Shipment Lines from order = " + request.getShipmentUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListShipmentLinesResponse.Builder shipmentLinesList = listShipmentLines(request);
 			responseObserver.onNext(shipmentLinesList.build());
 			responseObserver.onCompleted();
@@ -1353,10 +1178,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create customer = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Shipment.Builder shipment = processShipment(request);
 			responseObserver.onNext(shipment.build());
 			responseObserver.onCompleted();
@@ -1376,10 +1197,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Create customer = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Order.Builder order = reverseSalesTransaction(request);
 			responseObserver.onNext(order.build());
 			responseObserver.onCompleted();
@@ -1399,10 +1216,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Opening = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = cashOpening(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -1422,10 +1235,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Withdrawal = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = cashWithdrawal(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -1445,10 +1254,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Withdrawal = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			CashClosing.Builder closing = cashClosing(request);
 			responseObserver.onNext(closing.build());
 			responseObserver.onCompleted();
@@ -1473,10 +1278,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Summary Movements = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListCashSummaryMovementsResponse.Builder response = listCashSummaryMovements(request);
 			responseObserver.onNext(response.build());
 			responseObserver.onCompleted();
@@ -1496,10 +1297,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Withdrawal = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = allocateSeller(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -1519,10 +1316,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Withdrawal = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			PaymentReference.Builder refund = createPaymentReference(request);
 			responseObserver.onNext(refund.build());
 			responseObserver.onCompleted();
@@ -1542,10 +1335,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Delete Refund Reference = " + request.getUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder orderLine = deletePaymentReference(request);
 			responseObserver.onNext(orderLine.build());
 			responseObserver.onCompleted();
@@ -1565,10 +1354,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Get Refund Reference List = " + request.getCustomerUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListPaymentReferencesResponse.Builder refundReferenceList = listPaymentReferencesLines(request);
 			responseObserver.onNext(refundReferenceList.build());
 			responseObserver.onCompleted();
@@ -1588,10 +1373,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Cash Withdrawal = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Empty.Builder empty = deallocateSeller(request);
 			responseObserver.onNext(empty.build());
 			responseObserver.onCompleted();
@@ -1611,10 +1392,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Available Sellers = " + request.getPosUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListAvailableSellersResponse.Builder response = listAvailableSellers(request);
 			responseObserver.onNext(response.build());
 			responseObserver.onCompleted();
@@ -1638,7 +1415,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListAvailableSellersResponse.Builder builder = ListAvailableSellersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
@@ -1666,7 +1443,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1791,7 +1568,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			.setId(cashClosing.getC_BankStatement_ID())
 			.setUuid(ValueUtil.validateNull(cashClosing.getUUID()));
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -1836,7 +1613,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1944,7 +1721,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		});
 		return Empty.newBuilder();
 	}
-
+	
 	
 	/**
 	 * Process Payment
@@ -2174,7 +1951,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListShipmentLinesResponse.Builder builder = ListShipmentLinesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int shipmentId = RecordUtil.getIdFromUuid(I_M_InOut.Table_Name, request.getShipmentUuid(), null);
@@ -2194,7 +1971,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2216,7 +1993,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		List<Object> parameters = new ArrayList<Object>();
@@ -2247,7 +2024,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2270,11 +2047,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			int presicion = MCurrency.getStdPrecision(paymentReference.getCtx(), paymentReference.get_ValueAsInt("C_Currency_ID"));
 
 			BigDecimal amount = (BigDecimal) paymentReference.get_Value("Amount");
-			amount.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+			amount.setScale(presicion, RoundingMode.HALF_UP);
 
 			MOrder order = new MOrder(Env.getCtx(), paymentReference.get_ValueAsInt("C_Order_ID"), null);
 			BigDecimal convertedAmount = ConvertUtil.getConvetedAmount(order, paymentReference, amount)
-				.setScale(presicion, BigDecimal.ROUND_HALF_UP);
+				.setScale(presicion, RoundingMode.HALF_UP);
 
 			builder.setAmount(ValueUtil.getDecimalFromBigDecimal(amount))
 			.setDescription(ValueUtil.validateNull(paymentReference.get_ValueAsString("Description")))
@@ -2418,7 +2195,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		BigDecimal convertedQuantity = MUOMConversion.convertProductFrom(inOutLine.getCtx(), inOutLine.getM_Product_ID(), inOutLine.getC_UOM_ID(), quantityEntered);
 		inOutLine.setMovementQty(convertedQuantity);
 	}
-
+	
 	/**
 	 * Create  from request
 	 * @param context
@@ -3017,7 +2794,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Aisle Seller
@@ -3045,7 +2822,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3067,7 +2844,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3096,7 +2873,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3124,7 +2901,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3178,7 +2955,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3200,7 +2977,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3229,7 +3006,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3245,7 +3022,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 		ListAvailableCurrenciesResponse.Builder builder = ListAvailableCurrenciesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3269,7 +3046,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3423,7 +3200,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		return -1;
 	}
-
+	
 	/**
 	 * Process payment of Order
 	 * @param salesOrder
@@ -3693,10 +3470,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return amount;
 		}
 		BigDecimal convertedAmount = MConversionRate.convert(order.getCtx(), amount, fromCurrencyId, order.getC_Currency_ID(), order.getDateAcct(), order.get_ValueAsInt("C_ConversionType_ID"), order.getAD_Client_ID(), order.getAD_Org_ID());
-		//
+		//	
 		return Optional.ofNullable(convertedAmount).orElse(Env.ZERO);
 	}
-
+	
 	/**
 	 * Get Converted Amount based on Order currency
 	 * @param order
@@ -3752,7 +3529,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListOrdersResponse.Builder builder = ListOrdersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3866,7 +3643,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3884,7 +3661,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListPaymentsResponse.Builder builder = ListPaymentsResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -3930,7 +3707,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3951,7 +3728,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPOS pos = new MPOS(Env.getCtx(), order.getC_POS_ID(), order.get_TrxName());
 		ListOrderLinesResponse.Builder builder = ListOrderLinesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		StringBuffer whereClause = new StringBuffer(I_C_OrderLine.COLUMNNAME_C_Order_ID + " = ?");
@@ -3978,7 +3755,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -4301,7 +4078,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		BigDecimal multiplier = Env.ONE.subtract(discount.divide(Env.ONEHUNDRED, MathContext.DECIMAL128));
 		//	B = A / 100
 		BigDecimal finalPrice = basePrice.multiply(multiplier);
-		finalPrice = finalPrice.setScale(precision, BigDecimal.ROUND_HALF_UP);
+		finalPrice = finalPrice.setScale(precision, RoundingMode.HALF_UP);
 		return finalPrice;
 	}
 	
@@ -4322,7 +4099,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			discount = discount.multiply(Env.ONEHUNDRED);
 		}
 		if (discount.scale() > precision) {
-			discount = discount.setScale(precision, BigDecimal.ROUND_HALF_UP);
+			discount = discount.setScale(precision, RoundingMode.HALF_UP);
 		}
 		return discount;
 	}
@@ -4479,7 +4256,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 //			throw new AdempiereException("@POS.MaximumDiscountAllowedExceeded@");
 //		}
 //	}
-//
+//	
 //	/**
 //	 * Validate discount of line
 //	 * @param pos
@@ -4495,7 +4272,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 //			throw new AdempiereException("@POS.MaximumDiscountAllowedExceeded@");
 //		}
 //	}
-
+	
 	private String getAmountAccessColumnName(String requestedAccess) {
 		if(requestedAccess == null) {
 			return null;
@@ -4508,7 +4285,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		return null;
 	}
-
+	
 	private boolean validatePINSupervisor(int posId, int userId, String pin, String requestedAccess, BigDecimal requestedAmount) {
 		if (Util.isEmpty(requestedAccess)) {
 			return false;
@@ -4721,7 +4498,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 		//	Quantity
 		return ConvertUtil.convertOrderLine(
-				updateOrderLine(pos, orderLineId,
+				updateOrderLine(pos, orderLineId, 
 						ValueUtil.getBigDecimalFromDecimal(request.getQuantity()), 
 						ValueUtil.getBigDecimalFromDecimal(request.getPrice()), 
 						ValueUtil.getBigDecimalFromDecimal(request.getDiscountRate()),
@@ -4750,7 +4527,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		if(orderId <= 0) {
 			return OrderLine.newBuilder();
 		}
-
+		
 		MOrderLine orderLine = null;
 		if (!Util.isEmpty(request.getResourceAssignmentUuid(), true)) {
 			orderLine = addOrderLineFromResourceAssigment(
@@ -4770,12 +4547,12 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	Quantity
 		return ConvertUtil.convertOrderLine(orderLine);
 	}
-
+	
 	private MOrderLine addOrderLineFromResourceAssigment(int orderId, int resourceAssignmentId, int warehouseId) {
 		if(orderId <= 0) {
 			return null;
 		}
-		//
+		//	
 		AtomicReference<MOrderLine> orderLineReference = new AtomicReference<MOrderLine>();
 		Trx.run(transactionName -> {
 			MOrder order = new MOrder(Env.getCtx(), orderId, transactionName);
@@ -5063,7 +4840,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int salesRepresentativeId = RecordUtil.getIdFromUuid(I_AD_User.Table_Name,request.getUserUuid(), null);
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Get POS List
@@ -5095,7 +4872,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -5179,7 +4956,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			.setIsPosManager(getBooleanValueFromPOS(pos, userId, "IsPosManager"))
 			.setIsAllowsModifyDiscount(getBooleanValueFromPOS(pos, userId, "IsAllowsModifyDiscount"))
 			.setIsKeepPriceFromCustomer(getBooleanValueFromPOS(pos, userId, "IsKeepPriceFromCustomer"))
-
+			
 		;
 
 		if(pos.get_ValueAsInt("RefundReferenceCurrency_ID") > 0) {
@@ -5914,7 +5691,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			validFrom.set(TimeUtil.getDay(System.currentTimeMillis()));
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Dynamic where clause
@@ -5989,7 +5766,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -6183,9 +5960,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			log.fine("Object Requested = " + request.getClientRequest().getSessionUuid());
-			ContextManager.getContext(request.getClientRequest());
-			ListStocksResponse.Builder stocks = listStocks(request);
+			log.fine("Object Requested = " + SessionManager.getSessionUuid());
+		ListStocksResponse.Builder stocks = listStocks(request);
 			responseObserver.onNext(stocks.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -6222,7 +5998,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			}
 
 			String nexPageToken = null;
-			int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+			int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 			int limit = RecordUtil.PAGE_SIZE;
 			int offset = pageNumber * RecordUtil.PAGE_SIZE;
 
@@ -6260,7 +6036,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			builder.setRecordCount(count);
 			//	Set page token
 			if(count > offset && count > limit) {
-				nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+				nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 			}
 			//	Set next page
 			builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -6373,8 +6149,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("List Available Warehouses = " + request.getPosUuid());
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListAvailableCashResponse.Builder cashListBuilder = listCash(context, request);
+			ListAvailableCashResponse.Builder cashListBuilder = listCash(Env.getCtx(), request);
 			responseObserver.onNext(cashListBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -6401,7 +6176,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		//	Aisle Seller
@@ -6438,7 +6213,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

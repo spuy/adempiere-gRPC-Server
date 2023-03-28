@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.wf";
 option java_outer_classname = "ADempiereWorkflow";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package workflow;
 
@@ -44,14 +43,12 @@ service Workflow {
 
 // Object request
 message WorkflowDefinitionRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 }
 
 // Workflow Definition Request
 message ListWorkflowsRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 page_size = 4;
 	string page_token = 5;
@@ -179,7 +176,6 @@ message WorkflowCondition {
 
 // Valid Document Actions Request
 message ListDocumentActionsRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -199,7 +195,6 @@ message ListDocumentActionsResponse {
 
 // Valid Document Status Request
 message ListDocumentStatusesRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	int32 id = 3;
 	string uuid = 4;
@@ -218,7 +213,6 @@ message ListDocumentStatusesResponse {
 
 // Workflow Activities Request
 message ListWorkflowActivitiesRequest {
-	data.ClientRequest client_request = 1;
 	string user_uuid = 2;
 	int32 page_size = 4;
 	string page_token = 5;
@@ -332,7 +326,6 @@ message WorkflowEvent {
 
 // Run Document Action Request
 message RunDocumentActionRequest {
-	data.ClientRequest client_request = 1;
 	string table_name = 2;
 	string uuid = 3;
 	int32 id = 4;
@@ -340,7 +333,6 @@ message RunDocumentActionRequest {
 }
 
 message ProcessRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string message = 4;
@@ -348,7 +340,6 @@ message ProcessRequest {
 }
 
 message ForwardRequest {
-	data.ClientRequest client_request = 1;
 	int32 id = 2;
 	string uuid = 3;
 	string message = 4;

@@ -19,7 +19,6 @@ option java_package = "org.spin.backend.grpc.common";
 option java_outer_classname = "ADempiereCoreFunctionality";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package data;
 
@@ -48,7 +47,6 @@ service CoreFunctionality {
 message GetCountryRequest {
 	string uuid = 1;
 	int32 id = 2;
-	ClientRequest client_request = 3;
 }
 
 //	List Business Partner Response
@@ -60,7 +58,6 @@ message ListBusinessPartnersResponse {
 
 // List Business Partner Request
 message ListBusinessPartnersRequest {
-	ClientRequest client_request = 1;
 	string search_value = 2;
 	string value = 3;
 	string name = 4;
@@ -76,7 +73,6 @@ message ListBusinessPartnersRequest {
 
 // Request Business Partner
 message GetBusinessPartnerRequest {
-	ClientRequest client_request = 1;
 	string search_value = 2;
 	string value = 3;
 	string name = 4;
@@ -90,7 +86,6 @@ message GetBusinessPartnerRequest {
 
 // Request Business Partner
 message CreateBusinessPartnerRequest {
-	ClientRequest client_request = 1;
 	string value = 2;
 	string tax_id = 3;
 	string duns = 4;
@@ -118,7 +113,6 @@ message CreateBusinessPartnerRequest {
 
 // Languages Request
 message ListLanguagesRequest {
-	ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 }
@@ -158,7 +152,6 @@ message Country {
 
 // Request Currency Rate
 message GetConversionRateRequest {
-	ClientRequest client_request = 1;
 	string conversion_type_uuid = 2;
 	string currency_from_uuid = 3;
 	string currency_to_uuid = 4;
@@ -213,7 +206,6 @@ message ListOrganizationsResponse {
 
 // Organization from Role
 message ListOrganizationsRequest {
-	ClientRequest client_request = 1;
 	int32 role_id = 2;
 	string role_uuid = 3;
 	int32 page_size = 4;
@@ -237,7 +229,6 @@ message ListWarehousesResponse {
 
 // Warehouses Request
 message ListWarehousesRequest {
-	ClientRequest client_request = 1;
 	int32 organization_id = 2;
 	string organization_uuid = 3;
 	int32 page_size = 4;
@@ -258,7 +249,6 @@ message UnitOfMeasure {
 
 // List Product UOM Conversion Request
 message ListProductConversionRequest {
-	ClientRequest client_request = 1;
 	string product_uuid = 2;
 	int32 product_id = 3;
 	int32 page_size = 4;

@@ -56,6 +56,7 @@ import org.compiere.util.Util;
 import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.common.BusinessPartner;
 import org.spin.backend.grpc.common.ConversionRate;
@@ -116,10 +117,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListWarehousesResponse.Builder organizationsList = convertWarehousesList(request);
 			responseObserver.onNext(organizationsList.build());
 			responseObserver.onCompleted();
@@ -139,10 +136,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Country Request Null");
 			}
 			log.fine("Country Requested = " + request.getUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			Country.Builder country = getCountry(request);
 			responseObserver.onNext(country.build());
 			responseObserver.onCompleted();
@@ -161,10 +154,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 			if(request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListLanguagesResponse.Builder languagesList = convertLanguagesList(request);
 			responseObserver.onNext(languagesList.build());
 			responseObserver.onCompleted();
@@ -186,10 +175,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Add Line for Order = " + request.getSearchValue());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListBusinessPartnersResponse.Builder businessPartnerList = getBusinessPartnerList(request);
 			responseObserver.onNext(businessPartnerList.build());
 			responseObserver.onCompleted();
@@ -210,10 +195,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getSearchValue());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			BusinessPartner.Builder businessPartner = getBusinessPartner(request);
 			responseObserver.onNext(businessPartner.build());
 			responseObserver.onCompleted();
@@ -234,10 +215,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getValue());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			BusinessPartner.Builder businessPartner = createBusinessPartner(request);
 			responseObserver.onNext(businessPartner.build());
 			responseObserver.onCompleted();
@@ -257,10 +234,6 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getConversionTypeUuid());
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ConversionRate.Builder conversionRate = ConvertUtil.convertConversionRate(getConversionRate(request));
 			responseObserver.onNext(conversionRate.build());
 			responseObserver.onCompleted();
@@ -289,12 +262,8 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		if(conversionDate == null) {
 			conversionDate = TimeUtil.getDay(System.currentTimeMillis());
 		}
-		int organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getClientRequest().getOrganizationUuid(), null);
-		if(organizationId < 0) {
-			organizationId = Env.getAD_Org_ID(Env.getCtx());
-		}
 		//	
-		return RecordUtil.getConversionRate(organizationId, 
+		return RecordUtil.getConversionRate(Env.getAD_Org_ID(Env.getCtx()), 
 				RecordUtil.getIdFromUuid(I_C_ConversionType.Table_Name, request.getConversionTypeUuid(), null), 
 				RecordUtil.getIdFromUuid(I_C_Currency.Table_Name, request.getCurrencyFromUuid(), null), 
 				RecordUtil.getIdFromUuid(I_C_Currency.Table_Name, request.getCurrencyToUuid(), null), 
@@ -309,8 +278,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Object Requested = " + request.getProductUuid());
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ListProductConversionResponse.Builder conversionProductList = convertListProductConversion(context, request);
+			ListProductConversionResponse.Builder conversionProductList = convertListProductConversion(Env.getCtx(), request);
 			responseObserver.onNext(conversionProductList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -352,7 +320,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 	private ListBusinessPartnersResponse.Builder getBusinessPartnerList(ListBusinessPartnersRequest request) {
 		ListBusinessPartnersResponse.Builder builder = ListBusinessPartnersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		//	Get business partner list
@@ -461,7 +429,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -771,13 +739,11 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 	 * @return
 	 */
 	private ListOrganizationsResponse.Builder convertOrganizationsList(ListOrganizationsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		MRole role = null;
 		if(request.getRoleId() != 0) {
-			role = MRole.get(context, request.getRoleId());
+			role = MRole.get(Env.getCtx(), request.getRoleId());
 		} else if(!Util.isEmpty(request.getRoleUuid())) {
-			role = new Query(context, I_AD_Role.Table_Name, I_AD_Role.COLUMNNAME_UUID + " = ?", null)
+			role = new Query(Env.getCtx(), I_AD_Role.Table_Name, I_AD_Role.COLUMNNAME_UUID + " = ?", null)
 				.setParameters(request.getRoleUuid())
 				.setOnlyActiveRecords(true)
 				.first();
@@ -814,7 +780,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(Env.getCtx(), I_AD_Org.Table_Name, whereClause, null)
@@ -834,7 +800,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -850,7 +816,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		ListWarehousesResponse.Builder builder = ListWarehousesResponse.newBuilder();
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int id = request.getOrganizationId();
@@ -872,7 +838,7 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

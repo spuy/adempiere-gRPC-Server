@@ -20,7 +20,6 @@ option java_package = "org.spin.backend.grpc.user_customization";
 option java_outer_classname = "ADempiereUserCustomization";
 
 import "base_data_type.proto";
-import "client.proto";
 
 package user_customization;
 
@@ -44,7 +43,6 @@ message User {
 }
 
 message ListUsersRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -65,7 +63,6 @@ message Role {
 }
 
 message ListRolesRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -78,7 +75,6 @@ message ListRolesResponse {
 }
 
 message ListCustomizationsLevelRequest {
-	data.ClientRequest client_request = 1;
 	int32 page_size = 2;
 	string page_token = 3;
 	string search_value = 4;
@@ -115,7 +111,6 @@ message FieldAttributes {
 }
 
 message SaveWindowCustomizationRequest {
-	data.ClientRequest client_request = 1;
 	string tab_uuid = 2;
 	Level level = 3;
 	int32 level_id = 4;
@@ -124,7 +119,6 @@ message SaveWindowCustomizationRequest {
 }
 
 message SaveBrowseCustomizationRequest {
-	data.ClientRequest client_request = 1;
 	string browse_uuid = 2;
 	Level level = 3;
 	int32 level_id = 4;
@@ -133,7 +127,6 @@ message SaveBrowseCustomizationRequest {
 }
 
 message SaveProcessCustomizationRequest {
-	data.ClientRequest client_request = 1;
 	string process_uuid = 2;
 	Level level = 3;
 	int32 level_id = 4;

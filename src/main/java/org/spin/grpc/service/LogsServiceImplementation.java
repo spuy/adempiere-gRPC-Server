@@ -22,11 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.logging.Level;
 
-import org.adempiere.exceptions.AdempiereException;
-import org.adempiere.model.MBrowse;
 import org.adempiere.core.domains.models.I_AD_ChangeLog;
 import org.adempiere.core.domains.models.I_AD_PInstance;
 import org.adempiere.core.domains.models.I_AD_PInstance_Log;
@@ -34,6 +31,9 @@ import org.adempiere.core.domains.models.I_AD_WF_Process;
 import org.adempiere.core.domains.models.I_CM_Chat;
 import org.adempiere.core.domains.models.I_CM_ChatEntry;
 import org.adempiere.core.domains.models.I_C_Order;
+import org.adempiere.core.domains.models.X_AD_PInstance_Log;
+import org.adempiere.exceptions.AdempiereException;
+import org.adempiere.model.MBrowse;
 import org.compiere.model.MChangeLog;
 import org.compiere.model.MChat;
 import org.compiere.model.MChatEntry;
@@ -54,7 +54,6 @@ import org.compiere.model.MUser;
 import org.compiere.model.MWindow;
 import org.compiere.model.M_Element;
 import org.compiere.model.Query;
-import org.adempiere.core.domains.models.X_AD_PInstance_Log;
 import org.compiere.util.CLogger;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
@@ -63,11 +62,6 @@ import org.compiere.util.NamePair;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
 import org.compiere.wf.MWFProcess;
-import org.spin.base.util.ContextManager;
-import org.spin.base.util.ConvertUtil;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
-import org.spin.base.util.WorkflowUtil;
 import org.spin.backend.grpc.common.ChangeLog;
 import org.spin.backend.grpc.common.ChatEntry;
 import org.spin.backend.grpc.common.EntityLog;
@@ -95,6 +89,11 @@ import org.spin.backend.grpc.logs.ListWorkflowLogsResponse;
 import org.spin.backend.grpc.logs.LogsGrpc.LogsImplBase;
 import org.spin.backend.grpc.logs.RecentItem;
 import org.spin.backend.grpc.wf.WorkflowProcess;
+import org.spin.base.util.ConvertUtil;
+import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
+import org.spin.base.util.WorkflowUtil;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -130,10 +129,6 @@ public class LogsServiceImplementation extends LogsImplBase {
 				throw new AdempiereException("Process Activity Requested is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListProcessLogsResponse.Builder entityValueList = convertProcessLogs(request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
@@ -153,10 +148,6 @@ public class LogsServiceImplementation extends LogsImplBase {
 				throw new AdempiereException("Process Activity Requested is Null");
 			}
 			log.fine("Recent Items Requested = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListRecentItemsResponse.Builder entityValueList = convertRecentItems(request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
@@ -196,10 +187,6 @@ public class LogsServiceImplementation extends LogsImplBase {
 				throw new AdempiereException("Workflow Logs Requested is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListWorkflowLogsResponse.Builder entityValueList = convertWorkflowLogs(request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
@@ -240,10 +227,6 @@ public class LogsServiceImplementation extends LogsImplBase {
 				throw new AdempiereException("Chat Entries Requested is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			ContextManager.getContext(request.getClientRequest().getSessionUuid(), 
-					request.getClientRequest().getLanguage(), 
-					request.getClientRequest().getOrganizationUuid(), 
-					request.getClientRequest().getWarehouseUuid());
 			ListChatEntriesResponse.Builder entityValueList = convertChatEntries(request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
@@ -284,7 +267,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 			parameters.add(request.getInstanceUuid());
 			sql = "UUID = ?";
 		} else {
-			parameters.add(request.getClientRequest().getSessionUuid());
+			parameters.add(SessionManager.getSessionUuid());
 			sql = "EXISTS(SELECT 1 FROM AD_Session WHERE UUID = ? AND AD_Session_ID = AD_PInstance.AD_Session_ID)";
 		}
 		List<MPInstance> processInstanceList = new Query(Env.getCtx(), I_AD_PInstance.Table_Name, 
@@ -333,7 +316,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		parameters.add(id);
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(Env.getCtx(), I_AD_WF_Process.Table_Name, whereClause.toString(), null)
@@ -353,7 +336,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -388,11 +371,11 @@ public class LogsServiceImplementation extends LogsImplBase {
 			parameters.add(id);
 		} else {
 			whereClause.append("EXISTS(SELECT 1 FROM AD_Session WHERE UUID = ? AND AD_Session_ID = AD_ChangeLog.AD_Session_ID)");
-			parameters.add(request.getClientRequest().getSessionUuid());
+			parameters.add(SessionManager.getSessionUuid());
 		}
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(Env.getCtx(), I_AD_ChangeLog.Table_Name, whereClause.toString(), null)
@@ -407,7 +390,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -854,7 +837,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		}
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int id = request.getId();
@@ -878,7 +861,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -892,7 +875,6 @@ public class LogsServiceImplementation extends LogsImplBase {
 	 * @return
 	 */
 	private ListEntityChatsResponse.Builder convertEntityChats(ListEntityChatsRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		StringBuffer whereClause = new StringBuffer();
 		List<Object> parameters = new ArrayList<>();
 		if(Util.isEmpty(request.getTableName())) {
@@ -917,10 +899,10 @@ public class LogsServiceImplementation extends LogsImplBase {
 		parameters.add(id);
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
-		Query query = new Query(context, I_CM_Chat.Table_Name, whereClause.toString(), null)
+		Query query = new Query(Env.getCtx(), I_CM_Chat.Table_Name, whereClause.toString(), null)
 				.setParameters(parameters);
 		int count = query.count();
 		List<MChat> chatList = query
@@ -937,7 +919,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(count > offset && count > limit) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1015,13 +997,11 @@ public class LogsServiceImplementation extends LogsImplBase {
 	}
 	
 	private ExistsChatEntriesResponse.Builder existsChatEntries(ExistsChatEntriesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		if (Util.isEmpty(request.getTableName(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
 
-		MTable table = MTable.get(context, request.getTableName());
+		MTable table = MTable.get(Env.getCtx(), request.getTableName());
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -1043,7 +1023,7 @@ public class LogsServiceImplementation extends LogsImplBase {
 			+ ")"
 		;
 		int recordCount = new Query(
-			context,
+				Env.getCtx(),
 			I_CM_ChatEntry.Table_Name,
 			whereClause,
 			null

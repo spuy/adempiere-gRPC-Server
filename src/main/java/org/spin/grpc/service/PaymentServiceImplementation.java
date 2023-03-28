@@ -15,7 +15,6 @@
 package org.spin.grpc.service;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.adempiere.exceptions.AdempiereException;
@@ -30,6 +29,7 @@ import org.spin.base.util.ContextManager;
 import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.backend.grpc.common.ListEntitiesResponse;
 import org.spin.backend.grpc.payment.ListPaymentInfoRequest;
@@ -83,16 +83,15 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 			this.tableName
 		);
 
-		Properties context = ContextManager.getContext(request.getClientRequest());
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		context = ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
 
 		//
-		MTable table = MTable.get(context, this.tableName);
+		MTable table = MTable.get(Env.getCtx(), this.tableName);
 		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
 
 		// add where with access restriction
-		String sqlWithRoleAccess = MRole.getDefault(context, false)
+		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				sql.toString(),
 				null,
@@ -104,7 +103,7 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 
 		// validation code of field
 		String validationCode = DictionaryUtil.getValidationCodeWithAlias(tableName, reference.ValidationCode);
-		String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
+		String parsedValidationCode = Env.parseContext(Env.getCtx(), windowNo, validationCode, false);
 		if (!Util.isEmpty(reference.ValidationCode, true)) {
 			if (Util.isEmpty(parsedValidationCode, true)) {
 				throw new AdempiereException("@WhereClause@ @Unparseable@");
@@ -127,7 +126,7 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, this.tableName, request.getSearchValue(), params);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int count = 0;
@@ -137,13 +136,13 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 		count = RecordUtil.countRecords(parsedSQL, this.tableName, params);
 		//	Add Row Number
 		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
-		builder = RecordUtil.convertListEntitiesResult(MTable.get(context, this.tableName), parsedSQL, params);
+		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), this.tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

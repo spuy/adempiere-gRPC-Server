@@ -51,7 +51,6 @@ import org.compiere.util.Util;
 import org.compiere.wf.MWFActivity;
 import org.compiere.wf.MWFNode;
 import org.compiere.wf.MWorkflow;
-import org.spin.backend.grpc.client.ClientRequest;
 import org.spin.backend.grpc.common.DocumentStatus;
 import org.spin.backend.grpc.common.Empty;
 import org.spin.backend.grpc.common.ProcessLog;
@@ -70,9 +69,9 @@ import org.spin.backend.grpc.wf.WorkflowActivity;
 import org.spin.backend.grpc.wf.WorkflowDefinition;
 import org.spin.backend.grpc.wf.WorkflowDefinitionRequest;
 import org.spin.backend.grpc.wf.WorkflowGrpc.WorkflowImplBase;
-import org.spin.base.util.ContextManager;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
+import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.base.util.WorkflowUtil;
 
@@ -96,13 +95,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			ClientRequest applicationInfo = request.getClientRequest();
-			if(applicationInfo == null || Util.isEmpty(applicationInfo.getSessionUuid())) {
-				throw new AdempiereException("Object Request Null");
-			}
-
-			Properties context = ContextManager.getContext(applicationInfo);
-			WorkflowDefinition.Builder workflowBuilder = convertWorkflow(context, request.getUuid(), request.getId());
+			WorkflowDefinition.Builder workflowBuilder = convertWorkflow(Env.getCtx(), request.getUuid(), request.getId());
 			responseObserver.onNext(workflowBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -167,8 +160,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Workflow Logs Requested is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListWorkflowsResponse.Builder entityValueList = convertWorkflows(context, request);
+			ListWorkflowsResponse.Builder entityValueList = convertWorkflows(Env.getCtx(), request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -188,8 +180,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Document Actions is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListDocumentActionsResponse.Builder entityValueList = convertDocumentActions(context, request);
+			ListDocumentActionsResponse.Builder entityValueList = convertDocumentActions(Env.getCtx(), request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -209,8 +200,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Document Statuses is Null");
 			}
 			log.fine("Object List Requested = " + request);
-			Properties context = ContextManager.getContext(request.getClientRequest().getSessionUuid(), request.getClientRequest().getLanguage(), request.getClientRequest().getOrganizationUuid(), request.getClientRequest().getWarehouseUuid());
-			ListDocumentStatusesResponse.Builder entityValueList = convertDocumentStatuses(context, request);
+			ListDocumentStatusesResponse.Builder entityValueList = convertDocumentStatuses(Env.getCtx(), request);
 			responseObserver.onNext(entityValueList.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -248,8 +238,6 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	 * @return
 	 */
 	private ListWorkflowActivitiesResponse.Builder listWorkflowActivities(ListWorkflowActivitiesRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		if(Util.isEmpty(request.getUserUuid())) {
 			throw new AdempiereException("@AD_User_ID@ @NotFound@");
 		}
@@ -266,10 +254,10 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				+ ")";
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
-		Query query = new Query(context, I_AD_WF_Activity.Table_Name, whereClause, null)
+		Query query = new Query(Env.getCtx(), I_AD_WF_Activity.Table_Name, whereClause, null)
 				.setParameters(userId, userId, userId, userId);
 		int count = query.count();
 		List<MWFActivity> workflowActivitiesList = query
@@ -287,7 +275,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -518,7 +506,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		parameters.add(table.getAD_Table_ID());
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(request.getClientRequest().getSessionUuid(), request.getPageToken());
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		Query query = new Query(context, I_AD_Workflow.Table_Name, whereClause.toString(), null)
@@ -538,7 +526,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		builder.setRecordCount(count);
 		//	Set page token
 		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(request.getClientRequest().getSessionUuid()) + (pageNumber + 1);
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -684,8 +672,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 
-			Properties context = ContextManager.getContext(request.getClientRequest());
-			ProcessLog.Builder processReponse = runDocumentAction(context, request);
+			ProcessLog.Builder processReponse = runDocumentAction(Env.getCtx(), request);
 			responseObserver.onNext(processReponse.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -777,8 +764,6 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	}
 
 	private Empty.Builder process(ProcessRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		Trx.run(transactionName -> {
 			// validate workflow activity
 			int workflowActivityId = request.getId();
@@ -791,19 +776,19 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				}
 			}
 
-			MWFActivity workActivity = new MWFActivity(context, workflowActivityId, transactionName);
+			MWFActivity workActivity = new MWFActivity(Env.getCtx(), workflowActivityId, transactionName);
 			if (workActivity == null || workActivity.getAD_WF_Activity_ID() <= 0) {
 				throw new AdempiereException("@AD_WF_Activity_ID@ @NotFound@");
 			}
 
 			String message = ValueUtil.validateNull(request.getMessage());
-			int userId = Env.getAD_User_ID(context);
+			int userId = Env.getAD_User_ID(Env.getCtx());
 
 			MWFNode node = workActivity.getNode();
 
 			// User Choice - Answer
 			if (MWFNode.ACTION_UserChoice.equals(node.getAction())) {
-				MColumn column = MColumn.get(context, node.getAD_Column_ID());
+				MColumn column = MColumn.get(Env.getCtx(), node.getAD_Column_ID());
 				int displayTypeId = column.getAD_Reference_ID();
 				String isApproved = ValueUtil.booleanToString(request.getIsApproved());
 				try {
@@ -849,8 +834,6 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	}
 
 	private Empty.Builder forward(ForwardRequest request) {
-		Properties context = ContextManager.getContext(request.getClientRequest());
-
 		// validate workflow activity
 		int workflowActivityId = request.getId();
 		if (workflowActivityId <= 0) {
@@ -861,7 +844,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 			}
 		}
-		MWFActivity workActivity = new MWFActivity(context, workflowActivityId, null);
+		MWFActivity workActivity = new MWFActivity(Env.getCtx(), workflowActivityId, null);
 		if (workActivity == null || workActivity.getAD_WF_Activity_ID() <= 0) {
 			throw new AdempiereException("@AD_WF_Activity_ID@ @NotFound@");
 		}
@@ -876,7 +859,7 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				throw new AdempiereException("@AD_User_ID@ @NotFound@");
 			}
 		}
-		MUser user = MUser.get(context, userId);
+		MUser user = MUser.get(Env.getCtx(), userId);
 		if (user == null || user.getAD_User_ID() <= 0) {
 			throw new AdempiereException("@AD_User_ID@ @NotFound@");
 		}
