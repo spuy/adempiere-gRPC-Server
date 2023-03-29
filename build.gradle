@@ -172,8 +172,8 @@ publishing {
     }
     publications {
 		mavenJava(MavenPublication) {
-        	groupId 'org.erpya.adempiere'
-            artifactId 'backend'
+        	groupId 'org.adempiere.backend'
+            artifactId 'server'
             version packageVersion
            	from components.java
            	pom {
