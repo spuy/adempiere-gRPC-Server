@@ -202,9 +202,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection = 'scm:git:git://github.com/adempiere/backend.git'
-                    developerConnection = 'scm:git:ssh://github.com/adempiere/backend.git'
-                    url = 'http://github.com/adempiere/backend'
+                    connection = 'scm:git:git://github.com/solop-develop/backend.git'
+                    developerConnection = 'scm:git:ssh://github.com/solop-develop/backend.git'
+                    url = 'http://github.com/solop-develop/backend'
                 }
             }
 		}
