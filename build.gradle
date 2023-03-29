@@ -3,8 +3,6 @@ plugins {
     id 'com.google.protobuf' version '0.9.2'
     id 'idea'
     id 'application'
-    id 'signing'
-    id 'maven-publish'
     id 'visual-studio'
 }
 group 'com.nikhilm'
@@ -149,6 +147,7 @@ task createRelease(type: Copy) {
    dependsOn build
    from file("$buildDir/distributions/")
    into file("$buildDir/release/")
+   //destinationDir(file('build/release/'))
    doLast {
         file('build/release/')
         	.listFiles({file -> file.isFile()} as FileFilter).sort()
@@ -156,64 +155,4 @@ task createRelease(type: Copy) {
             ant.checksum file: file
         }
    	}
-}
-
-def libraryGroupId = 'io.github.adempiere'
-version = System.getenv("LIBRARY_VERSION")
-
-jar {
-    manifest {
-        attributes("Implementation-Title": "Adempiere Backend Server",
-                   "Implementation-Version": version)
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            credentials {
-                username = findProperty("sonatypeUsername")
-                password = findProperty("sonatypePassword")
-            }
-        }
-    }
-    publications {
-        mavenJava(MavenPublication) {
-        	groupId libraryGroupId
-            artifactId 'backend'
-            version
-           	from components.java
-           	pom {
-                name = 'backend'
-                description = 'ADempiere Backend Service'
-                url = 'http://adempiere.io/'
-                licenses {
-                    license {
-                        name = 'GNU General Public License, version 2'
-                        url = 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt'
-                    }
-                }
-                developers {
-                    developer {
-                        id = 'yamelsenih'
-                        name = 'Yamel Senih'
-                        email = 'ysenih@erpya.com'
-                    }
-                }
-                scm {
-                    connection = 'scm:git:git://github.com/adempiere/backend.git'
-                    developerConnection = 'scm:git:ssh://github.com/adempiere/backend.git'
-                    url = 'http://github.com/adempiere/backend'
-                }
-            }
-		}
-	}
-}
-
-signing {
-	def signingKey = findProperty("signingKey")
-    def signingPassword = findProperty("signingPassword")
-    useInMemoryPgpKeys(signingKey, signingPassword)
-    sign publishing.publications.mavenJava
 }
