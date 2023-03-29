@@ -76,7 +76,7 @@ jobs:
           java-version: 11
           architecture: x64
 
-      - name: Build with Gradle
+      - name: Publish with Gradle
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: 8.0.2
