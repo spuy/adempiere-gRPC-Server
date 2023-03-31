@@ -1,7 +1,8 @@
 FROM gradle:8.0.2 as builder
 ARG BUILD_ARTIFACT \
 	GITHUB_DEPLOY_USER \
-	GITHUB_DEPLOY_TOKEN
+	GITHUB_DEPLOY_TOKEN \
+	GITHUB_DEPLOY_REPOSITORY
 
 LABEL maintainer="ysenih@erpya.com; EdwinBetanc0urt@outlook.com" \
 	description="ADempiere gRPC All In One Server used as ADempiere adempiere-grpc-server"
@@ -11,6 +12,10 @@ WORKDIR /opt/apps/server
 COPY . . /opt/apps/server/
 
 EXPOSE ${SERVER_PORT}
+
+ENV GITHUB_DEPLOY_USER=$GITHUB_DEPLOY_USER \
+	GITHUB_DEPLOY_TOKEN=$GITHUB_DEPLOY_TOKEN \ 
+	GITHUB_DEPLOY_REPOSITORY=$GITHUB_DEPLOY_REPOSITORY
 
 RUN gradle build && \
 	unzip -d /opt/apps build/distributions/adempiere-grpc-server.zip && \
