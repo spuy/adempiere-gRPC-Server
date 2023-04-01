@@ -18,7 +18,9 @@ import org.adempiere.exceptions.AdempiereException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -349,9 +351,9 @@ public class ExpressShipmentServiceImplementation extends ExpressShipmentImplBas
 			if (salesOrder == null || salesOrder.getC_Order_ID() <= 0) {
 				throw new AdempiereException("@C_Order_ID@ @NotFound@");
 			}
-			if (salesOrder.isDelivered()) {
-				throw new AdempiereException("@C_Order_ID@ @IsDelivered@");
-			}
+			// if (salesOrder.isDelivered()) {
+			// 	throw new AdempiereException("@C_Order_ID@ @IsDelivered@");
+			// }
 			// Valid if has a Order
 			if (!DocumentUtil.isCompleted(salesOrder)) {
 				throw new AdempiereException("@Invalid@ @C_Order_ID@ " + salesOrder.getDocumentNo());
@@ -530,6 +532,7 @@ public class ExpressShipmentServiceImplementation extends ExpressShipmentImplBas
 					throw new AdempiereException("@M_InOut_ID@ @NotFound@");
 				}
 			}
+			MInOut shipment = new MInOut(Env.getCtx(), shipmentId, transactionName);
 
 			int productId = request.getProductId();
 			if (productId <= 0) {
@@ -541,7 +544,7 @@ public class ExpressShipmentServiceImplementation extends ExpressShipmentImplBas
 
 			final String whereClause = "M_Product_ID = ? "
 				+ "AND EXISTS(SELECT 1 FROM M_InOut "
-				+ "WHERE M_InOut.C_Order_ID = C_OrderLine_ID.C_Order_ID "
+				+ "WHERE M_InOut.C_Order_ID = C_OrderLine.C_Order_ID "
 				+ "AND M_InOut.M_InOut_ID = ?)"
 			;
 			MOrderLine orderLine = new Query(
@@ -552,7 +555,9 @@ public class ExpressShipmentServiceImplementation extends ExpressShipmentImplBas
 			)
 				.setParameters(productId, shipmentId)
 				.first();
-	
+			if (orderLine == null || orderLine.getC_OrderLine_ID() <= 0) {
+				throw new AdempiereException("@C_OrderLine_ID@ @NotFound@");
+			}
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
@@ -561,10 +566,24 @@ public class ExpressShipmentServiceImplementation extends ExpressShipmentImplBas
 					quantity = BigDecimal.ONE;
 				}
 			}
+			Optional<MInOutLine> maybeOrderLine = Arrays.asList(shipment.getLines(true))
+				.stream()
+				.filter(shipmentLineTofind -> {
+					return shipmentLineTofind.getC_OrderLine_ID() == orderLine.getC_OrderLine_ID();
+				})
+				.findFirst();
 
-			MInOutLine shipmentLine = new MInOutLine(Env.getCtx(), 0, transactionName);
-			shipmentLine.setOrderLine(orderLine, productId, null);
-			shipmentLine.setQty(quantity);
+			MInOutLine shipmentLine = null;
+			if (maybeOrderLine.isPresent()) {
+				shipmentLine = maybeOrderLine.get();
+				BigDecimal orderQuantity = shipmentLine.getQtyEntered();
+				orderQuantity = orderQuantity.add(quantity);
+				shipmentLine.setQty(orderQuantity);
+			} else {
+				shipmentLine = new MInOutLine(shipment);
+				shipmentLine.setOrderLine(orderLine, 0, quantity);
+				shipmentLine.setM_InOut_ID(shipmentId);
+			}
 			shipmentLine.saveEx(transactionName);
 
 			shipmentLineReference.set(shipmentLine);
