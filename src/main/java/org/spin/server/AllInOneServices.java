@@ -61,6 +61,9 @@ public class AllInOneServices {
 	private static final Logger logger = Logger.getLogger(AllInOneServices.class.getName());
 
 	private Server server;
+
+	private static String defaultFileConnection = "resources/standalone.yaml";
+
 	/**
 	  * Get SSL / TLS context
 	  * @return
@@ -256,11 +259,11 @@ public class AllInOneServices {
 	    }
 	  }
 
-	  /**
-	   * Main launches the server from the command line.
-	 * @throws Exception 
-	   */
-	  public static void main(String[] args) throws Exception {
+	/**
+	 * Main launches the server from the command line.
+	 * @throws Exception
+	 */
+	public static void main(String[] args) throws Exception {
 		if (args == null) {
 			throw new Exception("Arguments Not Found");
 		}
@@ -268,15 +271,18 @@ public class AllInOneServices {
 		if (args.length == 0) {
 			throw new Exception("Arguments Must Be: [property file name]");
 		}
-		  String setupFileName = args[0];
-		  if(setupFileName == null || setupFileName.trim().length() == 0) {
-			  throw new Exception("Setup File not found");
-		  }
+		String setupFileName = args[0];
+		if (setupFileName == null || setupFileName.trim().length() == 0) {
+			setupFileName = defaultFileConnection;
+			// throw new Exception("Setup File not found");
+		}
+
 		  SetupLoader.loadSetup(setupFileName);
 		  //	Validate load
 		  SetupLoader.getInstance().validateLoad();
 		  final AllInOneServices server = new AllInOneServices();
 		  server.start();
 		  server.blockUntilShutdown();
-	  }
+	}
+
 }
