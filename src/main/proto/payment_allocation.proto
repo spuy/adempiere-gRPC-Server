@@ -39,7 +39,7 @@ service PaymentAllocation {
 	// process
 	rpc ListCharges(ListChargesRequest) returns (data.ListLookupItemsResponse) {}
 	rpc ListTransactionOrganizations(ListTransactionOrganizationsRequest) returns (data.ListLookupItemsResponse) {}
-	rpc GetDifference(GetDifferenceRequest) returns (GetDifferenceResponse) {}
+	rpc CalculateDifference(CalculateDifferenceRequest) returns (CalculateDifferenceResponse) {}
 	rpc Process(ProcessRequest) returns (ProcessResponse) {}
 }
 
@@ -131,29 +131,21 @@ message ListTransactionTypesResponse {
 }
 
 
-// Tender Type
-message TenderType {
-	int32 id = 1;
-	string uuid = 2;
-	string value = 3;
-	string name = 4;
-	string description = 5;
-}
-
-
 // Payments Movements
 message Payment {
 	int32 id = 1;
 	string uuid = 2;
-	int64 date_trx = 3;
-	string document_no = 4;
-	string transaction_type = 5; // AP-AR
-	Organization organization = 6;
-	BusinessPartner business_partner = 7;
-	TenderType tender_type = 8;
-	Currency currency = 9;
-	data.Decimal amount = 10;
-	string description = 11;
+	int64 transaction_date = 3;
+	bool is_receipt = 4;
+	string document_no = 5;
+	TransactionType transaction_type = 6; // AP-AR
+	Organization organization = 7;
+	BusinessPartner business_partner = 8;
+	string description = 9;
+	Currency currency = 10;
+	data.Decimal payment_amount = 11;
+	data.Decimal converted_amount = 12;
+	data.Decimal open_amount = 13;
 }
 
 message ListPaymentsRequest {
@@ -184,9 +176,18 @@ message ListPaymentsResponse {
 message Invoice {
 	int32 id = 1;
 	string uuid = 2;
-	string document_no = 3;
-	int64 date = 4;
-	string description = 5;
+	int64 date_invoiced = 3;
+	bool is_sales_transaction = 4;
+	string document_no = 5;
+	TransactionType transaction_type = 6; // AP-AR
+	Organization organization = 7;
+	BusinessPartner business_partner = 8;
+	string description = 9;
+	Currency currency = 10;
+	data.Decimal original_amount = 11;
+	data.Decimal converted_amount = 12;
+	data.Decimal open_amount = 13;
+	data.Decimal discount_amount = 14;
 }
 
 message ListInvoicesRequest {
@@ -236,13 +237,6 @@ message ListChargesResponse {
 
 
 // Transaction Organization
-message TransactionOrganization {
-	int32 id = 1;
-	string uuid = 2;
-	string value = 3;
-	string name = 4;
-}
-
 message ListTransactionOrganizationsRequest {
 	int32 page_size = 1;
 	string page_token = 2;
@@ -251,17 +245,18 @@ message ListTransactionOrganizationsRequest {
 
 message ListTransactionOrganizationsResponse {
 	int64 record_count = 1;
-	repeated TransactionOrganization records = 2;
+	repeated Organization records = 2;
 	string next_page_token = 3;
 }
 
+
 // Difference
-message GetDifferenceRequest {
-	repeated data.KeyValueSelection payments_selections = 1;
-	repeated data.KeyValueSelection invoices_selections = 2;
+message CalculateDifferenceRequest {
+	repeated data.KeyValueSelection payments = 1;
+	repeated data.KeyValueSelection invoices = 2;
 }
 
-message GetDifferenceResponse {
+message CalculateDifferenceResponse {
 	data.Decimal difference = 1;
 }
 
@@ -276,10 +271,10 @@ message ProcessRequest {
 	string charge_uuid = 6;
 	int32 transaction_organization_id = 7;
 	string transaction_organization_uuid = 8;
-	int64 date_trx = 9;
+	int64 date = 9;
 	string description = 10;
-	repeated data.KeyValueSelection payments_selections = 11;
-	repeated data.KeyValueSelection invoices_selections = 12;
+	repeated data.KeyValueSelection payments = 11;
+	repeated data.KeyValueSelection invoices = 12;
 }
 
 message ProcessResponse {
