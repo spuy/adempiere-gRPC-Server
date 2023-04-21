@@ -42,7 +42,7 @@ import org.spin.dashboarding.data.ChartValue;
  * @author Yamel Senih at www.erpya.com
  *
  */
-public class Chart {
+public class ChartBuilder {
 	
 	/**
 	 * Get Data Source Query

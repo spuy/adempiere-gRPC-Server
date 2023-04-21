@@ -90,6 +90,8 @@ import org.spin.backend.grpc.dashboarding.PendingDocument;
 import org.spin.backend.grpc.dashboarding.WindowDashboard;
 import org.spin.backend.grpc.dashboarding.WindowMetrics;
 import org.spin.dashboarding.DashboardingConvertUtil;
+import org.spin.dashboarding.controller.ChartBuilder;
+import org.spin.dashboarding.data.ChartValue;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -164,7 +166,6 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 	 * @param request
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	private Metrics.Builder getMetrics(GetMetricsRequest request) {
 		Metrics.Builder builder = Metrics.newBuilder();
 		MGoal goal = (MGoal) RecordUtil.getEntity(Env.getCtx(), I_PA_Goal.Table_Name, request.getUuid(), request.getId(), null);
@@ -174,31 +175,22 @@ public class DashboardingServiceImplementation extends DashboardingImplBase {
 		//	Load
 		Map<String, List<ChartData>> chartSeries = new HashMap<String, List<ChartData>>();
 		if(goal.get_ValueAsInt("AD_Chart_ID") > 0) {
-			MChart chart = new MChart(Env.getCtx(), goal.get_ValueAsInt("AD_Chart_ID"), null);
-			CategoryDataset dataSet = chart.getCategoryDataset();
-
-			dataSet.getColumnKeys().forEach(column -> {
-				dataSet.getRowKeys().forEach(row -> {
-					//	Get from map
-					List<ChartData> serie = chartSeries.get(row);
-					if (serie == null) {
-						serie = new ArrayList<ChartData>();
-					}
-					//	Add
-					Number value = dataSet.getValue((Comparable<?>)row, (Comparable<?>)column);
-					BigDecimal numberValue = (value != null? new BigDecimal(value.doubleValue()): Env.ZERO);
-					ChartData.Builder chartDataBuilder = ChartData.newBuilder()
-						.setName(column.toString())
-						.setValue(
-							ValueUtil.getDecimalFromBigDecimal(numberValue)
-						)
-					;
-					serie.add(
-						chartDataBuilder.build()
-					);
-					chartSeries.put(row.toString(), serie);
+			ChartValue chartData = ChartBuilder.getChartData(goal.get_ValueAsInt("AD_Chart_ID"), null);
+			if(chartData.getSeries().size() > 0) {
+				chartData.getSeries().forEach(serie -> {
+					List<ChartData> serieStub = new ArrayList<ChartData>();
+					serie.getDataSet().forEach(dataSet -> {
+						ChartData.Builder chartDataBuilder = ChartData.newBuilder()
+								.setName(dataSet.getName())
+								.setValue(
+									ValueUtil.getDecimalFromBigDecimal(dataSet.getAmount())
+								)
+							;
+						serieStub.add(chartDataBuilder.build());
+					});
+					chartSeries.put(serie.getName(), serieStub);
 				});
-			});
+			}
 		} else {
 			//	Set values
 			builder.setName(ValueUtil.validateNull(goal.getName()));
