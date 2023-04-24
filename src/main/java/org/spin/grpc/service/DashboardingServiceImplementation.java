@@ -90,8 +90,8 @@ import org.spin.backend.grpc.dashboarding.PendingDocument;
 import org.spin.backend.grpc.dashboarding.WindowDashboard;
 import org.spin.backend.grpc.dashboarding.WindowMetrics;
 import org.spin.dashboarding.DashboardingConvertUtil;
-import org.spin.dashboarding.controller.ChartBuilder;
-import org.spin.dashboarding.data.ChartValue;
+import org.spin.eca50.controller.ChartBuilder;
+import org.spin.eca50.data.ChartValue;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
