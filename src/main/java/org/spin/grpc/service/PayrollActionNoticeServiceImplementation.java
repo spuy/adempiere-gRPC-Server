@@ -115,7 +115,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Get page and count
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
 
 		//	Add Row Number
 		sql = RecordUtil.getQueryWithLimit(sql, limit, offset);
@@ -239,7 +239,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Get page and count
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
 
 		//	Add Row Number
 		sql = RecordUtil.getQueryWithLimit(sql, limit, offset);
@@ -386,7 +386,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		//	Get page and count
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
 
 		//	Add Row Number
 		sql = RecordUtil.getQueryWithLimit(sql, limit, offset);

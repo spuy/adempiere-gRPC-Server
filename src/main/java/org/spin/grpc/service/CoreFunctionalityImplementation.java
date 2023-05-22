@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2012-2018 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2012-2023 E.R.P. Consultores y Asociados, C.A.                     *
  * Contributor(s): Yamel Senih ysenih@erpya.com                                     *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -7,10 +7,10 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
- * along with this program.	If not, see <https://www.gnu.org/licenses/>.            *
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
 package org.spin.grpc.service;
 
@@ -91,44 +91,8 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 	private CLogger log = CLogger.getCLogger(CoreFunctionalityImplementation.class);
 	/**	Country */
 	private static CCache<String, MCountry> countryCache = new CCache<String, MCountry>(I_C_Country.Table_Name + "_UUID", 30, 0);	//	no time-out
-	
-	@Override
-	public void listOrganizations(ListOrganizationsRequest request,
-			StreamObserver<ListOrganizationsResponse> responseObserver) {
-		try {
-			if(request == null) {
-				throw new AdempiereException("Object Request Null");
-			}
-			ListOrganizationsResponse.Builder organizationsList = convertOrganizationsList(request);
-			responseObserver.onNext(organizationsList.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
-		}
-	}
 
-	@Override
-	public void listWarehouses(ListWarehousesRequest request, StreamObserver<ListWarehousesResponse> responseObserver) {
-		try {
-			if(request == null) {
-				throw new AdempiereException("Object Request Null");
-			}
-			ListWarehousesResponse.Builder organizationsList = convertWarehousesList(request);
-			responseObserver.onNext(organizationsList.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
-		}
-	}
-	
+
 	@Override
 	public void getCountry(GetCountryRequest request, StreamObserver<Country> responseObserver) {
 		try {
@@ -321,8 +285,9 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		ListBusinessPartnersResponse.Builder builder = ListBusinessPartnersResponse.newBuilder();
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Get business partner list
 		//	Dynamic where clause
 		StringBuffer whereClause = new StringBuffer();
@@ -732,13 +697,35 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		//	Return
 		return builder;
 	}
-	
+
+
+
+	@Override
+	public void listOrganizations(ListOrganizationsRequest request,
+			StreamObserver<ListOrganizationsResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListOrganizationsResponse.Builder organizationsList = listOrganizations(request);
+			responseObserver.onNext(organizationsList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * Convert Organization to list
 	 * @param request
 	 * @return
 	 */
-	private ListOrganizationsResponse.Builder convertOrganizationsList(ListOrganizationsRequest request) {
+	private ListOrganizationsResponse.Builder listOrganizations(ListOrganizationsRequest request) {
 		MRole role = null;
 		if(request.getRoleId() != 0) {
 			role = MRole.get(Env.getCtx(), request.getRoleId());
@@ -757,10 +744,12 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		String whereClause = "1 = 2";
 		//	get from role access
 		if (role.isAccessAllOrgs()) {
-			whereClause = " EXISTS(SELECT 1 FROM AD_Role r "
+			whereClause = "(EXISTS(SELECT 1 FROM AD_Role r "
 				+ "WHERE r.AD_Client_ID = AD_Org.AD_Client_ID "
 				+ "AND r.AD_Role_ID = ? "
-				+ "AND r.IsActive = 'Y')";
+				+ "AND r.IsActive = 'Y') "
+				+ "OR AD_Org_ID = 0) "
+			;
 			parameters.add(role.getAD_Role_ID());
 		} else {
 			if(role.isUseUserOrgAccess()) {
@@ -777,22 +766,25 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 				parameters.add(role.getAD_Role_ID());
 			}
 		}
+		whereClause += " AND IsSummary = ? ";
+		parameters.add(false);
 
 		//	Get page and count
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
 		Query query = new Query(Env.getCtx(), I_AD_Org.Table_Name, whereClause, null)
 			.setParameters(parameters)
 			.setOnlyActiveRecords(true)
-			.setLimit(limit, offset);
+		;
 		//	Count
 		int count = query.count();
 
 		ListOrganizationsResponse.Builder builder = ListOrganizationsResponse.newBuilder();
 		//	Get List
-		query.<MOrg>list()
+		query.setLimit(limit, offset)
+			.<MOrg>list()
 			.forEach(organization -> {
 				builder.addOrganizations(ConvertUtil.convertOrganization(organization));
 			});
@@ -806,31 +798,61 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 		return builder;
 	}
-	
+
+
+
+	@Override
+	public void listWarehouses(ListWarehousesRequest request, StreamObserver<ListWarehousesResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListWarehousesResponse.Builder organizationsList = listWarehouses(request);
+			responseObserver.onNext(organizationsList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * Convert warehouses list
 	 * @param request
 	 * @return
 	 */
-	private ListWarehousesResponse.Builder convertWarehousesList(ListWarehousesRequest request) {
+	private ListWarehousesResponse.Builder listWarehouses(ListWarehousesRequest request) {
 		ListWarehousesResponse.Builder builder = ListWarehousesResponse.newBuilder();
 		//	Get page and count
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int id = request.getOrganizationId();
-		if(id <= 0) {
-			id = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
+		int offset = (pageNumber - 1) * limit;
+
+		int organizationId = request.getOrganizationId();
+		if (organizationId <= 0) {
+			organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
 		}
-		Query query = new Query(Env.getCtx(), I_M_Warehouse.Table_Name, "AD_Org_ID = ?", null)
-				.setOnlyActiveRecords(true)
-				.setParameters(id)
-				.setLimit(limit, offset);
+
+		final String whereClause = "AD_Org_ID = ? AND IsInTransit = ? ";
+		Query query = new Query(
+			Env.getCtx(),
+			I_M_Warehouse.Table_Name,
+			whereClause,
+			null
+		)
+			.setOnlyActiveRecords(true)
+			.setParameters(organizationId, false)
+		;
 		//	Count
 		int count = query.count();
 		//	Get List
-		query.<MWarehouse>list()
+		query.setLimit(limit, offset)
+			.<MWarehouse>list()
 			.forEach(warehouse -> {
 				builder.addWarehouses(ConvertUtil.convertWarehouse(warehouse));
 			});

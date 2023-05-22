@@ -67,6 +67,7 @@ import org.spin.backend.grpc.security.SecurityGrpc.SecurityImplBase;
 import org.spin.backend.grpc.security.Session;
 import org.spin.backend.grpc.security.SessionInfo;
 import org.spin.backend.grpc.security.SessionInfoRequest;
+import org.spin.backend.grpc.security.SetSessionAttributeRequest;
 import org.spin.backend.grpc.security.UserInfo;
 import org.spin.backend.grpc.security.UserInfoRequest;
 import org.spin.backend.grpc.security.ValueType;
@@ -102,7 +103,13 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 	private CLogger log = CLogger.getCLogger(SecurityServiceImplementation.class);
 	/**	Menu */
 	private static CCache<String, Menu.Builder> menuCache = new CCache<String, Menu.Builder>("Menu_for_User", 30, 0);
-	
+
+
+	boolean isSessionContext(String contextKey) {
+		return contextKey.startsWith("#") || contextKey.startsWith("$");
+	}
+
+
 	@Override
 	public void runLogin(LoginRequest request, StreamObserver<Session> responseObserver) {
 		try {
@@ -158,7 +165,58 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			);
 		}
 	}
-	
+
+
+	@Override
+	public void setSessionAttribute(SetSessionAttributeRequest request, StreamObserver<Session> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			Session.Builder sessionBuilder = setSessionAttribute(request);
+			responseObserver.onNext(sessionBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private Session.Builder setSessionAttribute(SetSessionAttributeRequest request) {
+		Properties context = Env.getCtx();
+
+		String language = Env.getAD_Language(context);
+		if (!Util.isEmpty(request.getLanguage())) {
+			language = ContextManager.getDefaultLanguage(request.getLanguage());
+			Env.setContext(context, "#AD_Language", language);
+		}
+
+		int warehouseId = request.getWarehouseId();
+		if (!Util.isEmpty(request.getWarehouseUuid(), true)) {
+			warehouseId = RecordUtil.getIdFromUuid(I_M_Warehouse.Table_Name, request.getWarehouseUuid(), null);
+		}
+		Env.setContext(context, "#M_Warehouse_ID", warehouseId);
+
+		MSession session = MSession.get(context, false);
+		// Default preference values
+		SessionManager.loadDefaultSessionValues(context, language);
+
+		// Session values
+		Session.Builder builder = Session.newBuilder();
+		final String bearerToken = createBearerToken(
+			session,
+			Env.getContextAsInt(context, "#M_Warehouse_ID"),
+			language
+		);
+		builder.setToken(bearerToken);
+		return builder;
+	}
+
+
 	@Override
 	public void getUserInfo(UserInfoRequest request, StreamObserver<UserInfo> responseObserver) {
 		try {
@@ -228,20 +286,32 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
-		
+		int offset = (pageNumber - 1) * limit;
+
 		final String whereClause = "EXISTS("
-			+ "SELECT 1 FROM AD_User_Roles ur "
-			+ "WHERE ur.AD_Role_ID = AD_Role.AD_Role_ID AND ur.AD_User_ID = ?"
+				+ "SELECT 1 FROM AD_User_Roles ur "
+				+ "WHERE ur.AD_Role_ID = AD_Role.AD_Role_ID AND ur.AD_User_ID = ?"
 			+ ")"
 			+ "AND ("
-			+ "IsAccessAllOrgs = 'Y' "
-			+ "OR (IsUseUserOrgAccess = 'N' and EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = AD_Role.AD_Role_ID AND ro.IsActive = 'Y'))"
-			+ "OR (IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ? AND uo.IsActive = 'Y'))"
+				+ "(IsAccessAllOrgs = 'Y' AND EXISTS(SELECT 1 FROM AD_Org AS o "
+				+ "WHERE (o.AD_Client_ID = AD_Client_ID OR o.AD_Org_ID = 0) "
+				+ "AND o.IsActive = 'Y' AND o.IsSummary = 'N'))"
+			+ "OR ("
+				+ "IsUseUserOrgAccess = 'N' AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro "
+				+ "INNER JOIN AD_Org AS o ON o.AD_Org_ID = ro.AD_Org_ID AND o.IsSummary = 'N' "
+				+ "WHERE ro.AD_Role_ID = AD_Role.AD_Role_ID AND ro.IsActive = 'Y')) "
+			+ "OR ("
+				+ "IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo "
+				+ "INNER JOIN AD_Org AS o ON o.AD_Org_ID = uo.AD_Org_ID AND o.IsSummary = 'N' "
+				+ "WHERE uo.AD_User_ID = ? AND uo.IsActive = 'Y')) "
 			+ ")"
 		;
-		Query query = new Query(Env.getCtx(), I_AD_Role.Table_Name, 
-			whereClause, null)
+		Query query = new Query(
+			Env.getCtx(),
+			I_AD_Role.Table_Name,
+			whereClause,
+			null
+		)
 			.setParameters(userId, userId)
 			.setOnlyActiveRecords(true)
 		;
@@ -310,7 +380,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			+ "INNER JOIN AD_Role AS r ON ur.AD_Role_ID = r.AD_Role_ID "
 			+ "WHERE ur.AD_User_ID = ? AND ur.IsActive = 'Y' "
 			+ "AND r.IsActive = 'Y' "
-			+ "AND (r.IsAccessAllOrgs = 'Y' "
+			+ "AND ((r.IsAccessAllOrgs = 'Y' AND EXISTS(SELECT 1 FROM AD_Org AS o WHERE (o.AD_Client_ID = r.AD_Client_ID OR o.AD_Org_ID = 0) AND o.IsActive = 'Y' AND o.IsSummary = 'N') ) "
 			+ "OR (r.IsUseUserOrgAccess = 'N' AND EXISTS(SELECT 1 FROM AD_Role_OrgAccess AS ro WHERE ro.AD_Role_ID = ur.AD_Role_ID AND ro.IsActive = 'Y') ) "
 			+ "OR (r.IsUseUserOrgAccess = 'Y' AND EXISTS(SELECT 1 FROM AD_User_OrgAccess AS uo WHERE uo.AD_User_ID = ur.AD_User_ID AND uo.IsActive = 'Y') )) "
 			+ "ORDER BY COALESCE(ur.IsDefault,'N') DESC";
@@ -449,6 +519,28 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 	}
 
 
+	/**
+	 * Get Object from ContextValue
+	 * @param contextValue
+	 * @return
+	 */
+	public Object getObjectFromContextValue(ContextValue contextValue) {
+		ValueType valueType = contextValue.getValueType();
+		if (valueType.equals(ValueType.BOOLEAN)) {
+			return contextValue.getBooleanValue();
+		} else if (valueType.equals(ValueType.DOUBLE)) {
+			return contextValue.getDoubleValue();
+		} else if (valueType.equals(ValueType.INTEGER)) {
+			return contextValue.getIntValue();
+		} else if (valueType.equals(ValueType.STRING)) {
+			return contextValue.getStringValue();
+		} else if (valueType.equals(ValueType.LONG) || valueType.equals(ValueType.DATE)) {
+			return ValueUtil.getTimestampFromLong(contextValue.getLongValue());
+		}
+		return null;
+	}
+
+
 	@Override
 	public void runChangeRole(ChangeRoleRequest request, StreamObserver<Session> responseObserver) {
 		try {
@@ -479,23 +571,48 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		//	Get / Validate Session
 		MSession currentSession = MSession.get(context, false, false);
 		int userId = currentSession.getCreatedBy();
-		int roleId = DB.getSQLValue(null, "SELECT AD_Role_ID FROM AD_Role WHERE UUID = ?", request.getRoleUuid());
-		int organizationId = DB.getSQLValue(null, "SELECT AD_Org_ID FROM AD_Org WHERE UUID = ?", request.getOrganizationUuid());
-		if (organizationId < 0) {
-			organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
-		}
-		if(organizationId < 0) {
-			organizationId = 0;
-		}
-		int warehouseId = DB.getSQLValue(null, "SELECT M_Warehouse_ID FROM M_Warehouse WHERE UUID = ? AND AD_Org_ID = ?", request.getWarehouseUuid(), organizationId);
-		if(warehouseId < 0) {
-			warehouseId = 0;
-		}
 		//	Get Values from role
-		if(roleId < 0) {
+		int roleId = DB.getSQLValue(null, "SELECT AD_Role_ID FROM AD_Role WHERE UUID = ?", request.getRoleUuid());
+		if (roleId < 0) {
 			throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 		}
 		MRole role = MRole.get(context, roleId);
+
+		// Get organization
+		int organizationId = -1;
+		if (!Util.isEmpty(request.getOrganizationUuid(), true)) {
+			organizationId = DB.getSQLValue(
+				null,
+				"SELECT AD_Org_ID FROM AD_Org WHERE UUID = ?",
+				request.getOrganizationUuid()
+			);
+			if (!role.isOrgAccess(organizationId, true)) {
+				// invlaid organization from role
+				organizationId = -1;
+			}
+		}
+		if (organizationId < 0) {
+			organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
+			if (organizationId < 0) {
+				organizationId = 0;
+			}
+		}
+
+		// Get warehouse
+		int warehouseId = -1;
+		if (!Util.isEmpty(request.getWarehouseUuid(), true)) {
+			warehouseId = DB.getSQLValue(
+				null,
+				"SELECT M_Warehouse_ID FROM M_Warehouse WHERE UUID = ? AND AD_Org_ID = ?",
+				request.getWarehouseUuid(),
+				organizationId
+			);
+		}
+		if (warehouseId < 0) {
+			warehouseId = 0;
+		}
+
+		// fill context values
 		Env.setContext(context, "#AD_Session_ID", 0);
 		Env.setContext(context, "#Session_UUID", "");
 		Env.setContext(context, "#AD_User_ID", userId);
@@ -542,7 +659,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		session.setLanguage(ValueUtil.validateNull(ContextManager.getDefaultLanguage(Env.getAD_Language(Env.getCtx()))));
 		//	Set default context
 		Env.getCtx().entrySet().stream()
-			.filter(keyValue -> String.valueOf(keyValue.getKey()).startsWith("#") || String.valueOf(keyValue.getKey()).startsWith("$"))
+			.filter(keyValue -> isSessionContext(String.valueOf(keyValue.getKey())))
 			.forEach(contextKeyValue -> {
 				session.putDefaultContext(contextKeyValue.getKey().toString(), convertObjectFromContext((String)contextKeyValue.getValue()).build());
 			});

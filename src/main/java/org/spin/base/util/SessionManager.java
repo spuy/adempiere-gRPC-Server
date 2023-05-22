@@ -109,7 +109,7 @@ public class SessionManager {
 					throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 				}
 				Env.setContext (context, "#Date", TimeUtil.getDay(System.currentTimeMillis()));
-				Env.setContext(Env.getCtx(), "#AD_Session_ID", Integer.parseInt(claims.getBody().getId()));
+				Env.setContext(context, "#AD_Session_ID", Integer.parseInt(claims.getBody().getId()));
 				MRole role = MRole.get(context, roleId);
 				//	Warehouse / Org
 				Env.setContext (context, "#M_Warehouse_ID", warehouseId);
@@ -160,10 +160,10 @@ public class SessionManager {
 				organizationId = organization.getAD_Org_ID();
 			}
 		}
-		if(warehouseId >= 0) {
+		if (warehouseId >= 0) {
 			MWarehouse warehouse = MWarehouse.get(context, warehouseId);
-			if(warehouse != null) {
-				Env.setContext(context, "#M_Warehouse_ID", organizationId);
+			if (warehouse != null) {
+				Env.setContext(context, "#M_Warehouse_ID", warehouseId);
 			}
 		}
 		Env.setContext(context, "#AD_Org_ID", organizationId);

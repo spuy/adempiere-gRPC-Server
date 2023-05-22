@@ -133,6 +133,7 @@ import org.spin.base.util.RecordUtil;
 import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
 import org.spin.pos.service.CashManagement;
+import org.spin.pos.util.POSConvertUtil;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
 
@@ -1059,7 +1060,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			String nexPageToken = null;
 			int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 			int limit = RecordUtil.getPageSize(request.getPageSize());
-			int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+			int offset = (pageNumber - 1) * limit;
+
 			//	Dynamic where clause
 			//	Get Product list
 			Query query = new Query(Env.getCtx(), I_C_BP_BankAccount.Table_Name, I_C_BP_BankAccount.COLUMNNAME_C_BPartner_ID + " = ?", null)
@@ -1414,7 +1416,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
 		//	
 		StringBuffer whereClause = new StringBuffer();
@@ -1472,7 +1475,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@SalesRep_ID@ @NotFound@");
 			}
 			seller.set_ValueOfColumn("IsActive", false);
-			seller.saveEx();
+			seller.saveEx(transactionName);
 		});
 		//	Return
 		return Empty.newBuilder();
@@ -1504,7 +1507,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					PO allocatedSeller = new GenericPO("C_POSSellerAllocation", Env.getCtx(), allocatedSellerId, transactionName);
 					if(allocatedSeller.get_ValueAsInt("SalesRep_ID") != salesRepresentativeId) {
 						allocatedSeller.set_ValueOfColumn("IsActive", false);
-						allocatedSeller.saveEx();
+						allocatedSeller.saveEx(transactionName);
 					}
 				});
 			}
@@ -1538,7 +1541,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				seller.set_ValueOfColumn("IsAllowsPreviewDocument", pointOfSales.get_ValueAsBoolean("IsAllowsPreviewDocument"));
 			}
 			seller.set_ValueOfColumn("IsActive", true);
-			seller.saveEx();
+			seller.saveEx(transactionName);
 		});
 		//	Return
 		return Empty.newBuilder();
@@ -1567,7 +1570,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		int count = 0;
 		try {
 			//	Get Bank statement
@@ -1677,7 +1681,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			refundReferenceToCreate.set_ValueOfColumn("IsReceipt", request.getIsReceipt());
 			refundReferenceToCreate.set_ValueOfColumn("TenderType", request.getTenderTypeCode());
 			refundReferenceToCreate.set_ValueOfColumn("Description", request.getDescription());
-			refundReferenceToCreate.saveEx();
+			refundReferenceToCreate.saveEx(transactionName);
 			refundReference.set(refundReferenceToCreate);
 		});
 		return convertPaymentReference(refundReference.get());
@@ -1786,11 +1790,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			}
 			bankStatement.setDocStatus(MBankStatement.DOCSTATUS_Drafted);
 			bankStatement.setDocAction(MBankStatement.ACTION_Complete);
-			bankStatement.saveEx();
+			bankStatement.saveEx(transactionName);
 			if(!bankStatement.processIt(DocAction.ACTION_Complete)) {
 				throw new AdempiereException(bankStatement.getProcessMsg());
 			}
-	        bankStatement.saveEx();
+			bankStatement.saveEx(transactionName);
 	        //	Set
 	        cashClosing
 	        	.setId(bankStatement.getC_BankStatement_ID())
@@ -1861,7 +1865,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			MOrder returnOrder = new MOrder(Env.getCtx(), infoProcess.getRecord_ID(), transactionName);
 			if(!Util.isEmpty(request.getDescription())) {
 				returnOrder.setDescription(request.getDescription());
-				returnOrder.saveEx();
+				returnOrder.saveEx(transactionName);
 			}
 			returnOrderReference.set(returnOrder);
 		});
@@ -1930,7 +1934,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				log.warning("@ProcessFailed@ :" + shipment.getProcessMsg());
 				throw new AdempiereException("@ProcessFailed@ :" + shipment.getProcessMsg());
 			}
-			shipment.saveEx();
+			shipment.saveEx(transactionName);
 			shipmentReference.set(shipment);
 		});
 		//	Default
@@ -1950,7 +1954,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		int shipmentId = RecordUtil.getIdFromUuid(I_M_InOut.Table_Name, request.getShipmentUuid(), null);
 		//	Get Product list
 		Query query = new Query(Env.getCtx(), I_M_InOutLine.Table_Name, I_M_InOutLine.COLUMNNAME_M_InOut_ID + " = ?", null)
@@ -1992,7 +1997,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		List<Object> parameters = new ArrayList<Object>();
 		StringBuffer whereClause = new StringBuffer("IsPaid = 'N' AND Processed = 'N'");
 		if(!Util.isEmpty(request.getOrderUuid())) {
@@ -2217,7 +2223,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			if(salesOrder.isDelivered()) {
 				throw new AdempiereException("@C_Order_ID@ @IsDelivered@");
 			}
-			//	
+			//	Valid if has a Order
+			if(!DocumentUtil.isCompleted(salesOrder)) {
+				throw new AdempiereException("@Invalid@ @C_Order_ID@ " + salesOrder.getDocumentNo());
+			}
+			//
 			MInOut shipment = new Query(Env.getCtx(), I_M_InOut.Table_Name, 
 					"DocStatus = 'DR' "
 					+ "AND C_Order_ID = ? "
@@ -2237,10 +2247,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			shipment.setC_Order_ID(orderId);
 			shipment.setSalesRep_ID(salesRepresentativeId);
 			shipment.setC_POS_ID(salesOrder.getC_POS_ID());
-			//	Valid if has a Order
-			if(!DocumentUtil.isCompleted(salesOrder)) {
-				throw new AdempiereException("@Invalid@ @C_Order_ID@ " + salesOrder.getDocumentNo());
-			}
 			shipment.saveEx(transactionName);
 			maybeShipment.set(shipment);
 			if (request.getIsCreateLinesFromOrder()) {
@@ -2703,7 +2709,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 						Optional.ofNullable(address.getAddress4()).ifPresent(addressValue -> location.setAddress4(addressValue));
 						Optional.ofNullable(address.getPostalCode()).ifPresent(postalCode -> location.setPostal(postalCode));
 						//	Save
-						location.saveEx();
+						location.saveEx(transactionName);
 						//	Update business partner location
 						businessPartnerLocation.setIsBillTo(address.getIsDefaultBilling());
 						businessPartnerLocation.set_ValueOfColumn(VueStoreFrontUtil.COLUMNNAME_IsDefaultBilling, address.getIsDefaultBilling());
@@ -2793,7 +2799,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Aisle Seller
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
 		//	Get Product list
@@ -2843,7 +2850,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		//	Aisle Seller
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
@@ -2900,7 +2908,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		//	Aisle Seller
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
@@ -2976,7 +2985,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		//	Aisle Seller
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
@@ -3021,7 +3031,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		String whereClause = "EXISTS(SELECT 1 FROM C_Conversion_Rate cr "
 				+ "WHERE (cr.C_Currency_ID = C_Currency.C_Currency_ID  OR cr.C_Currency_ID_To = C_Currency.C_Currency_ID) "
@@ -3081,6 +3092,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 						salesOrder.setPaymentRule(MOrder.PAYMENTRULE_Cash);
 					}
 					salesOrder.saveEx();
+					salesOrder.saveEx(transactionName);
 					//	Update Process if exists
 					if (!salesOrder.processIt(MOrder.DOCACTION_Complete)) {
 						log.warning("@ProcessFailed@ :" + salesOrder.getProcessMsg());
@@ -3528,7 +3540,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 		int posId = pos.getC_POS_ID();
@@ -3660,7 +3673,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		StringBuffer whereClause = new StringBuffer();
 		//	Parameters
@@ -3727,7 +3741,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		StringBuffer whereClause = new StringBuffer(I_C_OrderLine.COLUMNNAME_C_Order_ID + " = ?");
 		List<Object> parameters = new ArrayList<>();
 		parameters.add(orderId);
@@ -4224,9 +4239,22 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			if(!request.getPin().equals(supervisor.getUserPIN())) {
 				throw new AdempiereException("@Invalid@ @UserPIN@");
 			}
-		} else {	//	Find a supervisor for POS
-			boolean match = new Query(Env.getCtx(), I_AD_User.Table_Name, "IsPOSManager = 'Y' AND UserPIN = ?", null)
-					.setParameters(String.valueOf(request.getPin()))
+		} else {
+			//	Find a supervisor for POS
+			final String whereClause = "UserPIN = ? AND "
+				+ "EXISTS(SELECT 1 FROM C_POSSellerAllocation seller "
+				+ "WHERE seller.C_POS_ID = ? "
+				+ "AND seller.SalesRep_ID = AD_User.AD_User_ID "
+				+ "AND seller.IsActive = 'Y' "
+				+ "AND seller.IsAllowsPOSManager = 'Y')"
+			;
+			boolean match = new Query(
+				Env.getCtx(),
+				I_AD_User.Table_Name,
+				whereClause,
+				null
+			)
+				.setParameters(String.valueOf(request.getPin()), pos.getC_POS_ID())
 					.setClient_ID()
 					.setOnlyActiveRecords(true)
 					.match();
@@ -4313,7 +4341,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				+ "		AND seller.IsActive = 'Y' AND seller.IsAllowsPOSManager = 'Y' "
 				+ 		whereClause
 				+ ") "
-				+ "OR IsPOSManager = 'Y') "
 				+ "AND UserPIN = ? "
 				,
 				null
@@ -4771,7 +4798,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			updateUomAndQuantity(orderLine, unitOfMeasureId, quantity);
 			//	Set values
 			orderLine.setTax();
-			orderLine.saveEx();
+			orderLine.saveEx(transactionName);
 			//	Apply Discount from order
 			configureDiscountRateOff(order, (BigDecimal) order.get_Value("FlatDiscount"), transactionName);
 			maybeOrderLine.set(orderLine);
@@ -4839,12 +4866,12 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Get POS List
 		boolean isAppliedNewFeaturesPOS = M_Element.get(Env.getCtx(), "IsSharedPOS") != null && M_Element.get(Env.getCtx(), "IsAllowsAllocateSeller") != null;
-		StringBuffer whereClause = new StringBuffer("SalesRep_ID = ? OR EXISTS(SELECT 1 FROM AD_User u WHERE u.AD_User_ID = ? AND IsPOSManager = 'Y')");
+		StringBuffer whereClause = new StringBuffer("SalesRep_ID = ? ");
 		List<Object> parameters = new ArrayList<>();
-		parameters.add(salesRepresentativeId);
 		parameters.add(salesRepresentativeId);
 		//	applies for Shared pos
 		if(isAppliedNewFeaturesPOS) {
@@ -5223,9 +5250,18 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int salesRepresentativeId = RecordUtil.getIdFromUuid(I_AD_User.Table_Name, salesRepresentativeUuid, transactionName);
 		if(salesRepresentativeId <= 0) {
 			MUser currentUser = MUser.get(salesOrder.getCtx());
-			if(pos.get_ValueAsBoolean("IsSharedPOS")
-					|| currentUser.get_ValueAsBoolean("IsPOSManager")) {
+			PO sellerSupervisor = new Query(
+				Env.getCtx(),
+				"C_POSSellerAllocation",
+				"C_POS_ID = ? AND SalesRep_ID = ? AND IsAllowsPOSManager='Y'",
+				transactionName
+			).setParameters(pos.getC_POS_ID(), currentUser.getAD_User_ID())
+			.first();
+
+			if (pos.get_ValueAsBoolean("IsSharedPOS")) {
 				salesRepresentativeId = currentUser.getAD_User_ID();
+			} else if (sellerSupervisor != null) {
+				salesRepresentativeId = sellerSupervisor.get_ValueAsInt("SalesRep_ID");
 			} else if (businessPartner.getSalesRep_ID() != 0) {
 				salesRepresentativeId = salesOrder.getC_BPartner().getSalesRep_ID();
 			} else {
@@ -5246,7 +5282,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPriceList priceList = MPriceList.get(Env.getCtx(), salesOrder.getM_PriceList_ID(), transactionName);
 		//
 		MPriceListVersion priceListVersion = priceList.getPriceListVersion (RecordUtil.getDate());
-		List<MProductPrice> productPrices = Arrays.asList(priceListVersion.getProductPrice("AND EXISTS("
+		List<MProductPrice> productPrices = Arrays.asList(priceListVersion.getProductPrice(" AND EXISTS("
 				+ "SELECT 1 "
 				+ "FROM C_OrderLine ol "
 				+ "WHERE ol.C_Order_ID = " + salesOrder.getC_Order_ID() + " "
@@ -5690,7 +5726,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Dynamic where clause
 		StringBuffer whereClause = new StringBuffer();
 		//	Parameters
@@ -6175,7 +6212,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		String nexPageToken = null;
 		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = RecordUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
 		//	Aisle Seller
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
 		//	Get Product list
@@ -6216,5 +6254,165 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
 		return builder;
 	}
-	
+
+
+	@Override
+	public void saveCommandShortcut(SaveCommandShortcutRequest request, StreamObserver<CommandShortcut> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			CommandShortcut.Builder cashListBuilder = saveCommandShortcut(request);
+			responseObserver.onNext(cashListBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+
+	private CommandShortcut.Builder saveCommandShortcut(SaveCommandShortcutRequest request) {
+		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
+
+		if (Util.isEmpty(request.getCommand(), true)) {
+			throw new AdempiereException("@ECA14_Command@ @NotFound@");
+		}
+		if (Util.isEmpty(request.getShortcut(), true)) {
+			throw new AdempiereException("@ECA14_Shortcut@ @NotFound@");
+		}
+
+		final String sqlShorcut = "SELECT ECA14_Command FROM C_POSCommandShortcut WHERE C_POS_ID = ? AND ECA14_Shortcut = ?";
+		String commandUsed = DB.getSQLValueString(null, sqlShorcut, pos.getC_POS_ID(), request.getShortcut());
+		if (!Util.isEmpty(commandUsed, true)) {
+			throw new AdempiereException("@ECA14_Shortcut@ @Used@ " + commandUsed);
+		}
+
+		final String whereClause = "C_POS_ID = ? AND ECA14_Command = ?";
+		PO shorcutCommand = new Query(
+			Env.getCtx(),
+			"C_POSCommandShortcut",
+			whereClause,
+			null
+		)
+			.setClient_ID()
+			.setParameters(pos.getC_POS_ID(), request.getCommand())
+			.first()
+		;
+		if (shorcutCommand == null) {
+			MTable table = MTable.get(Env.getCtx(), "C_POSCommandShortcut");
+			shorcutCommand = table.getPO(0, null);
+			shorcutCommand.set_ValueOfColumn("C_POS_ID", pos.getC_POS_ID());
+		}
+
+		shorcutCommand.set_ValueOfColumn("ECA14_Command", request.getCommand());
+		shorcutCommand.set_ValueOfColumn("ECA14_Shortcut", request.getShortcut());
+		shorcutCommand.saveEx();
+
+		CommandShortcut.Builder builder = POSConvertUtil.convertCommandShorcut(shorcutCommand);
+
+		return builder;
+	}
+
+
+	@Override
+	public void listCommandShortcuts(ListCommandShortcutsRequest request, StreamObserver<ListCommandShortcutsResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListCommandShortcutsResponse.Builder cashListBuilder = listCommandShortcuts(request);
+			responseObserver.onNext(cashListBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+
+	private ListCommandShortcutsResponse.Builder listCommandShortcuts(ListCommandShortcutsRequest request) {
+		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
+
+		Query query = new Query(
+			Env.getCtx(),
+			"C_POSCommandShortcut",
+			I_C_POS.COLUMNNAME_C_POS_ID + " = ?",
+			null
+		)
+			.setParameters(pos.getC_POS_ID())
+			.setClient_ID()
+			.setOnlyActiveRecords(true)
+		;
+
+		int count = query.count();
+		String nexPageToken = null;
+		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+		//	Set page token
+		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+
+		ListCommandShortcutsResponse.Builder builderList = ListCommandShortcutsResponse.newBuilder()
+			.setRecordCount(count)
+			.setNextPageToken(
+				ValueUtil.validateNull(nexPageToken)
+			)
+		;
+
+		query.setLimit(limit, offset)
+			.list()
+			.forEach(commandShorcut -> {
+				CommandShortcut.Builder builder = POSConvertUtil.convertCommandShorcut(commandShorcut);
+				builderList.addRecords(builder);
+			});
+		;
+
+		return builderList;
+	}
+
+
+	@Override
+	public void deleteCommandShortcut(DeleteCommandShortcutRequest request, StreamObserver<Empty> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			Empty.Builder cashListBuilder = deleteCommandShortcut(request);
+			responseObserver.onNext(cashListBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+
+	private Empty.Builder deleteCommandShortcut(DeleteCommandShortcutRequest request) {
+		if (request.getId() <= 0 && Util.isEmpty(request.getUuid())) {
+			throw new AdempiereException("@C_POSCommandShortcut_ID@ @NotFound@");
+		}
+
+		Trx.run(transactionName -> {
+			PO commandShorcut = RecordUtil.getEntity(Env.getCtx(), "C_POSCommandShortcut", request.getUuid(), request.getId(), transactionName);
+			if (commandShorcut == null || commandShorcut.get_ID() <= 0) {
+				throw new AdempiereException("@C_POSCommandShortcut_ID@ @NotFound@");
+			}
+
+			commandShorcut.deleteEx(true);
+		});
+
+		Empty.Builder builder = Empty.newBuilder();
+
+		return builder;
+	}
+
 }

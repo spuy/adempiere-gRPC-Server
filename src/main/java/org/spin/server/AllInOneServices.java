@@ -21,20 +21,26 @@ import java.util.logging.Logger;
 import org.spin.authentication.AuthorizationServerInterceptor;
 import org.spin.base.setup.SetupLoader;
 import org.spin.base.util.Services;
+import org.spin.grpc.service.BankStatementMatchServiceImplementation;
 import org.spin.grpc.service.BusinessDataServiceImplementation;
 import org.spin.grpc.service.BusinessPartnerServiceImplementation;
 import org.spin.grpc.service.CoreFunctionalityImplementation;
 import org.spin.grpc.service.DashboardingServiceImplementation;
 import org.spin.grpc.service.DictionaryServiceImplementation;
 import org.spin.grpc.service.EnrollmentServiceImplementation;
+import org.spin.grpc.service.ExpressMovementServiceImplementation;
+import org.spin.grpc.service.ExpressReceiptServiceImplementation;
+import org.spin.grpc.service.ExpressShipmentServiceImplementation;
 import org.spin.grpc.service.FileManagementServiceImplementation;
 import org.spin.grpc.service.GeneralLedgerServiceImplementation;
 import org.spin.grpc.service.InOutServiceImplementation;
 import org.spin.grpc.service.InvoiceServiceImplementation;
 import org.spin.grpc.service.IssueManagementServiceImplementation;
 import org.spin.grpc.service.LogsServiceImplementation;
+import org.spin.grpc.service.MatchPOReceiptInvoiceServiceImplementation;
 import org.spin.grpc.service.MaterialManagementServiceImplementation;
 import org.spin.grpc.service.OrderServiceImplementation;
+import org.spin.grpc.service.PaymentAllocationServiceImplementation;
 import org.spin.grpc.service.PaymentPrintExportServiceImplementation;
 import org.spin.grpc.service.PaymentServiceImplementation;
 import org.spin.grpc.service.PayrollActionNoticeServiceImplementation;
@@ -60,6 +66,9 @@ public class AllInOneServices {
 	private static final Logger logger = Logger.getLogger(AllInOneServices.class.getName());
 
 	private Server server;
+
+	private static String defaultFileConnection = "resources/standalone.yaml";
+
 	/**
 	  * Get SSL / TLS context
 	  * @return
@@ -86,6 +95,11 @@ public class AllInOneServices {
 		// Validate JWT on all requests
 		serverBuilder.intercept(new AuthorizationServerInterceptor());
 
+		//	Bank Statement Match
+		if (SetupLoader.getInstance().getServer().isValidService(Services.BANK_STATEMENT_MATCH.getServiceName())) {
+			serverBuilder.addService(new BankStatementMatchServiceImplementation());
+			logger.info("Service " + Services.BANK_STATEMENT_MATCH.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	Business Logic
 		if(SetupLoader.getInstance().getServer().isValidService(Services.BUSINESS.getServiceName())) {
 			serverBuilder.addService(new BusinessDataServiceImplementation());
@@ -111,6 +125,21 @@ public class AllInOneServices {
 			serverBuilder.addService(new EnrollmentServiceImplementation());
 			logger.info("Service " + Services.ENROLLMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
+		// Express Movement
+		if (SetupLoader.getInstance().getServer().isValidService(Services.EXPRESS_MOVEMENT.getServiceName())) {
+			serverBuilder.addService(new ExpressMovementServiceImplementation());
+			logger.info("Service " + Services.EXPRESS_MOVEMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		// Express Receipt
+		if (SetupLoader.getInstance().getServer().isValidService(Services.EXPRESS_RECEIPT.getServiceName())) {
+			serverBuilder.addService(new ExpressReceiptServiceImplementation());
+			logger.info("Service " + Services.EXPRESS_RECEIPT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		// Express Shipment
+		if (SetupLoader.getInstance().getServer().isValidService(Services.EXPRESS_SHIPMENT.getServiceName())) {
+			serverBuilder.addService(new ExpressShipmentServiceImplementation());
+			logger.info("Service " + Services.EXPRESS_SHIPMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	File Management
 		if(SetupLoader.getInstance().getServer().isValidService(Services.FILE_MANAGEMENT.getServiceName())) {
 			serverBuilder.addService(new FileManagementServiceImplementation());
@@ -135,6 +164,11 @@ public class AllInOneServices {
 		if(SetupLoader.getInstance().getServer().isValidService(Services.LOG.getServiceName())) {
 			serverBuilder.addService(new LogsServiceImplementation());
 			logger.info("Service " + Services.LOG.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Match PO-Receipt-Invocie
+		if (SetupLoader.getInstance().getServer().isValidService(Services.MATCH_PO_RECEIPT_INVOICE.getServiceName())) {
+			serverBuilder.addService(new MatchPOReceiptInvoiceServiceImplementation());
+			logger.info("Service " + Services.MATCH_PO_RECEIPT_INVOICE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Material Management
 		if(SetupLoader.getInstance().getServer().isValidService(Services.MATERIAL_MANAGEMENT.getServiceName())) {
@@ -182,24 +216,29 @@ public class AllInOneServices {
 			logger.info("Service " + Services.ORDER.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Payment
-		if(SetupLoader.getInstance().getServer().isValidService(Services.PAYMENT.getServiceName())) {
+		if (SetupLoader.getInstance().getServer().isValidService(Services.PAYMENT.getServiceName())) {
 			serverBuilder.addService(new PaymentServiceImplementation());
 			logger.info("Service " + Services.PAYMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
-		//	Product
-		if(SetupLoader.getInstance().getServer().isValidService(Services.PRODUCT.getServiceName())) {
-			serverBuilder.addService(new ProductServiceImplementation());
-			logger.info("Service " + Services.PRODUCT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		//	Payment
+		if (SetupLoader.getInstance().getServer().isValidService(Services.PAYMENT_ALLOCATION.getServiceName())) {
+			serverBuilder.addService(new PaymentAllocationServiceImplementation());
+			logger.info("Service " + Services.PAYMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Payment Print/Export
-		if(SetupLoader.getInstance().getServer().isValidService(Services.PAYMENT_PTINT_EXPORT.getServiceName())) {
+		if (SetupLoader.getInstance().getServer().isValidService(Services.PAYMENT_PTINT_EXPORT.getServiceName())) {
 			serverBuilder.addService(new PaymentPrintExportServiceImplementation());
 			logger.info("Service " + Services.PAYMENT_PTINT_EXPORT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Payroll Action Notice
-		if(SetupLoader.getInstance().getServer().isValidService(Services.PAYROLL_ACTION_NOTICE.getServiceName())) {
+		if (SetupLoader.getInstance().getServer().isValidService(Services.PAYROLL_ACTION_NOTICE.getServiceName())) {
 			serverBuilder.addService(new PayrollActionNoticeServiceImplementation());
 			logger.info("Service " + Services.PAYROLL_ACTION_NOTICE.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Product
+		if (SetupLoader.getInstance().getServer().isValidService(Services.PRODUCT.getServiceName())) {
+			serverBuilder.addService(new ProductServiceImplementation());
+			logger.info("Service " + Services.PRODUCT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Time Control
 		if(SetupLoader.getInstance().getServer().isValidService(Services.TIME_CONTROL.getServiceName())) {
@@ -250,11 +289,11 @@ public class AllInOneServices {
 	    }
 	  }
 
-	  /**
-	   * Main launches the server from the command line.
-	 * @throws Exception 
-	   */
-	  public static void main(String[] args) throws Exception {
+	/**
+	 * Main launches the server from the command line.
+	 * @throws Exception
+	 */
+	public static void main(String[] args) throws Exception {
 		if (args == null) {
 			throw new Exception("Arguments Not Found");
 		}
@@ -262,15 +301,18 @@ public class AllInOneServices {
 		if (args.length == 0) {
 			throw new Exception("Arguments Must Be: [property file name]");
 		}
-		  String setupFileName = args[0];
-		  if(setupFileName == null || setupFileName.trim().length() == 0) {
-			  throw new Exception("Setup File not found");
-		  }
+		String setupFileName = args[0];
+		if (setupFileName == null || setupFileName.trim().length() == 0) {
+			setupFileName = defaultFileConnection;
+			// throw new Exception("Setup File not found");
+		}
+
 		  SetupLoader.loadSetup(setupFileName);
 		  //	Validate load
 		  SetupLoader.getInstance().validateLoad();
 		  final AllInOneServices server = new AllInOneServices();
 		  server.start();
 		  server.blockUntilShutdown();
-	  }
+	}
+
 }

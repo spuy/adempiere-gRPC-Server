@@ -1,21 +1,27 @@
 server:
     port: 50059
     services:
+       - bank_statement_match
        - business
        - business_partner
        - core
        - dashboarding
        - dictionary
        - enrollment
+       - express_movement
+       - express_receipt
+       - express_shipment
        - file_management
        - general_ledger
        - log
        - in_out
        - invoice
        - issue_management
+       - match_po_receipt_invoice
        - material_management
        - order
        - payment
+       - payment_allocation
        - payment_print_export
        - payroll_action_notice
        - pos
@@ -28,7 +34,7 @@ server:
        - user_customization
        - workflow
     log_level: WARNING
-    secret_key: fill_secret_key
+    secret_key: 58270DD5D28E9945DD24907ADD498276EBEF01C1385618362054B2E65E582230
     # Default 24 hours
     expiration: 86400000
 database:
