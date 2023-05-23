@@ -109,6 +109,7 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Invoice
 		LookupItem.Builder lookupInvoice = LookupItem.newBuilder()
+			.setId(MatchType.INVOICE_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
@@ -125,6 +126,7 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Receipt
 		LookupItem.Builder lookupReceipt = LookupItem.newBuilder()
+			.setId(MatchType.RECEIPT_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
@@ -141,10 +143,11 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Purchase Order
 		LookupItem.Builder lookupOrder = LookupItem.newBuilder()
+			.setId(MatchType.PURCHASE_ORDER_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
-					MatchType.RECEIPT_VALUE
+					MatchType.PURCHASE_ORDER_VALUE
 				).build()
 			)
 			.putValues(
@@ -187,8 +190,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		ListLookupItemsResponse.Builder builderList = ListLookupItemsResponse.newBuilder();
 
 		// Invoice
-		if (matchTypeFrom != MatchType.INVOICE) {
+		if (matchTypeFrom == MatchType.RECEIPT) {
 			LookupItem.Builder lookupInvoice = LookupItem.newBuilder()
+				.setId(MatchType.INVOICE_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
@@ -205,8 +209,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		}
 
 		// Receipt
-		if (matchTypeFrom != MatchType.RECEIPT) {
+		if (matchTypeFrom == MatchType.INVOICE || matchTypeFrom == MatchType.PURCHASE_ORDER) {
 			LookupItem.Builder lookupReceipt = LookupItem.newBuilder()
+				.setId(MatchType.RECEIPT_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
@@ -223,8 +228,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		}
 
 		// Purchase Order
-		if (matchTypeFrom != MatchType.PURCHASE_ORDER) {
+		if (matchTypeFrom == MatchType.RECEIPT) {
 			LookupItem.Builder lookupOrder = LookupItem.newBuilder()
+				.setId(MatchType.PURCHASE_ORDER_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
