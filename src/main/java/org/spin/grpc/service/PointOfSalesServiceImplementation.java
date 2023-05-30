@@ -3562,7 +3562,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					parameters.add(salesRepresentativeId);
 					parameters.add(salesRepresentativeId);
 				} else {
-					whereClause.append(" AND ((C_Order.SalesRep_ID = ? OR COALESCE(C_Order.AssignedSalesRep_ID, ?) = ?) AND EXISTS(SELECT 1 FROM C_POS p WHERE p.C_POS_ID = C_Order.C_POS_ID AND p.IsSharedPOS = 'Y'))");
+					whereClause.append(" AND ((C_Order.SalesRep_ID = ? OR COALESCE(C_Order.AssignedSalesRep_ID, ?) = ?) AND EXISTS(SELECT 1 FROM C_POS p WHERE p.C_POS_ID = C_Order.C_POS_ID))");
 					parameters.add(salesRepresentativeId);
 					parameters.add(salesRepresentativeId);
 					parameters.add(salesRepresentativeId);
