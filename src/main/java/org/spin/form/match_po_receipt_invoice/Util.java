@@ -109,7 +109,7 @@ public class Util {
 			)
 			.setDate(
 				ValueUtil.getLongFromTimestamp(
-					resultSet.getTimestamp("Date")
+					resultSet.getTimestamp(5) // Date
 				)
 			)
 			.setDocumentNo(
@@ -123,6 +123,11 @@ public class Util {
 			.setQuantity(
 				ValueUtil.getDecimalFromBigDecimal(
 					resultSet.getBigDecimal("Quantity")
+				)
+			)
+			.setMatchedQuantity(
+				ValueUtil.getDecimalFromBigDecimal(
+					resultSet.getBigDecimal("MatchedQuantity")
 				)
 			)
 			.setProductId(
@@ -173,12 +178,14 @@ public class Util {
 		String sql = "";
 		if (matchTypeFrom == MatchType.INVOICE_VALUE) {
 			sql = "SELECT lin.C_InvoiceLine_ID AS ID, lin.UUID AS UUID, "
-				+ " hdr.C_Invoice_ID AS Header_ID, hrd.Header_UUID, hdr.DateInvoiced AS Date,"
+				+ " hdr.C_Invoice_ID AS Header_ID, hdr.UUID AS Header_UUID, hdr.DateInvoiced AS Date,"
 				+ " hdr.C_Invoice_ID, hdr.DocumentNo, hdr.DateInvoiced, "
 				+ " bp.Name AS C_BPartner_Name, hdr.C_BPartner_ID, "
 				+ " lin.Line, lin.C_InvoiceLine_ID, "
 				+ " p.Name AS M_Product_Name, lin.M_Product_ID, "
-				+ " lin.QtyInvoiced, SUM(COALESCE(mi.Qty, 0)), org.Name, hdr.AD_Org_ID "
+				+ " lin.QtyInvoiced, "
+				+ " lin.QtyInvoiced AS Quantity, SUM(COALESCE(mi.Qty, 0)) AS MatchedQuantity, "
+				+ " org.Name, hdr.AD_Org_ID "
 				+ "FROM C_Invoice hdr"
 				+ " INNER JOIN AD_Org org ON (hdr.AD_Org_ID = org.AD_Org_ID)"
 				+ " INNER JOIN C_BPartner bp ON (hdr.C_BPartner_ID = bp.C_BPartner_ID)"
@@ -193,12 +200,14 @@ public class Util {
 			String lineType = matchTypeTo == MatchType.RECEIPT_VALUE ? "M_InOutLine_ID" : "C_InvoiceLine_ID";
 
 			sql = "SELECT lin.C_OrderLine_ID AS ID, lin.UUID AS UUID, "
-				+ " hdr.C_Order_ID AS Header_ID, hrd.Header_UUID, hdr.DateOrdered AS Date,"
+				+ " hdr.C_Order_ID AS Header_ID, hdr.UUID AS Header_UUID, hdr.DateOrdered AS Date,"
 				+ " hdr.C_Order_ID, hdr.DocumentNo, hdr.DateOrdered, "
 				+ " bp.Name AS C_BPartner_Name, hdr.C_BPartner_ID, "
 				+ " lin.Line, lin.C_OrderLine_ID, "
 				+ " p.Name AS M_Product_Name, lin.M_Product_ID, "
-				+ " lin.QtyOrdered, SUM(COALESCE(mo.Qty, 0)), org.Name, hdr.AD_Org_ID "
+				+ " lin.QtyOrdered, "
+				+ " lin.QtyOrdered AS Quantity, SUM(COALESCE(mo.Qty, 0)) AS MatchedQuantity, "
+				+ " org.Name, hdr.AD_Org_ID "
 				+ "FROM C_Order hdr"
 				+ " INNER JOIN AD_Org org ON (hdr.AD_Org_ID = org.AD_Org_ID)"
 				+ " INNER JOIN C_BPartner bp ON (hdr.C_BPartner_ID = bp.C_BPartner_ID)"
@@ -226,12 +235,14 @@ public class Util {
 		// Receipt
 		else {
 			sql = "SELECT lin.M_InOutLine_ID AS ID, lin.UUID AS UUID, "
-				+ " hdr.M_InOut_ID AS Header_ID, hrd.Header_UUID, hdr.MovementDate AS Date,"
+				+ " hdr.M_InOut_ID AS Header_ID, hdr.UUID AS Header_UUID, hdr.MovementDate AS Date,"
 				+ " hdr.M_InOut_ID, hdr.DocumentNo, hdr.MovementDate, "
 				+ " bp.Name AS C_BPartner_Name, hdr.C_BPartner_ID, "
 				+ " lin.Line, lin.M_InOutLine_ID, "
 				+ " p.Name AS M_Product_Name, lin.M_Product_ID, "
-				+ " lin.MovementQty, SUM(COALESCE(m.Qty, 0)), org.Name, hdr.AD_Org_ID "
+				+ " lin.MovementQty, "
+				+ " lin.MovementQty AS Quantity, SUM(COALESCE(m.Qty, 0)) AS MatchedQuantity, "
+				+ " org.Name, hdr.AD_Org_ID "
 				+ "FROM M_InOut hdr"
 				+ " INNER JOIN AD_Org org ON (hdr.AD_Org_ID = org.AD_Org_ID)"
 				+ " INNER JOIN C_BPartner bp ON (hdr.C_BPartner_ID = bp.C_BPartner_ID)"
@@ -309,8 +320,8 @@ public class Util {
 			if (rs.next()) {
 				builder = convertMatched(rs);
 			}
-		} catch (Exception e) {
-			// TODO: handle exception
+		} catch (SQLException e) {
+			// throw e;
 		}
 
 		return builder;
@@ -320,68 +331,68 @@ public class Util {
 
 	/**
 	 * Create Matching Record
-	 * @param invoice true if matching invoice false if matching PO
-	 * @param M_InOutLine_ID shipment line
-	 * @param Line_ID C_InvoiceLine_ID or C_OrderLine_ID
-	 * @param qty quantity
-	 * @param trxName 
+	 * @param isInvoice true if matching invoice false if matching PO
+	 * @param inOutLineId shipment line
+	 * @param lineId C_InvoiceLine_ID or C_OrderLine_ID
+	 * @param quantity quantity
+	 * @param transactionName
 	 * @return true if created
 	 */
 	public static boolean createMatchRecord(
-		boolean invoice, int M_InOutLine_ID, int Line_ID,
-		BigDecimal qty, String trxName
+		boolean isInvoice, int inOutLineId, int lineId,
+		BigDecimal quantity, String transactionName
 	) {
-		if (qty.compareTo(Env.ZERO) == 0) {
+		if (quantity.compareTo(Env.ZERO) == 0) {
 			return true;
 		}
-		log.fine("IsInvoice=" + invoice
-			+ ", M_InOutLine_ID=" + M_InOutLine_ID + ", Line_ID=" + Line_ID
-			+ ", Qty=" + qty);
+		log.fine("IsInvoice=" + isInvoice
+			+ ", M_InOutLine_ID=" + inOutLineId + ", Line_ID=" + lineId
+			+ ", Qty=" + quantity);
 		//
 		boolean success = false;
-		MInOutLine sLine = new MInOutLine (Env.getCtx(), M_InOutLine_ID, trxName);
+		MInOutLine shipmentLine = new MInOutLine (Env.getCtx(), inOutLineId, transactionName);
 		//	Shipment - Invoice
-		if (invoice) {
+		if (isInvoice) {
 			//	Update Invoice Line
-			MInvoiceLine iLine = new MInvoiceLine (Env.getCtx(), Line_ID, trxName);
-			iLine.setM_InOutLine_ID(M_InOutLine_ID);
-			if (sLine.getC_OrderLine_ID() != 0) {
-				iLine.setC_OrderLine_ID(sLine.getC_OrderLine_ID());
+			MInvoiceLine invoiceLine = new MInvoiceLine (Env.getCtx(), inOutLineId, transactionName);
+			invoiceLine.setM_InOutLine_ID(inOutLineId);
+			if (invoiceLine.getC_OrderLine_ID() != 0) {
+				invoiceLine.setC_OrderLine_ID(shipmentLine.getC_OrderLine_ID());
 			}
-			iLine.saveEx();
+			invoiceLine.saveEx();
 			//	Create Shipment - Invoice Link
-			if (iLine.getM_Product_ID() != 0) {
+			if (invoiceLine.getM_Product_ID() != 0) {
 				Boolean useReceiptDateAcct = MSysConfig.getBooleanValue(
 					"MATCHINV_USE_DATEACCT_FROM_RECEIPT",
 					false,
-					iLine.getAD_Client_ID()
+					invoiceLine.getAD_Client_ID()
 				);
 				MMatchInv match = null;
 				Boolean isreceiptPeriodOpen = MPeriod.isOpen(
 					Env.getCtx(),
-					sLine.getParent().getDateAcct(),
-					sLine.getParent().getC_DocType().getDocBaseType(),
-					sLine.getParent().getAD_Org_ID(),
-					trxName
+					shipmentLine.getParent().getDateAcct(),
+					shipmentLine.getParent().getC_DocType().getDocBaseType(),
+					shipmentLine.getParent().getAD_Org_ID(),
+					transactionName
 				);
 				Boolean isInvoicePeriodOpen = MPeriod.isOpen(
 					Env.getCtx(),
-					iLine.getParent().getDateAcct(),
-					iLine.getParent().getC_DocType().getDocBaseType(),
-					iLine.getParent().getAD_Org_ID(),
-					trxName
+					invoiceLine.getParent().getDateAcct(),
+					invoiceLine.getParent().getC_DocType().getDocBaseType(),
+					invoiceLine.getParent().getAD_Org_ID(),
+					transactionName
 				);
 
 				if (useReceiptDateAcct & isreceiptPeriodOpen) {
-					match= new MMatchInv(iLine,sLine.getParent().getDateAcct() , qty);
+					match= new MMatchInv(invoiceLine,shipmentLine.getParent().getDateAcct() , quantity);
 				}
 				else if (isInvoicePeriodOpen){
-					match = new MMatchInv(iLine, iLine.getParent().getDateAcct(), qty);
+					match = new MMatchInv(invoiceLine, invoiceLine.getParent().getDateAcct(), quantity);
 				}
 				else {
-					match = new MMatchInv(iLine, null, qty);
+					match = new MMatchInv(invoiceLine, null, quantity);
 				}
-				match.setM_InOutLine_ID(M_InOutLine_ID);
+				match.setM_InOutLine_ID(inOutLineId);
 				match.saveEx();
 				if (match.save()) {
 					success = true;
@@ -400,52 +411,61 @@ public class Util {
 				success = true;
 			}
 			//	Create PO - Invoice Link = corrects PO
-			if (iLine.getC_OrderLine_ID() != 0 && iLine.getM_Product_ID() != 0) {
-				MMatchPO matchPO = new MMatchPO(iLine, iLine.getParent().getDateAcct() , qty);
-				matchPO.setC_InvoiceLine_ID(iLine);
+			if (invoiceLine.getC_OrderLine_ID() != 0 && invoiceLine.getM_Product_ID() != 0) {
+				MMatchPO matchPO = new MMatchPO(invoiceLine, invoiceLine.getParent().getDateAcct() , quantity);
+				matchPO.setC_InvoiceLine_ID(invoiceLine);
 				if (!matchPO.save()) {
 					log.log(Level.SEVERE, "PO(Inv) Match not created: " + matchPO);
 				}
 				if (MClient.isClientAccountingImmediate()) {
-					String ignoreError = DocumentEngine.postImmediate(matchPO.getCtx(), matchPO.getAD_Client_ID(), matchPO.get_Table_ID(), matchPO.get_ID(), true, matchPO.get_TrxName());						
+					// String mesageError = 
+					DocumentEngine.postImmediate(
+						matchPO.getCtx(),
+						matchPO.getAD_Client_ID(),
+						matchPO.get_Table_ID(),
+						matchPO.get_ID(),
+						true,
+						matchPO.get_TrxName()
+					);
 				}
 			}
 		}
 		//	Shipment - Order
 		else {
 			//	Update Shipment Line
-			sLine.setC_OrderLine_ID(Line_ID);
-			sLine.saveEx();
+			shipmentLine.setC_OrderLine_ID(lineId);
+			shipmentLine.saveEx();
 			//	Update Order Line
-			MOrderLine oLine = new MOrderLine(Env.getCtx(), Line_ID, trxName);
+			MOrderLine orderLine = new MOrderLine(Env.getCtx(), lineId, transactionName);
 			//	other in MInOut.completeIt
-			if (oLine.get_ID() != 0) {
-				oLine.setQtyReserved(oLine.getQtyReserved().subtract(qty));
-				if (!oLine.save()) {
-					log.severe("QtyReserved not updated - C_OrderLine_ID=" + Line_ID);
+			if (orderLine.get_ID() != 0) {
+				orderLine.setQtyReserved(orderLine.getQtyReserved().subtract(quantity));
+				if (!orderLine.save()) {
+					log.severe("QtyReserved not updated - C_OrderLine_ID=" + lineId);
 				}
 			}
 
 			//	Create PO - Shipment Link
-			if (sLine.getM_Product_ID() != 0) {
-				MMatchPO match = new MMatchPO (sLine, null, qty);
+			if (shipmentLine.getM_Product_ID() != 0) {
+				MMatchPO match = new MMatchPO(shipmentLine, null, quantity);
 				if (!match.save()) {
 					log.log(Level.SEVERE, "PO Match not created: " + match);
 				}
 				else {
 					success = true;
 					//	Correct Ordered Qty for Stocked Products (see MOrder.reserveStock / MInOut.processIt)
-					if (sLine.getProduct() != null && sLine.getProduct().isStocked()) {
+					if (shipmentLine.getProduct() != null && shipmentLine.getProduct().isStocked()) {
 						success = MStorage.add(
-							Env.getCtx(), sLine.getM_Warehouse_ID(),
-							sLine.getM_Locator_ID(),
-							sLine.getM_Product_ID(),
-							sLine.getM_AttributeSetInstance_ID(),
-							oLine.getM_AttributeSetInstance_ID(),
+							Env.getCtx(),
+							shipmentLine.getM_Warehouse_ID(),
+							shipmentLine.getM_Locator_ID(),
+							shipmentLine.getM_Product_ID(),
+							shipmentLine.getM_AttributeSetInstance_ID(),
+							orderLine.getM_AttributeSetInstance_ID(),
 							null,
 							null,
-							qty.negate(),
-							trxName
+							quantity.negate(),
+							transactionName
 						);
 					}
 				}
@@ -455,5 +475,5 @@ public class Util {
 			}
 		}
 		return success;
-	}   //  createMatchRecord
+	} // createMatchRecord
 }

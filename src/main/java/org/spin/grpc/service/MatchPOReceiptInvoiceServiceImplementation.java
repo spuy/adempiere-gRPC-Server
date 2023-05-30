@@ -109,6 +109,7 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Invoice
 		LookupItem.Builder lookupInvoice = LookupItem.newBuilder()
+			.setId(MatchType.INVOICE_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
@@ -125,6 +126,7 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Receipt
 		LookupItem.Builder lookupReceipt = LookupItem.newBuilder()
+			.setId(MatchType.RECEIPT_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
@@ -141,10 +143,11 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 
 		// Purchase Order
 		LookupItem.Builder lookupOrder = LookupItem.newBuilder()
+			.setId(MatchType.PURCHASE_ORDER_VALUE)
 			.putValues(
 				LookupUtil.VALUE_COLUMN_KEY,
 				ValueUtil.getValueFromInt(
-					MatchType.RECEIPT_VALUE
+					MatchType.PURCHASE_ORDER_VALUE
 				).build()
 			)
 			.putValues(
@@ -187,8 +190,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		ListLookupItemsResponse.Builder builderList = ListLookupItemsResponse.newBuilder();
 
 		// Invoice
-		if (matchTypeFrom != MatchType.INVOICE) {
+		if (matchTypeFrom == MatchType.RECEIPT) {
 			LookupItem.Builder lookupInvoice = LookupItem.newBuilder()
+				.setId(MatchType.INVOICE_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
@@ -205,8 +209,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		}
 
 		// Receipt
-		if (matchTypeFrom != MatchType.RECEIPT) {
+		if (matchTypeFrom == MatchType.INVOICE || matchTypeFrom == MatchType.PURCHASE_ORDER) {
 			LookupItem.Builder lookupReceipt = LookupItem.newBuilder()
+				.setId(MatchType.RECEIPT_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
@@ -223,8 +228,9 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		}
 
 		// Purchase Order
-		if (matchTypeFrom != MatchType.PURCHASE_ORDER) {
+		if (matchTypeFrom == MatchType.RECEIPT) {
 			LookupItem.Builder lookupOrder = LookupItem.newBuilder()
+				.setId(MatchType.PURCHASE_ORDER_VALUE)
 				.putValues(
 					LookupUtil.VALUE_COLUMN_KEY,
 					ValueUtil.getValueFromInt(
@@ -580,12 +586,15 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 		final String groupBy = org.spin.form.match_po_receipt_invoice.Util.getGroupBy(isMatched, matchFromType);
 
 		String whereClause = "";
-		if (request.getProductId() > 0) {
-			whereClause += " AND lin.M_Product_ID = " + request.getProductId();
+		if (request.getProductId() <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Product_ID@");
 		}
-		if (request.getVendorId() > 0) {
-			whereClause += " AND hdr.C_BPartner_ID = " + request.getVendorId();
+		whereClause += " AND lin.M_Product_ID = " + request.getProductId();
+
+		if (request.getVendorId() <= 0) {
+			throw new AdempiereException("@FillMandatory@ @C_BPartner_ID@");
 		}
+		whereClause += " AND hdr.C_BPartner_ID = " + request.getVendorId();
 
 		// Date filter
 		Timestamp dateFrom = ValueUtil.getTimestampFromLong(request.getDateFrom());
@@ -716,26 +725,26 @@ public class MatchPOReceiptInvoiceServiceImplementation extends MatchPORReceiptI
 				}
 
 				//  Invoice or PO
-				boolean invoice = true;
+				boolean isInvoice = true;
 				if (isMatchFromOder || isMatchToOrder) {
-					invoice = false;
+					isInvoice = false;
 				}
 				//  Get Shipment_ID
-				int M_InOutLine_ID = 0;
-				int Line_ID = 0;
+				int inOutLineId = 0;
+				int lineId = 0;
 				if (isMatchFromReceipt) {
-					M_InOutLine_ID = matchedFromSelected.getId();      //  upper table
-					Line_ID = lineMatchedTo.getId();
+					inOutLineId = matchedFromSelected.getId();      //  upper table
+					lineId = lineMatchedTo.getId();
 				}
 				else {
-					M_InOutLine_ID = lineMatchedTo.getId();    //  lower table
-					Line_ID = matchedFromSelected.getId();
+					inOutLineId = lineMatchedTo.getId();    //  lower table
+					lineId = matchedFromSelected.getId();
 				}
 
 				org.spin.form.match_po_receipt_invoice.Util.createMatchRecord(
-					invoice,
-					M_InOutLine_ID,
-					Line_ID,
+					isInvoice,
+					inOutLineId,
+					lineId,
 					qty.orElse(Env.ZERO),
 					transactionName
 				);
