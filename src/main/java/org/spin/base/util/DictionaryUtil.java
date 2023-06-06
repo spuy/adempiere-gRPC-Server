@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -262,6 +263,54 @@ public class DictionaryUtil {
 		return validationCode;
 	}
 
+
+	public static int getDirectParentTabId(int windowId, int tabId) {
+		MTab tab = ASPUtil.getInstance(Env.getCtx()).getWindowTab(windowId, tabId);
+
+		final int tabLevel = tab.getTabLevel();
+		final int tabSequence = tab.getSeqNo();
+		int parentTabId = -1;
+		// root tab has no parent
+		if (tabLevel > 0) {
+			AtomicReference<Integer> parentTabSequence = new AtomicReference<Integer>(-1);
+			AtomicReference<MTab> parentTabRefecence = new AtomicReference<MTab>();
+			List<MTab> tabsList = ASPUtil.getInstance(Env.getCtx()).getWindowTabs(tab.getAD_Window_ID());
+			tabsList.forEach(tabItem -> {
+				if (tabItem.getTabLevel() >= tabLevel || tabItem.getSeqNo() >= tabSequence) {
+					// it is child tab
+					return;
+				}
+
+				// current tab is more down that tab list
+				if (parentTabSequence.get() == -1 || tabItem.getSeqNo() > parentTabSequence.get()) {
+					parentTabSequence.set(tabItem.getSeqNo());
+					parentTabRefecence.set(tabItem);
+				}
+			});
+			if (parentTabRefecence.get() != null) {
+				parentTabId = parentTabRefecence.get().getAD_Tab_ID();
+			}
+		}
+		return parentTabId;
+	}
+
+	/**
+	 * Get list of direct parent tabs by current tab id
+	 * @param windowId window of tabs
+	 * @param currentTabId current tab to get parents
+	 * @param tabsList
+	 * @return
+	 */
+	public static List<MTab> getParentTabsList(int windowId, int currentTabId, List<MTab> tabsList) {
+		int parentTabId = getDirectParentTabId(windowId, currentTabId);
+		if (parentTabId > 0) {
+			MTab parentTab = ASPUtil.getInstance(Env.getCtx()).getWindowTab(windowId, parentTabId);
+			tabsList.add(parentTab);
+			getParentTabsList(windowId, parentTabId, tabsList);
+		}
+		return tabsList;
+	}
+
 	/**
 	 * Get SQL Where Clause including link column and parent column
 	 * @param {Properties} context
@@ -295,13 +344,16 @@ public class DictionaryUtil {
 				mainTable = MTable.get(context, optionalTab.get().getAD_Table_ID());
 				mainColumnName = mainTable.getKeyColumns()[0];
 			}
-			List<MTab> tabList = tabs.stream()
+
+			List<MTab> parentTabsList = getParentTabsList(tab.getAD_Window_ID(), tabId, new ArrayList<MTab>());
+			List<MTab> tabList = parentTabsList.stream()
 				.filter(parentTab -> {
 					return parentTab.getAD_Tab_ID() != tabId
 						&& parentTab.getAD_Tab_ID() != optionalTab.get().getAD_Tab_ID()
 						&& parentTab.getSeqNo() < seqNo
 						&& parentTab.getTabLevel() < tabLevel
-						&& !parentTab.isTranslationTab();
+						&& !parentTab.isTranslationTab()
+					;
 				})
 				.sorted(
 					Comparator.comparing(MTab::getSeqNo)
@@ -309,8 +361,9 @@ public class DictionaryUtil {
 						.reversed()
 				)
 				.collect(Collectors.toList());
+
 			//	Validate direct child
-			if(tabList.size() == 0) {
+			if (tabList == null || tabList.size() == 0) {
 				if(tab.getParent_Column_ID() != 0) {
 					mainColumnName = MColumn.getColumnName(context, tab.getParent_Column_ID());
 				}
@@ -340,37 +393,41 @@ public class DictionaryUtil {
 						String childColumnName = DictionaryServiceImplementation.getParentColumnNameFromTab(childTab);
 						String childLinkColumnName = DictionaryServiceImplementation.getLinkColumnNameFromTab(childTab);
 						//	Get from parent
-						if(Util.isEmpty(childColumnName)) {
+						if (Util.isEmpty(childColumnName, true)) {
 							MTable childTable = MTable.get(context, currentTab.getAD_Table_ID());
 							childColumnName = childTable.getKeyColumns()[0];
 						}
-						if(Util.isEmpty(childLinkColumnName)) {
+						if (Util.isEmpty(childLinkColumnName, true)) {
 							childLinkColumnName = childColumnName;
 						}
 						whereClause.append(" INNER JOIN ").append(currentTable.getTableName()).append(" AS t").append(aliasIndex)
 							.append(" ON(").append("t").append(aliasIndex).append(".").append(childLinkColumnName)
-							.append("=").append("t").append(aliasIndex - 1).append(".").append(childColumnName).append(")");
+							.append("=").append("t").append(aliasIndex - 1).append(".").append(childColumnName).append(")")
+						;
 					}
 					aliasIndex++;
-					if(Util.isEmpty(parentTabUuid)) {
+					if (Util.isEmpty(parentTabUuid, true)) {
 						parentTabUuid = currentTab.getUUID();
 					}
 				}
-				whereClause.append(" WHERE t").append(aliasIndex - 1).append(".").append(mainColumnName).append(" = ").append("@").append(mainColumnName).append("@");
+				whereClause.append(" WHERE t").append(aliasIndex - 1).append(".").append(mainColumnName).append(" = ")
+					.append("@").append(mainColumnName).append("@")
+				;
 				//	Add support to child
 				MTab parentTab = tablesMap.get(aliasIndex -1);
 				String parentColumnName = DictionaryServiceImplementation.getParentColumnNameFromTab(tab);
 				String linkColumnName = DictionaryServiceImplementation.getLinkColumnNameFromTab(tab);
-				if(Util.isEmpty(parentColumnName)) {
+				if (Util.isEmpty(parentColumnName, true)) {
 					MTable parentTable = MTable.get(context, parentTab.getAD_Table_ID());
 					parentColumnName = parentTable.getKeyColumns()[0];
 				}
-				if(Util.isEmpty(linkColumnName)) {
+				if (Util.isEmpty(linkColumnName, true)) {
 					linkColumnName = parentColumnName;
 				}
 				whereClause.append(" AND t").append(0).append(".").append(parentColumnName).append(" = ")
-					.append(table.getTableName()).append(".").append(linkColumnName);
-				whereClause.append(")");
+					.append(table.getTableName()).append(".").append(linkColumnName)
+					.append(")")
+				;
 			}
 		}
 
@@ -394,7 +451,8 @@ public class DictionaryUtil {
 		where.append(" AND ").append("(").append(whereClause).append(")");
 		return where.toString();
 	}
-	
+
+
 	/**
 	 * Get SQL from View with a custom column as alias
 	 * @param viewId
