@@ -1058,30 +1058,33 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private ListEntitiesResponse.Builder listTabEntities(ListTabEntitiesRequest request) {
-		
 		int tabId = RecordUtil.getIdFromUuid(I_AD_Tab.Table_Name, request.getTabUuid(), null);
-		if(tabId <= 0) {
-			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		if (tabId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 		//	
 		MTab tab = MTab.get(Env.getCtx(), tabId);
+		if (tab == null || tab.getAD_Tab_ID() <= 0) {
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+		}
+
 		String tableName = MTable.getTableName(Env.getCtx(), tab.getAD_Table_ID());
 
-		//	Fill Env.getCtx()
+		//	Fill context
+		Properties context = Env.getCtx();
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
 
 		// get where clause including link column and parent column
-		String where = DictionaryUtil.getSQLWhereClauseFromTab(Env.getCtx(), tab, null);
-		String parsedWhereClause = Env.parseContext(Env.getCtx(), windowNo, where, false);
-		
-		if(Util.isEmpty(parsedWhereClause)
-				&& !Util.isEmpty(where)) {
+		String where = DictionaryUtil.getSQLWhereClauseFromTab(context, tab, null);
+		String parsedWhereClause = Env.parseContext(context, windowNo, where, false);
+		if (Util.isEmpty(parsedWhereClause, true) && !Util.isEmpty(where, true)) {
 			throw new AdempiereException("@AD_Tab_ID@ @WhereClause@ @Unparseable@");
 		}
 		Criteria criteria = request.getFilters();
 		StringBuffer whereClause = new StringBuffer(parsedWhereClause);
 		List<Object> params = new ArrayList<>();
+
 		//	For dynamic condition
 		String dynamicWhere = ValueUtil.getWhereClauseFromCriteria(criteria, tableName, params);
 		if(!Util.isEmpty(dynamicWhere, true)) {
@@ -1120,17 +1123,16 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				);
 		if (!Util.isEmpty(whereClause.toString(), true)) {
 			// includes first AND
-			sqlWithRoleAccess += " AND " + whereClause; 
+			sqlWithRoleAccess += " AND " + whereClause;
 		}
 		//
 		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, tableName, request.getSearchValue(), false, params);
 
 		String orderByClause = criteria.getOrderByClause();
-		if(Util.isEmpty(orderByClause)) {
-			orderByClause = "";
-		} else {
-			orderByClause = " ORDER BY " + orderByClause;
+		if (!Util.isEmpty(orderByClause, true)) {
+			orderByClause = " ORDER BY " + criteria.getOrderByClause();
 		}
+
 		//	Count records
 		count = RecordUtil.countRecords(parsedSQL, tableName, params);
 		//	Add Row Number
@@ -2520,12 +2522,14 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if (ReferenceUtil.validateReference(referenceId)) {
 			if(referenceId == DisplayType.List) {
 				// (') (text) (') or (") (text) (")
-				String singleQuotesPattern = "('|\")(\\w+)(\\1)";
-				Matcher matcherSingleQuotes = Pattern.compile(
+				String singleQuotesPattern = "('|\")(\\w+)('|\")";
+				// columnName = value
+				Pattern pattern = Pattern.compile(
 					singleQuotesPattern,
 					Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-				)
-				.matcher(String.valueOf(defaultValueAsObject));
+				);
+				Matcher matcherSingleQuotes = pattern
+					.matcher(String.valueOf(defaultValueAsObject));
 				// remove single quotation mark 'DR' -> DR, "DR" -> DR
 				String defaultValueList = matcherSingleQuotes.replaceAll("$2");
 
@@ -2931,23 +2935,28 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private String getBrowserWhereClause(MBrowse browser, String parsedWhereClause, List<KeyValue> contextAttributes, HashMap<String, Object> parameterMap, List<Object> values) {
-		StringBuilder browserWhereClause = new StringBuilder();
-		List<MBrowseField> fields = ASPUtil.getInstance().getBrowseFields(browser.getAD_Browse_ID());
-		LinkedHashMap<String, MBrowseField> fieldsMap = new LinkedHashMap<>();
 		AtomicReference<String> convertedWhereClause = new AtomicReference<String>(parsedWhereClause);
-		if(parsedWhereClause != null
-				&& contextAttributes != null) {
+		if (!Util.isEmpty(parsedWhereClause, true) && contextAttributes != null && contextAttributes.size() > 0) {
 			contextAttributes.forEach(contextValue -> {
-				convertedWhereClause.set(convertedWhereClause.get().replaceAll("@" + contextValue.getKey() + "@", String.valueOf(ValueUtil.getObjectFromValue(contextValue.getValue()))));
+				String value = String.valueOf(ValueUtil.getObjectFromValue(contextValue.getValue()));
+				String contextKey = "@" + contextValue.getKey() + "@";
+				convertedWhereClause.set(
+					convertedWhereClause.get().replaceAll(contextKey, value)
+				);
 			});
 		}
+
 		//	Add field to map
+		List<MBrowseField> fields = ASPUtil.getInstance().getBrowseFields(browser.getAD_Browse_ID());
+		LinkedHashMap<String, MBrowseField> fieldsMap = new LinkedHashMap<>();
 		for(MBrowseField field: fields) {
 			fieldsMap.put(field.getAD_View_Column().getColumnName(), field);
 		}
+
 		//	
+		StringBuilder browserWhereClause = new StringBuilder();
 		boolean onRange = false;
-		if(parameterMap.size() > 0) {
+		if (parameterMap != null && parameterMap.size() > 0) {
 			for(Entry<String, Object> parameter : parameterMap.entrySet()) {
 				MBrowseField field = fieldsMap.get(parameter.getKey());
 				if(field == null) {
@@ -3028,14 +3037,14 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		//	
 		String whereClause = null;
 		//	
-		if(!Util.isEmpty(convertedWhereClause.get())) {
+		if(!Util.isEmpty(convertedWhereClause.get(), true)) {
 			whereClause = convertedWhereClause.get();
 		}
 		if(browserWhereClause.length() > 0) {
-			if(Util.isEmpty(whereClause)) {
-				whereClause = browserWhereClause.toString();
+			if (Util.isEmpty(whereClause, true)) {
+				whereClause = " (" + browserWhereClause.toString() + ") ";
 			} else {
-				whereClause = whereClause + " AND (" + browserWhereClause + ")";
+				whereClause = " (" + whereClause + ") AND (" + browserWhereClause + ") ";
 			}
 		}
 		return whereClause;
@@ -3047,8 +3056,6 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 * @return
 	 */
 	private ListBrowserItemsResponse.Builder listBrowserItems(ListBrowserItemsRequest request) {
-		
-
 		ListBrowserItemsResponse.Builder builder = ListBrowserItemsResponse.newBuilder();
 		MBrowse browser = getBrowser(request.getUuid());
 		if (browser == null || browser.getAD_Browse_ID() <= 0) {
@@ -3062,35 +3069,45 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		});
 
 		//	Fill Env.getCtx()
+		Properties context = Env.getCtx();
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
-		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), parameterMap);
+		ContextManager.setContextWithAttributes(windowNo, context, request.getContextAttributesList());
+		ContextManager.setContextWithAttributes(windowNo, context, parameterMap, false);
 
-		List<Object> values = new ArrayList<Object>();
-		String whereClause = getBrowserWhereClause(browser, browser.getWhereClause(), request.getContextAttributesList(), parameterMap, values);
-
+		//	get query columns
 		String query = DictionaryUtil.addQueryReferencesFromBrowser(browser);
-		String orderByClause = DictionaryUtil.getSQLOrderBy(browser);
-		StringBuilder sql = new StringBuilder(query);
-		if (!Util.isEmpty(whereClause)) {
-			whereClause = Env.parseContext(Env.getCtx(), windowNo, whereClause, false);
-			sql.append(" WHERE ").append(whereClause); // includes first AND
-		} else {
-			sql.append(" WHERE 1=1");
+		String sql = Env.parseContext(context, windowNo, query, false);
+		if (Util.isEmpty(sql, true)) {
+			throw new AdempiereException("@AD_Browse_ID@ @SQL@ @Unparseable@");
 		}
+
 		MView view = browser.getAD_View();
 		MViewDefinition parentDefinition = view.getParentViewDefinition();
 		String tableNameAlias = parentDefinition.getTableAlias();
 		String tableName = parentDefinition.getAD_Table().getTableName();
-		//	
-		String parsedSQL = MRole.getDefault().addAccessSQL(
-			sql.toString(),
-			tableNameAlias,
-			MRole.SQL_FULLYQUALIFIED,
-			MRole.SQL_RO
-		);
-		if(Util.isEmpty(orderByClause)) {
-			orderByClause = "";
-		} else {
+
+		String parsedSQL = MRole.getDefault(context, false)
+			.addAccessSQL(
+				sql,
+				tableNameAlias,
+				MRole.SQL_FULLYQUALIFIED,
+				MRole.SQL_RO
+			);
+
+		//	get where clause
+		List<Object> values = new ArrayList<Object>();
+		String whereClause = getBrowserWhereClause(browser, browser.getWhereClause(), request.getContextAttributesList(), parameterMap, values);
+		String parsedwhereClause = "";
+		if (!Util.isEmpty(whereClause, true)) {
+			parsedwhereClause = Env.parseContext(context, windowNo, whereClause, false);
+			if (Util.isEmpty(parsedwhereClause, true)) {
+				throw new AdempiereException("@AD_Browse_ID@ @WhereClause@ @Unparseable@");
+			}
+			parsedSQL += " AND " + parsedwhereClause;
+		}
+
+		String orderByClause = DictionaryUtil.getSQLOrderBy(browser);
+		if (!Util.isEmpty(orderByClause, true)) {
 			orderByClause = " ORDER BY " + orderByClause;
 		}
 
@@ -3238,6 +3255,9 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	private org.spin.backend.grpc.common.Callout.Builder runcallout(RunCalloutRequest request) {
 		org.spin.backend.grpc.common.Callout.Builder calloutBuilder = org.spin.backend.grpc.common.Callout.newBuilder();
 		Trx.run(transactionName -> {
+			if (Util.isEmpty(request.getTabUuid(), true)) {
+				throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
+			}
 			MTab tab = tabRequested.get(request.getTabUuid());
 			if (tab == null) {
 				tab = MTab.get(Env.getCtx(), RecordUtil.getIdFromUuid(I_AD_Tab.Table_Name, request.getTabUuid(), transactionName));
@@ -3267,6 +3287,11 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			Map<String, Object> attributes = ValueUtil.convertValuesToObjects(request.getContextAttributesList());
 			ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), attributes);
 
+			//
+			Object oldValue = ValueUtil.getObjectFromValue(request.getOldValue());
+			Object value = ValueUtil.getObjectFromValue(request.getValue());
+			ContextManager.setTabContextByObject(Env.getCtx(), windowNo, tabNo, request.getColumnName(), value);
+
 			//	Initial load for callout wrapper
 			GridWindowVO gridWindowVo = GridWindowVO.create(Env.getCtx(), windowNo, tab.getAD_Window_ID());
 			GridWindow gridWindow = new GridWindow(gridWindowVo, true);
@@ -3283,10 +3308,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 			for (Entry<String, Object> attribute : attributes.entrySet()) {
 				gridTab.setValue(attribute.getKey(), attribute.getValue());
 			}
+			gridTab.setValue(request.getColumnName(), value);
 
 			//	Load value for field
-			gridField.setValue(ValueUtil.getObjectFromValue(request.getOldValue()), false);
-			gridField.setValue(ValueUtil.getObjectFromValue(request.getValue()), false);
+			gridField.setValue(oldValue, false);
+			gridField.setValue(value, false);
+
 			//	Run it
 			String result = processCallout(windowNo, gridTab, gridField);
 			Arrays.asList(gridTab.getFields()).stream()
@@ -3381,11 +3408,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 		if(gridField.isKey()) {
 			return false;
 		}
-		//	new value like null
-		if(gridField.getValue() == null
-				&& gridField.getOldValue() == null) {
-			return false;
-		}
+
 		//	validate with old value
 		if(gridField.getOldValue() != null
 				&& gridField.getValue() != null
