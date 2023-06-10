@@ -92,40 +92,42 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	@Override
 	public void getWorkflow(WorkflowDefinitionRequest request, StreamObserver<WorkflowDefinition> responseObserver) {
 		try {
-			if(request == null) {
+			if (request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			WorkflowDefinition.Builder workflowBuilder = convertWorkflow(Env.getCtx(), request.getUuid(), request.getId());
+			WorkflowDefinition.Builder workflowBuilder = getWorkflow(request);
 			responseObserver.onNext(workflowBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
-				.asRuntimeException());
+				.asRuntimeException()
+			);
 		}
 	}
-	
+
 	/**
 	 * Request Workflow from uuid or id
-	 * @param context
-	 * @param uuid
-	 * @param id
+	 * @param request
+	 * @return builder
 	 */
-	private WorkflowDefinition.Builder convertWorkflow(Properties context, String uuid, int id) {
+	private WorkflowDefinition.Builder getWorkflow(WorkflowDefinitionRequest request) {
+		if (request.getId() <= 0 && Util.isEmpty(request.getUuid(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Workflow_ID@/@UUID@");
+		}
+		Properties context = Env.getCtx();
 		String whereClause = null;
 		Object parameter = null;
-		if(id > 0) {
+		if (request.getId() > 0) {
 			whereClause = MWorkflow.COLUMNNAME_AD_Workflow_ID + " = ?";
-			parameter = id;
-		} else if(!Util.isEmpty(uuid)) {
+			parameter = request.getId();
+		} else if(!Util.isEmpty(request.getUuid(), true)) {
 			whereClause = MWorkflow.COLUMNNAME_UUID + " = ?";
-			parameter = uuid;
-		}
-		if(parameter == null) {
-			return WorkflowDefinition.newBuilder();
+			parameter = request.getUuid();
 		}
 
 		MWorkflow workflow = new Query(
@@ -136,27 +138,16 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 			)
 			.setParameters(parameter)
 			.setOnlyActiveRecords(true)
-			.first();
+			.first()
+		;
 
 		//	Add to recent Item
 		DictionaryUtil.addToRecentItem(MMenu.ACTION_WorkFlow, workflow.getAD_Workflow_ID());
 
-		return convertWorkflow(context, workflow);
+		return WorkflowUtil.convertWorkflowDefinition(workflow);
 	}
 
-	/**
-	 * Convert Workflow from Workflow Model
-	 * @param form
-	 * @return
-	 */
-	private WorkflowDefinition.Builder convertWorkflow(Properties context, MWorkflow workflowDefinition) {
-		WorkflowDefinition.Builder builder = WorkflowUtil.convertWorkflowDefinition(workflowDefinition);
 
-		//	Add to recent Item
-		// addToRecentItem(MMenu.ACTION_WorkFlow, workflowDefinition.getAD_Workflow_ID());
-
-		return builder;
-	}
 
 	@Override
 	public void listWorkflows(ListWorkflowsRequest request, StreamObserver<ListWorkflowsResponse> responseObserver) {
