@@ -521,7 +521,7 @@ public class FileManagementServiceImplementation extends FileManagementImplBase 
 			if (!Util.isEmpty(request.getRecordUuid(), true)) {
 				recordId = RecordUtil.getIdFromUuid(table.getTableName(), request.getRecordUuid(), null);
 			}
-			if (!RecordUtil.ALLOW_ZERO_ID.contains(table.getAccessLevel()) && recordId <= 0) {
+			if (RecordUtil.isValidId(recordId, table.getAccessLevel())) {
 				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 			}
 		}
