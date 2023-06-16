@@ -14,9 +14,6 @@
  ************************************************************************************/
 package org.spin.grpc.service;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,14 +32,12 @@ import org.adempiere.core.domains.models.I_AD_Element;
 import org.adempiere.core.domains.models.I_AD_Field;
 import org.adempiere.core.domains.models.I_AD_FieldGroup;
 import org.adempiere.core.domains.models.I_AD_Form;
-import org.adempiere.core.domains.models.I_AD_Menu;
 import org.adempiere.core.domains.models.I_AD_Message;
 import org.adempiere.core.domains.models.I_AD_Process;
 import org.adempiere.core.domains.models.I_AD_Reference;
 import org.adempiere.core.domains.models.I_AD_Tab;
 import org.adempiere.core.domains.models.I_AD_Val_Rule;
 import org.adempiere.core.domains.models.I_AD_Window;
-import org.adempiere.core.domains.models.I_AD_Workflow;
 import org.compiere.model.MColumn;
 import org.compiere.model.MField;
 import org.compiere.model.MForm;
@@ -52,7 +47,6 @@ import org.compiere.model.MMenu;
 import org.compiere.model.MMessage;
 import org.compiere.model.MProcess;
 import org.compiere.model.MProcessPara;
-import org.compiere.model.MRecentItem;
 import org.compiere.model.MReportView;
 import org.compiere.model.MTab;
 import org.compiere.model.MTable;
@@ -74,6 +68,7 @@ import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceUtil;
 import org.spin.base.util.ValueUtil;
+import org.spin.grpc.logic.DictionaryServiceLogic;
 import org.spin.backend.grpc.dictionary.Browser;
 import org.spin.backend.grpc.dictionary.ContextInfo;
 import org.spin.backend.grpc.dictionary.DependentField;
@@ -374,7 +369,10 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			builder.setFileName(ValueUtil.validateNull(fileName.substring(beginIndex, endIndex)));
 		}
 		//	Add to recent Item
-		addToRecentItem(MMenu.ACTION_Form, form.getAD_Form_ID());
+		org.spin.base.dictionary.DictionaryUtil.addToRecentItem(
+			MMenu.ACTION_Form,
+			form.getAD_Form_ID()
+		);
 		//	return
 		return builder;
 	}
@@ -436,39 +434,16 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 //			}
 		}
 		//	Add to recent Item
-		addToRecentItem(MMenu.ACTION_Window, window.getAD_Window_ID());
+		org.spin.base.dictionary.DictionaryUtil.addToRecentItem(
+			MMenu.ACTION_Window,
+			window.getAD_Window_ID()
+		);
 		//	return
 		return builder;
 	}
-	
-	/**
-	 * Add element to recent item
-	 * @param action
-	 * @param optionId
-	 */
-	private void addToRecentItem(String action, int optionId) {
-		if(Util.isEmpty(action)) {
-			return;
-		}
-		String whereClause = null;
-		if(action.equals(MMenu.ACTION_Window)) {
-			whereClause = I_AD_Window.COLUMNNAME_AD_Window_ID + " = ?";
-		} else if(action.equals(MMenu.ACTION_Form)) {
-			whereClause = I_AD_Form.COLUMNNAME_AD_Form_ID + " = ?";
-		} else if(action.equals(MMenu.ACTION_Process) || action.equals(MMenu.ACTION_Report)) {
-			whereClause = I_AD_Process.COLUMNNAME_AD_Process_ID + " = ?";
-		} else if(action.equals(MMenu.ACTION_WorkFlow)) {
-			whereClause = I_AD_Workflow.COLUMNNAME_AD_Workflow_ID + " = ?";
-		} else if(action.equals(MMenu.ACTION_SmartBrowse)) {
-			whereClause = I_AD_Browse.COLUMNNAME_AD_Browse_ID + " = ?";
-		}
-		//	Get menu
-		int menuId = new Query(Env.getCtx(), I_AD_Menu.Table_Name, whereClause, null)
-			.setParameters(optionId)
-			.firstId();
-		MRecentItem.addMenuOption(Env.getCtx(), menuId, optionId);
-	}
-	
+
+
+
 //	/**
 //	 * Get Field group from Tab
 //	 * @param tabId
@@ -686,7 +661,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param contextInfoId
 	 * @return
 	 */
-	private ContextInfo.Builder convertContextInfo(Properties context, int contextInfoId) {
+	public static ContextInfo.Builder convertContextInfo(Properties context, int contextInfoId) {
 		ContextInfo.Builder builder = ContextInfo.newBuilder();
 		if(contextInfoId > 0) {
 			MADContextInfo contextInfoValue = MADContextInfo.getById(context, contextInfoId);
@@ -733,7 +708,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param process
 	 * @return
 	 */
-	private Process.Builder convertProcess(Properties context, MProcess process, boolean withParams) {
+	public static Process.Builder convertProcess(Properties context, MProcess process, boolean withParams) {
 		if (process == null) {
 			return Process.newBuilder();
 		}
@@ -869,7 +844,10 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			}
 		}
 		//	Add to recent Item
-		addToRecentItem(MMenu.ACTION_SmartBrowse, browser.getAD_Window_ID());
+		org.spin.base.dictionary.DictionaryUtil.addToRecentItem(
+			MMenu.ACTION_SmartBrowse,
+			browser.getAD_Browse_ID()
+		);
 		return builder;
 	}
 	
@@ -918,7 +896,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param processParameter
 	 * @return
 	 */
-	private Field.Builder convertProcessParameter(Properties context, MProcessPara processParameter) {
+	public static Field.Builder convertProcessParameter(Properties context, MProcessPara processParameter) {
 		if (processParameter == null) {
 			return Field.newBuilder();
 		}
@@ -977,7 +955,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 		return builder;
 	}
 
-	private List<DependentField> generateDependentProcessParameters(MProcessPara processParameter) {
+	public static List<DependentField> generateDependentProcessParameters(MProcessPara processParameter) {
 		List<DependentField> depenentFieldsList = new ArrayList<>();
 
 		String parentColumnName = processParameter.getColumnName();
@@ -1279,7 +1257,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param language
 	 * @return
 	 */
-	private Field.Builder convertField(Properties context, MColumn column) {
+	public static Field.Builder convertField(Properties context, MColumn column) {
 		if (column == null) {
 			return Field.newBuilder();
 		}
@@ -1363,7 +1341,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 		return builder;
 	}
 
-	private List<DependentField> generateDependentColumns(MColumn column) {
+	public static List<DependentField> generateDependentColumns(MColumn column) {
 		List<DependentField> depenentFieldsList = new ArrayList<>();
 		if (column == null) {
 			return depenentFieldsList;
@@ -1471,7 +1449,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param translate
 	 * @return
 	 */
-	private Field.Builder convertField(Properties context, MField field, boolean translate) {
+	public static Field.Builder convertField(Properties context, MField field, boolean translate) {
 		if (field == null) {
 			return Field.newBuilder();
 		}
@@ -1593,7 +1571,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 		return builder;
 	}
 
-	private List<DependentField> generateDependentFields(MField field) {
+	public static List<DependentField> generateDependentFields(MField field) {
 		List<DependentField> depenentFieldsList = new ArrayList<>();
 		if (field == null) {
 			return depenentFieldsList;
@@ -1686,7 +1664,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param fieldDefinitionId
 	 * @return
 	 */
-	private FieldDefinition.Builder convertFieldDefinition(Properties context, int fieldDefinitionId) {
+	public static FieldDefinition.Builder convertFieldDefinition(Properties context, int fieldDefinitionId) {
 		FieldDefinition.Builder builder = null;
 		if(fieldDefinitionId > 0) {
 			MADFieldDefinition fieldDefinition  = new MADFieldDefinition(context, fieldDefinitionId, null);
@@ -1719,7 +1697,7 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 	 * @param fieldGroupId
 	 * @return
 	 */
-	private FieldGroup.Builder convertFieldGroup(Properties context, int fieldGroupId) {
+	public static FieldGroup.Builder convertFieldGroup(Properties context, int fieldGroupId) {
 		FieldGroup.Builder builder = FieldGroup.newBuilder();
 		if(fieldGroupId > 0) {
 			X_AD_FieldGroup fieldGroup  = new X_AD_FieldGroup(context, fieldGroupId, null);
@@ -1802,59 +1780,58 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				;
 	}
 
-	/**
-	 * Get reference from column name and table
-	 * @param tableId
-	 * @param columnName
-	 * @return
-	 */
-	public static int getReferenceId(int tableId, String columnName) {
-		MColumn column = MTable.get(Env.getCtx(), tableId).getColumn(columnName);
-		if(column == null) {
-			return -1;
-		}
-		return column.getAD_Reference_ID();
-	}
-
 
 
 	@Override
 	public void listIdentifiersFields(ListFieldsRequest request, StreamObserver<ListFieldsResponse> responseObserver) {
 		try {
-			if(request == null) {
+			if (request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ListFieldsResponse.Builder fielsListBuilder = getIdentifierFields(Env.getCtx(), request);
+			ListFieldsResponse.Builder fielsListBuilder = getIdentifierFields(request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
-				.asRuntimeException());
+				.asRuntimeException()
+			);
 		}
 	}
-	
-	private ListFieldsResponse.Builder getIdentifierFields(Properties context, ListFieldsRequest request) {
+
+	private ListFieldsResponse.Builder getIdentifierFields(ListFieldsRequest request) {
+		if (request.getTableId() <= 0 && Util.isEmpty(request.getTableUuid(), true) && Util.isEmpty(request.getTableName(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
+		}
+
+		Properties context = Env.getCtx();
 		MTable table = null;
 		int tableId = request.getTableId();
 		if (tableId > 0) {
 			table = MTable.get(context, tableId);
 		} else if(!Util.isEmpty(request.getTableUuid(), true)) {
-			table = new Query(context, MTable.Table_Name, MTable.COLUMNNAME_UUID + " = ?", null)
+			table = new Query(
+				context,
+				MTable.Table_Name,
+				MTable.COLUMNNAME_UUID + " = ?",
+				null
+			)
 				.setParameters(request.getTableUuid())
 				.setOnlyActiveRecords(true)
-				.first();
+				.first()
+			;
 		} else if (!Util.isEmpty(request.getTableName(), true)) {
 			table = MTable.get(context, request.getTableName());
-		} 
-		if (table == null) {
+		}
+		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
-		
+
 		ListFieldsResponse.Builder fieldsListBuilder = ListFieldsResponse.newBuilder();
-		
+
 		final String sql = "SELECT c.AD_Column_ID"
 			// + ", c.ColumnName, t.AD_Table_ID, t.TableName, c.ColumnSql "
 			+ " FROM AD_Table AS t "
@@ -1865,95 +1842,82 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			+ "	AND EXISTS (SELECT * FROM AD_Field AS f "
 			+ "	WHERE f.AD_Column_ID=c.AD_Column_ID "
 			+ " AND f.IsDisplayed='Y' AND f.IsEncrypted='N' AND f.ObscureType IS NULL) "
-			+ "	ORDER BY c.IsIdentifier DESC, c.SeqNo ";
-		/*
+			+ "	ORDER BY c.IsIdentifier DESC, c.SeqNo "
+		;
+
 		DB.runResultSet(null, sql, List.of(table.getAD_Table_ID()), resultSet -> {
+			int recordCount = 0;
 			while(resultSet.next()) {
 				MColumn column = MColumn.get(context, resultSet.getInt(MColumn.COLUMNNAME_AD_Column_ID));
 				if (column != null) {
 					Field.Builder fieldBuilder = convertField(context, column);
 					fieldsListBuilder.addFields(fieldBuilder.build());
 				}
+				recordCount++;
 			}
+			fieldsListBuilder.setRecordCount(recordCount);
 		}).onFailure(throwable -> {
-			log.log(Level.SEVERE, "loadPreferences", throwable);
+			log.log(Level.SEVERE, sql, throwable);
 		});
-		*/
-
-		PreparedStatement pstmt = null;
-		ResultSet resultSet = null;
-		try {
-			pstmt = DB.prepareStatement(sql, null);
-			pstmt.setInt(1, table.getAD_Table_ID());
-			resultSet = pstmt.executeQuery();
-
-			while (resultSet.next()) {
-				//	Only 4 Query Columns
-				if (fieldsListBuilder.getFieldsList().size() >= 4) {
-					break;
-				}
-				MColumn column = MColumn.get(context, resultSet.getInt(MColumn.COLUMNNAME_AD_Column_ID));
-				if (column != null) {
-					Field.Builder fieldBuilder = convertField(context, column);
-					fieldsListBuilder.addFields(fieldBuilder.build());
-				}
-			}
-			resultSet.close();
-			pstmt.close();
-		}
-		catch (SQLException e) {
-			log.log(Level.SEVERE, sql, e);
-		}
-		finally {
-			DB.close(resultSet, pstmt);
-			resultSet = null;
-			pstmt = null;
-		}
 
 		//	empty general info
 		// if (fieldsListBuilder.getFieldsList().size() == 0) {
 		// }
-		
+
 		return fieldsListBuilder;
 	}
+
+
 
 	@Override
 	public void listTableSearchFields(ListFieldsRequest request, StreamObserver<ListFieldsResponse> responseObserver) {
 		try {
-			if(request == null) {
+			if (request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
-			ListFieldsResponse.Builder fielsListBuilder = getTableSearchFields(Env.getCtx(), request);
+			ListFieldsResponse.Builder fielsListBuilder = getTableSearchFields(request);
 			responseObserver.onNext(fielsListBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
-				.asRuntimeException());
+				.asRuntimeException()
+			);
 		}
 	}
-	
-	private ListFieldsResponse.Builder getTableSearchFields(Properties context, ListFieldsRequest request) {
+
+	private ListFieldsResponse.Builder getTableSearchFields(ListFieldsRequest request) {
+		if (request.getTableId() <= 0 && Util.isEmpty(request.getTableUuid(), true) && Util.isEmpty(request.getTableName(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
+		}
+
+		Properties context = Env.getCtx();
 		MTable table = null;
 		int tableId = request.getTableId();
 		if (tableId > 0) {
 			table = MTable.get(context, tableId);
 		} else if(!Util.isEmpty(request.getTableUuid(), true)) {
-			table = new Query(context, MTable.Table_Name, MTable.COLUMNNAME_UUID + " = ?", null)
+			table = new Query(
+				context,
+				MTable.Table_Name,
+				MTable.COLUMNNAME_UUID + " = ?",
+				null
+			)
 				.setParameters(request.getTableUuid())
 				.setOnlyActiveRecords(true)
 				.first();
 		} else if (!Util.isEmpty(request.getTableName(), true)) {
 			table = MTable.get(context, request.getTableName());
-		} 
+		}
 		if (table == null || table.getAD_Table_ID() < 1) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
-		
+
 		ListFieldsResponse.Builder fieldsListBuilder = ListFieldsResponse.newBuilder();
-		
+
 		final String sql = "SELECT f.AD_Field_ID "
 			// + ", c.ColumnName, c.AD_Reference_ID, c.IsKey, f.IsDisplayed, c.AD_Reference_Value_ID, c.ColumnSql "
 			+ " FROM AD_Column c "
@@ -1964,29 +1928,12 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 			+ " AND (c.IsKey='Y' OR "
 				// + " (f.IsDisplayed='Y' AND f.IsEncrypted='N' AND f.ObscureType IS NULL)) "
 				+ " (f.IsEncrypted='N' AND f.ObscureType IS NULL)) "
-			+ "ORDER BY c.IsKey DESC, f.SeqNo";
-		/*
-		DB.runResultSet(null, sql, List.of(table.getAD_Table_ID()), resultSet -> {
-			while(resultSet.next()) {
-				MField field = new MField(context, resultSet.getInt(MField.COLUMNNAME_AD_Field_ID), null);
-				if (field != null) {
-					Field.Builder fieldBuilder = convertField(context, field, true);
-					fieldsListBuilder.addFields(fieldBuilder.build());
-				}
-			}
-		}).onFailure(throwable -> {
-			log.log(Level.SEVERE, "loadPreferences", throwable);
-		});
-		*/
+			+ "ORDER BY c.IsKey DESC, f.SeqNo"
+		;
 
-		PreparedStatement pstmt = null;
-		ResultSet resultSet = null;
-		try {
-			pstmt = DB.prepareStatement(sql, null);
-			pstmt.setInt(1, table.getAD_Table_ID());
-			resultSet = pstmt.executeQuery();
+		DB.runResultSet(null, sql, List.of(table.getAD_Table_ID()), resultSet -> {
 			int recordCount = 0;
-			while (resultSet.next()) {
+			while(resultSet.next()) {
 				MField field = new MField(context, resultSet.getInt(MField.COLUMNNAME_AD_Field_ID), null);
 				if (field != null) {
 					Field.Builder fieldBuilder = convertField(context, field, true);
@@ -1995,19 +1942,33 @@ public class DictionaryServiceImplementation extends DictionaryImplBase {
 				recordCount++;
 			}
 			fieldsListBuilder.setRecordCount(recordCount);
-			resultSet.close();
-			pstmt.close();
-		}
-		catch (SQLException e) {
-			log.log(Level.SEVERE, sql, e);
-		}
-		finally {
-			DB.close(resultSet, pstmt);
-			resultSet = null;
-			pstmt = null;
-		}
-		
+		}).onFailure(throwable -> {
+			log.log(Level.SEVERE, sql, throwable);
+		});
+
 		return fieldsListBuilder;
 	}
-	
+
+
+
+	@Override
+	public void listSearchInfoFields(ListFieldsRequest request, StreamObserver<ListFieldsResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Request Null");
+			}
+			ListFieldsResponse.Builder fielsListBuilder = DictionaryServiceLogic.listSearchInfoFields(request);
+			responseObserver.onNext(fielsListBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
 }

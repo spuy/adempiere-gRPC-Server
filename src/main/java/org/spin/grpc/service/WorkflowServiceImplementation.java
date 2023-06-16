@@ -34,7 +34,9 @@ import org.adempiere.core.domains.models.I_AD_Workflow;
 import org.adempiere.core.domains.models.I_C_Order;
 import org.compiere.model.MColumn;
 import org.compiere.model.MDocType;
+import org.compiere.model.MMenu;
 import org.compiere.model.MOrder;
+import org.compiere.model.MProcess;
 import org.compiere.model.MTable;
 import org.compiere.model.MUser;
 import org.compiere.model.PO;
@@ -69,6 +71,7 @@ import org.spin.backend.grpc.wf.WorkflowActivity;
 import org.spin.backend.grpc.wf.WorkflowDefinition;
 import org.spin.backend.grpc.wf.WorkflowDefinitionRequest;
 import org.spin.backend.grpc.wf.WorkflowGrpc.WorkflowImplBase;
+import org.spin.base.dictionary.DictionaryUtil;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.SessionManager;
@@ -91,40 +94,42 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	@Override
 	public void getWorkflow(WorkflowDefinitionRequest request, StreamObserver<WorkflowDefinition> responseObserver) {
 		try {
-			if(request == null) {
+			if (request == null) {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Menu Requested = " + request.getUuid());
-			WorkflowDefinition.Builder workflowBuilder = convertWorkflow(Env.getCtx(), request.getUuid(), request.getId());
+			WorkflowDefinition.Builder workflowBuilder = getWorkflow(request);
 			responseObserver.onNext(workflowBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
-				.asRuntimeException());
+				.asRuntimeException()
+			);
 		}
 	}
-	
+
 	/**
 	 * Request Workflow from uuid or id
-	 * @param context
-	 * @param uuid
-	 * @param id
+	 * @param request
+	 * @return builder
 	 */
-	private WorkflowDefinition.Builder convertWorkflow(Properties context, String uuid, int id) {
+	private WorkflowDefinition.Builder getWorkflow(WorkflowDefinitionRequest request) {
+		if (request.getId() <= 0 && Util.isEmpty(request.getUuid(), true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Workflow_ID@/@UUID@");
+		}
+		Properties context = Env.getCtx();
 		String whereClause = null;
 		Object parameter = null;
-		if(id > 0) {
+		if (request.getId() > 0) {
 			whereClause = MWorkflow.COLUMNNAME_AD_Workflow_ID + " = ?";
-			parameter = id;
-		} else if(!Util.isEmpty(uuid)) {
+			parameter = request.getId();
+		} else if(!Util.isEmpty(request.getUuid(), true)) {
 			whereClause = MWorkflow.COLUMNNAME_UUID + " = ?";
-			parameter = uuid;
-		}
-		if(parameter == null) {
-			return WorkflowDefinition.newBuilder();
+			parameter = request.getUuid();
 		}
 
 		MWorkflow workflow = new Query(
@@ -135,23 +140,16 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 			)
 			.setParameters(parameter)
 			.setOnlyActiveRecords(true)
-			.first();
-		return convertWorkflow(context, workflow);
-	}
-
-	/**
-	 * Convert Workflow from Workflow Model
-	 * @param form
-	 * @return
-	 */
-	private WorkflowDefinition.Builder convertWorkflow(Properties context, MWorkflow workflowDefinition) {
-		WorkflowDefinition.Builder builder = WorkflowUtil.convertWorkflowDefinition(workflowDefinition);
+			.first()
+		;
 
 		//	Add to recent Item
-		// addToRecentItem(MMenu.ACTION_WorkFlow, workflowDefinition.getAD_Workflow_ID());
+		DictionaryUtil.addToRecentItem(MMenu.ACTION_WorkFlow, workflow.getAD_Workflow_ID());
 
-		return builder;
+		return WorkflowUtil.convertWorkflowDefinition(workflow);
 	}
+
+
 
 	@Override
 	public void listWorkflows(ListWorkflowsRequest request, StreamObserver<ListWorkflowsResponse> responseObserver) {
@@ -696,12 +694,12 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	 * @throws FileNotFoundException 
 	 */
 	private ProcessLog.Builder runDocumentAction(Properties context, RunDocumentActionRequest request) throws FileNotFoundException, IOException {
-		if(Util.isEmpty(request.getTableName())) {
+		if (Util.isEmpty(request.getTableName(), true)) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
 
 		//	get document action
-		if(Util.isEmpty(request.getDocumentAction())) {
+		if (Util.isEmpty(request.getDocumentAction(), true)) {
 			throw new AdempiereException("@DocAction@ @NotFound@");
 		}
 		String documentAction = request.getDocumentAction();
@@ -710,19 +708,30 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
+		if (!table.isDocument()) {
+			throw new AdempiereException("@NotValid@ @AD_Table_ID@ @IsDocument@@");
+		}
 
 		int recordId = request.getId();
-		if (recordId <= 0 && Util.isEmpty(request.getUuid())) {
+		if (recordId <= 0 && Util.isEmpty(request.getUuid(), true)) {
 			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 		}
 		PO entity = RecordUtil.getEntity(context, request.getTableName(), request.getUuid(), recordId, null);
-		if (entity == null) {
+		if (entity == null || entity.get_ID() <= 0) {
 			throw new AdempiereException("@Error@ @PO@ @NotFound@");
 		}
 		//	Validate as document
-		if(!DocAction.class.isAssignableFrom(entity.getClass())) {
+		if (!DocAction.class.isAssignableFrom(entity.getClass())) {
 			throw new AdempiereException("@Invalid@ @Document@");
 		}
+
+		//	Status Change
+		String documentStatus = entity.get_ValueAsString(I_C_Order.COLUMNNAME_DocStatus);
+		boolean isSameValue = org.spin.base.workflow.WorkflowUtil.checkStatus(table.getTableName(), entity.get_ID(), documentStatus);
+		if (!isSameValue) {
+			throw new AdempiereException("@DocumentStatusChanged@" + documentStatus);
+		}
+
 		//
 		ProcessLog.Builder response = ProcessLog.newBuilder();
 		//	Process
@@ -730,9 +739,25 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		entity.saveEx();
 		DocAction document = (DocAction) entity;
 		try {
-			if(!document.processIt(documentAction)) {
+			if (!document.processIt(documentAction)) {
 				response.setSummary(Msg.parseTranslation(context, document.getProcessMsg()));
 				response.setIsError(true);
+			}
+			else {
+				int columnId = MColumn.getColumn_ID(table.getTableName(), I_C_Order.COLUMNNAME_DocAction);
+				MColumn column = MColumn.get(context, columnId);
+				if (column.getAD_Process_ID() > 0) {
+					MProcess process = MProcess.get(context, column.getAD_Process_ID());
+					if (process.getAD_Workflow_ID() > 0) {
+						org.spin.base.workflow.WorkflowUtil.startWorkflow(
+							process.getAD_Workflow_ID(),
+							process.getAD_Process_ID(),
+							table.getAD_Table_ID(),
+							entity.get_ID(),
+							entity.get_TrxName()
+						);
+					}
+				}
 			}
 		} catch (Exception e) {
 			response.setSummary(Msg.parseTranslation(context, document.getProcessMsg()));
