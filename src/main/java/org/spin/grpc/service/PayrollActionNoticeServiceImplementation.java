@@ -58,6 +58,7 @@ import org.spin.backend.grpc.form.ListPayrollMovementsRequest;
 import org.spin.backend.grpc.form.ListPayrollProcessRequest;
 import org.spin.backend.grpc.form.PayrollActionNoticeGrpc.PayrollActionNoticeImplBase;
 import org.spin.backend.grpc.form.SavePayrollMovementRequest;
+import org.spin.base.db.ParameterUtil;
 import org.spin.base.db.CountUtil;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
@@ -86,6 +87,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -125,7 +127,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		try {
 			//	SELECT Key, Value, Name FROM ...
 			pstmt = DB.prepareStatement(sql, null);
-			ValueUtil.setParametersFromObjectsList(pstmt, parameters);
+			ParameterUtil.setParametersFromObjectsList(pstmt, parameters);
 
 			//	Get from Query
 			rs = pstmt.executeQuery();
@@ -143,6 +145,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			throw new AdempiereException(e);
 		} finally {
 			DB.close(rs, pstmt);
@@ -248,7 +251,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		try {
 			//	SELECT Key, Value, Name FROM ...
 			pstmt = DB.prepareStatement(sql, null);
-			ValueUtil.setParametersFromObjectsList(pstmt, parameters);
+			ParameterUtil.setParametersFromObjectsList(pstmt, parameters);
 
 			//	Get from Query
 			rs = pstmt.executeQuery();
@@ -299,6 +302,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -394,7 +398,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 		ResultSet rs = null;
 		try {
 			pstmt = DB.prepareStatement(sql, null);
-			ValueUtil.setParametersFromObjectsList(pstmt, parameters);
+			ParameterUtil.setParametersFromObjectsList(pstmt, parameters);
 			
 			//	Get from Query
 			rs = pstmt.executeQuery();
@@ -411,6 +415,7 @@ public class PayrollActionNoticeServiceImplementation extends PayrollActionNotic
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			throw new AdempiereException(e);
 		} finally {
 			DB.close(rs, pstmt);
