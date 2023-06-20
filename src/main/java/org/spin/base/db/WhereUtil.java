@@ -12,17 +12,19 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.base.util;
+package org.spin.base.db;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.model.MBrowse;
 import org.adempiere.model.MBrowseField;
 import org.adempiere.model.MView;
 import org.adempiere.model.MViewColumn;
+import org.compiere.model.MTable;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
@@ -30,13 +32,14 @@ import org.spin.backend.grpc.common.Criteria;
 import org.spin.backend.grpc.common.KeyValue;
 import org.spin.backend.grpc.common.Operator;
 import org.spin.backend.grpc.common.Value;
+import org.spin.base.util.ValueUtil;
 import org.spin.util.ASPUtil;
 
 /**
- * Class for handle SQL Queries
+ * Class for handle SQL Where Clause
  * @author Edwin Betancourt, EdwinBetanc0urt@outlook.com, https://github.com/EdwinBetanc0urt
  */
-public class QueryUtil {
+public class WhereUtil {
 
 	/**
 	 * Get sql restriction by operator
@@ -64,7 +67,8 @@ public class QueryUtil {
 				if (parameterValues.length() > 0) {
 					parameterValues.append(", ");
 				}
-				parameterValues.append("?");
+				String sqlItemValue = "?";
+				parameterValues.append(sqlItemValue);
 				params.add(ValueUtil.getObjectFromValue(itemValue));
 			});
 			sqlValue = "(" + parameterValues.toString() + ")";
@@ -116,6 +120,69 @@ public class QueryUtil {
 
 		return rescriction;
 	}
+
+
+
+	/**
+	 * Get Where Clause from criteria and dynamic condition
+	 * @param criteria
+	 * @param params
+	 * @return
+	 */
+	public static String getWhereClauseFromCriteria(Criteria criteria, List<Object> params) {
+		return getWhereClauseFromCriteria(criteria, null, params);
+	}
+
+	/**
+	 * Get Where Clause from criteria and dynamic condition
+	 * @param criteria
+	 * @param tableName optional table name
+	 * @param params
+	 * @return
+	 */
+	public static String getWhereClauseFromCriteria(Criteria criteria, String tableName, List<Object> params) {
+		StringBuffer whereClause = new StringBuffer();
+		if (!Util.isEmpty(criteria.getWhereClause(), true)) {
+			whereClause.append("(").append(criteria.getWhereClause()).append(")");
+		}
+		if (Util.isEmpty(tableName, true)) {
+			tableName = criteria.getTableName();
+		}
+		final MTable table = MTable.get(Env.getCtx(), tableName);
+		//	Validate
+		if (table == null || table.getAD_Table_ID() <= 0) {
+			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+		}
+		criteria.getConditionsList().stream()
+			.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
+			.forEach(condition -> {
+				int operatorValue = condition.getOperatorValue();
+				if (whereClause.length() > 0) {
+					whereClause.append(" AND ");
+				}
+				String columnName = table.getTableName() + "." + condition.getColumnName();
+				if (operatorValue < 0 || operatorValue == Operator.VOID_VALUE) {
+					operatorValue = OperatorUtil.getDefaultOperatorByConditionValue(
+						condition
+					);
+				}
+
+				String restriction = WhereUtil.getRestrictionByOperator(
+					columnName,
+					operatorValue,
+					condition.getValue(),
+					condition.getValueTo(),
+					condition.getValuesList(),
+					params
+				);
+
+				whereClause.append(restriction);
+		});
+		//	Return where clause
+		return whereClause.toString();
+	}
+
+
 
 	/**
 	 * Get Where clause for Smart Browse
@@ -288,34 +355,34 @@ public class QueryUtil {
 		}
 
 		criteria.getConditionsList().stream()
-				.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
-				.forEach(condition -> {
-					MBrowseField browseField = browseFields.get(condition.getColumnName());
-					MViewColumn viewColumn = browseField.getAD_View_Column();
+			.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
+			.forEach(condition -> {
+				MBrowseField browseField = browseFields.get(condition.getColumnName());
+				MViewColumn viewColumn = browseField.getAD_View_Column();
 
-					int operatorValue = condition.getOperatorValue();
-					if (whereClause.length() > 0) {
-						whereClause.append(" AND ");
-					}
+				int operatorValue = condition.getOperatorValue();
+				if (whereClause.length() > 0) {
+					whereClause.append(" AND ");
+				}
 
-					String columnName = viewColumn.getColumnSQL();
-					if (operatorValue < 0 || operatorValue == Operator.VOID_VALUE) {
-						operatorValue = OperatorUtil.getDefaultOperatorByConditionValue(
-							condition
-						);
-					}
-
-					String restriction = QueryUtil.getRestrictionByOperator(
-						columnName,
-						operatorValue,
-						condition.getValue(),
-						condition.getValueTo(),
-						condition.getValuesList(),
-						filterValues
+				String columnName = viewColumn.getColumnSQL();
+				if (operatorValue < 0 || operatorValue == Operator.VOID_VALUE) {
+					operatorValue = OperatorUtil.getDefaultOperatorByConditionValue(
+						condition
 					);
+				}
 
-					whereClause.append(restriction);
-				});
+				String restriction = WhereUtil.getRestrictionByOperator(
+					columnName,
+					operatorValue,
+					condition.getValue(),
+					condition.getValueTo(),
+					condition.getValuesList(),
+					filterValues
+				);
+
+				whereClause.append(restriction);
+			});
 
 		return whereClause.toString();
 	}
@@ -373,36 +440,36 @@ public class QueryUtil {
 		}
 
 		criteria.getConditionsList().stream()
-				.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
-				.forEach(condition -> {
-					MViewColumn viewColumn = viewColummns.get(condition.getColumnName());
-					if (viewColumn == null || viewColumn.getAD_View_Column_ID() <= 0) {
-						return;
-					}
+			.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
+			.forEach(condition -> {
+				MViewColumn viewColumn = viewColummns.get(condition.getColumnName());
+				if (viewColumn == null || viewColumn.getAD_View_Column_ID() <= 0) {
+					return;
+				}
 
-					int operatorValue = condition.getOperatorValue();
-					if (whereClause.length() > 0) {
-						whereClause.append(" AND ");
-					}
+				int operatorValue = condition.getOperatorValue();
+				if (whereClause.length() > 0) {
+					whereClause.append(" AND ");
+				}
 
-					String columnName = viewColumn.getColumnSQL();
-					if (operatorValue < 0 || operatorValue == Operator.VOID_VALUE) {
-						operatorValue = OperatorUtil.getDefaultOperatorByConditionValue(
-							condition
-						);
-					}
-
-					String restriction = QueryUtil.getRestrictionByOperator(
-						columnName,
-						operatorValue,
-						condition.getValue(),
-						condition.getValueTo(),
-						condition.getValuesList(),
-						filterValues
+				String columnName = viewColumn.getColumnSQL();
+				if (operatorValue < 0 || operatorValue == Operator.VOID_VALUE) {
+					operatorValue = OperatorUtil.getDefaultOperatorByConditionValue(
+						condition
 					);
+				}
 
-					whereClause.append(restriction);
-				});
+				String restriction = WhereUtil.getRestrictionByOperator(
+					columnName,
+					operatorValue,
+					condition.getValue(),
+					condition.getValueTo(),
+					condition.getValuesList(),
+					filterValues
+				);
+
+				whereClause.append(restriction);
+			});
 
 		return whereClause.toString();
 	}
