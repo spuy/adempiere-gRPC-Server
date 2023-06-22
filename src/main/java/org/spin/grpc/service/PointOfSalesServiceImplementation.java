@@ -127,6 +127,8 @@ import org.spin.backend.grpc.common.ProductPrice;
 import org.spin.backend.grpc.common.RunBusinessProcessRequest;
 import org.spin.backend.grpc.pos.*;
 import org.spin.backend.grpc.pos.StoreGrpc.StoreImplBase;
+import org.spin.base.db.CountUtil;
+import org.spin.base.db.LimitUtil;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
@@ -1058,8 +1060,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			ListCustomerBankAccountsResponse.Builder builder = ListCustomerBankAccountsResponse.newBuilder();
 			int customerId = RecordUtil.getIdFromUuid(I_C_BPartner.Table_Name, request.getCustomerUuid(), null);
 			String nexPageToken = null;
-			int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-			int limit = RecordUtil.getPageSize(request.getPageSize());
+			int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+			int limit = LimitUtil.getPageSize(request.getPageSize());
 			int offset = (pageNumber - 1) * limit;
 
 			//	Dynamic where clause
@@ -1078,8 +1080,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			//	
 			builder.setRecordCount(count);
 			//	Set page token
-			if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-				nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+			if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+				nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 			}
 			//	Set next page
 			builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1414,8 +1416,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListAvailableSellersResponse.Builder builder = ListAvailableSellersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		int posId = RecordUtil.getIdFromUuid(I_C_POS.Table_Name, request.getPosUuid(), null);
@@ -1442,8 +1444,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1568,8 +1570,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			.setId(cashClosing.getC_BankStatement_ID())
 			.setUuid(ValueUtil.validateNull(cashClosing.getUUID()));
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		int count = 0;
@@ -1586,7 +1588,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			List<Object> parameters = new ArrayList<Object>();
 			parameters.add(pos.getC_POS_ID());
 			parameters.add(cashClosing.getC_BankStatement_ID());
-			count = RecordUtil.countRecords(sql, "C_Payment p", parameters);
+			count = CountUtil.countRecords(sql, "C_Payment p", parameters);
 			pstmt = DB.prepareStatement(sql, null);
 			pstmt.setInt(1, pos.getC_POS_ID());
 			pstmt.setInt(2, cashClosing.getC_BankStatement_ID());
@@ -1613,8 +1615,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1952,8 +1954,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListShipmentLinesResponse.Builder builder = ListShipmentLinesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		int shipmentId = RecordUtil.getIdFromUuid(I_M_InOut.Table_Name, request.getShipmentUuid(), null);
@@ -1972,8 +1974,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -1995,8 +1997,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		List<Object> parameters = new ArrayList<Object>();
@@ -2026,8 +2028,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2797,8 +2799,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Aisle Seller
@@ -2825,8 +2827,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2848,8 +2850,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -2877,8 +2879,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2906,8 +2908,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -2960,8 +2962,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -2983,8 +2985,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -3012,8 +3014,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3029,8 +3031,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
 		ListAvailableCurrenciesResponse.Builder builder = ListAvailableCurrenciesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -3053,8 +3055,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3538,8 +3540,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListOrdersResponse.Builder builder = ListOrdersResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -3652,8 +3654,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3671,8 +3673,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		ListPaymentsResponse.Builder builder = ListPaymentsResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -3717,8 +3719,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		});
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -3739,8 +3741,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		MPOS pos = new MPOS(Env.getCtx(), order.getC_POS_ID(), order.get_TrxName());
 		ListOrderLinesResponse.Builder builder = ListOrderLinesResponse.newBuilder();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		StringBuffer whereClause = new StringBuffer(I_C_OrderLine.COLUMNNAME_C_Order_ID + " = ?");
@@ -3766,8 +3768,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -4864,8 +4866,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int salesRepresentativeId = RecordUtil.getIdFromUuid(I_AD_User.Table_Name,request.getUserUuid(), null);
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Get POS List
@@ -4895,8 +4897,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -5724,8 +5726,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			validFrom.set(TimeUtil.getDay(System.currentTimeMillis()));
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Dynamic where clause
@@ -5799,8 +5801,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -6032,9 +6034,9 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			}
 
 			String nexPageToken = null;
-			int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-			int limit = RecordUtil.PAGE_SIZE;
-			int offset = pageNumber * RecordUtil.PAGE_SIZE;
+			int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+			int limit = LimitUtil.PAGE_SIZE;
+			int offset = pageNumber * LimitUtil.PAGE_SIZE;
 
 			final String whereClause = I_M_Storage.COLUMNNAME_M_Product_ID + " = ? "
 				+ " AND EXISTS (SELECT 1 FROM C_POSWarehouseAllocation "
@@ -6070,7 +6072,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			builder.setRecordCount(count);
 			//	Set page token
 			if(count > offset && count > limit) {
-				nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+				nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 			}
 			//	Set next page
 			builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -6210,8 +6212,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			return builder;
 		}
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		//	Aisle Seller
@@ -6247,8 +6249,8 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -6351,12 +6353,12 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 
 		int count = query.count();
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		//	Set page token
-		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if (LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 
 		ListCommandShortcutsResponse.Builder builderList = ListCommandShortcutsResponse.newBuilder()

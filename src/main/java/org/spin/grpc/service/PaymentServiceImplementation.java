@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2012-2018 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -7,7 +7,7 @@
  * (at your option) any later version.                                              *
  * This program is distributed in the hope that it will be useful,                  *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the                     *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
  * GNU General Public License for more details.                                     *
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
@@ -25,8 +25,11 @@ import org.compiere.model.MTable;
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
+import org.spin.base.db.CountUtil;
+import org.spin.base.db.LimitUtil;
+import org.spin.base.db.QueryUtil;
+import org.spin.base.db.WhereClauseUtil;
 import org.spin.base.util.ContextManager;
-import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.SessionManager;
@@ -88,7 +91,7 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 
 		//
 		MTable table = MTable.get(Env.getCtx(), this.tableName);
-		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
+		StringBuilder sql = new StringBuilder(QueryUtil.getTableQueryWithReferences(table));
 
 		// add where with access restriction
 		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
@@ -102,7 +105,7 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 		StringBuffer whereClause = new StringBuffer();
 
 		// validation code of field
-		String validationCode = DictionaryUtil.getValidationCodeWithAlias(tableName, reference.ValidationCode);
+		String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(tableName, reference.ValidationCode);
 		String parsedValidationCode = Env.parseContext(Env.getCtx(), windowNo, validationCode, false);
 		if (!Util.isEmpty(reference.ValidationCode, true)) {
 			if (Util.isEmpty(parsedValidationCode, true)) {
@@ -113,7 +116,7 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 
 		//	For dynamic condition
 		List<Object> params = new ArrayList<>(); // includes on filters criteria
-		String dynamicWhere = ValueUtil.getWhereClauseFromCriteria(request.getFilters(), this.tableName, params);
+		String dynamicWhere = WhereClauseUtil.getWhereClauseFromCriteria(request.getFilters(), this.tableName, params);
 		if (!Util.isEmpty(dynamicWhere, true)) {
 			//	Add includes first AND
 			whereClause.append(" AND ")
@@ -126,24 +129,24 @@ public class PaymentServiceImplementation extends PaymentImplBase {
 		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, this.tableName, request.getSearchValue(), params);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = 0;
 
 		ListEntitiesResponse.Builder builder = ListEntitiesResponse.newBuilder();
 		
 		//	Count records
-		count = RecordUtil.countRecords(parsedSQL, this.tableName, params);
+		count = CountUtil.countRecords(parsedSQL, this.tableName, params);
 		//	Add Row Number
-		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
+		parsedSQL = LimitUtil.getQueryWithLimit(parsedSQL, limit, offset);
 		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), this.tableName), parsedSQL, params);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));

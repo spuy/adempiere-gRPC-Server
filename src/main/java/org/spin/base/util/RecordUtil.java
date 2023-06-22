@@ -25,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +34,6 @@ import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.pipo.IDFinder;
 import org.adempiere.core.domains.models.I_AD_Element;
 import org.adempiere.core.domains.models.X_AD_Table;
-import org.compiere.model.MClientInfo;
 import org.compiere.model.MColumn;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MTable;
@@ -50,8 +48,8 @@ import org.compiere.util.Util;
 import org.spin.backend.grpc.common.Entity;
 import org.spin.backend.grpc.common.ListEntitiesResponse;
 import org.spin.backend.grpc.common.Value;
-import org.spin.model.MADAttachmentReference;
-import org.spin.util.AttachmentUtil;
+import org.spin.base.db.FromUtil;
+import org.spin.base.db.ParameterUtil;
 
 /**
  * Class for handle records utils values
@@ -60,9 +58,7 @@ import org.spin.util.AttachmentUtil;
 public class RecordUtil {
 	/**	Logger			*/
 	private static CLogger log = CLogger.getCLogger(RecordUtil.class);
-	
-	/**	Page Size	*/
-	public static final int PAGE_SIZE = 50;
+
 
 	/** Table Allows Records with Zero Identifier */
 	public static List<String> ALLOW_ZERO_ID = Arrays.asList(
@@ -71,69 +67,7 @@ public class RecordUtil {
 		X_AD_Table.ACCESSLEVEL_ClientPlusOrganization
 	);
 
-	/**
-	 * Get Page Size from client, else from default
-	 * @param pageSize
-	 * @return
-	 */
-	public static int getPageSize(int pageSize) {
-		return pageSize > 0 ? pageSize : PAGE_SIZE;
-	}
 
-	/**
-	 * Get Page Number
-	 * @param sessionUuid
-	 * @param pageToken
-	 * @return
-	 */
-	public static int getPageNumber(String sessionUuid, String pageToken) {
-		int page = 1;
-		String pagePrefix = getPagePrefix(sessionUuid);
-		if(!Util.isEmpty(pageToken)) {
-			if(pageToken.startsWith(pagePrefix)) {
-				try {
-					page = Integer.parseInt(pageToken.replace(pagePrefix, ""));
-					if (page < 1) {
-						page = 1;
-					}
-				} catch (Exception e) {
-					//	
-				}
-			} else {
-				try {
-					page = Integer.parseInt(pageToken);
-					if (page < 1) {
-						page = 1;
-					}
-				} catch (Exception e) {
-					//	
-				}
-			}
-		}
-		//	
-		return page;
-	}
-
-	/**
-	 * Get Page Prefix
-	 * @param sessionUuid
-	 * @return
-	 */
-	public static String getPagePrefix(String sessionUuid) {
-		return sessionUuid + "-";
-	}
-	
-	/**
-	 * Validate if can have a next page token
-	 * @param count
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @return boolean
-	 */
-	public static boolean isValidNextPageToken(int count, int offset, int limit) {
-		return count > (offset + limit) && count > limit;
-	}
 
 	/**
 	 * get Entity from Table ID and (Record UUID / Record ID)
@@ -283,33 +217,7 @@ public class RecordUtil {
 	}
 
 
-	/**
-	 * Get resource UUID from image id
-	 * @param imageId
-	 * @return
-	 */
-	public static String getResourceUuidFromImageId(int imageId) {
-		MADAttachmentReference reference = getResourceFromImageId(imageId);
-		if(reference == null) {
-			return null;
-		}
-		//	Return uuid
-		return reference.getUUID();
-	}
-	
-	/**
-	 * Get Attachment reference from image ID
-	 * @param imageId
-	 * @return
-	 */
-	public static MADAttachmentReference getResourceFromImageId(int imageId) {
-		if(!AttachmentUtil.getInstance().isValidForClient(Env.getAD_Client_ID(Env.getCtx()))) {
-			return null;
-		}
-		//	
-		return MADAttachmentReference.getByImageId(Env.getCtx(), MClientInfo.get(Env.getCtx(), Env.getAD_Client_ID(Env.getCtx())).getFileHandler_ID(), imageId, null);
-	}
-	
+
 	/**
 	 * Get conversion Rate from ValidFrom, Currency From, Currency To and Conversion Type
 	 * @param request
@@ -423,7 +331,7 @@ public class RecordUtil {
 					.append(column.getColumnName())
 					.append(")")
 					.append(" LIKE ")
-					.append("'%'|| UPPER(?) || '%'");
+					.append("'%' || UPPER(?) || '%'");
 				parameters.add(searchValue);
 			});
 
@@ -473,7 +381,7 @@ public class RecordUtil {
 				String keyColumn = table.getTableName() + "_ID";
 				String translationTableName = tableTranslation.getTableName();
 				// only table, tableName tableName, tableName AS tableName
-				String tableWithAliases = getPatternTableName(translationTableName, null);
+				String tableWithAliases = FromUtil.getPatternTableName(translationTableName, null);
 
 				String joinPattern = "JOIN(\\s+)" 
 					+ "(" + tableWithAliases + ")"
@@ -514,7 +422,7 @@ public class RecordUtil {
 			}
 
 			// tableName tableName, tableName AS tableName
-			String patternAlias = getPatternTableName(table.getTableName(), tableAlias);
+			String patternAlias = FromUtil.getPatternTableName(table.getTableName(), tableAlias);
 
 			String fromWherePattern = "\\s+(FROM)\\s+(" + patternAlias + ")" + "\\s+(WHERE)";
 			Matcher matcher = Pattern.compile(
@@ -558,103 +466,7 @@ public class RecordUtil {
 	}
 
 
-	/**
-	 * Get regex pattern to match with table name and/or table alias
-	 * @param tableName
-	 * @param tableNameAlias
-	 * @return
-	 */
-	public static String getPatternTableName(String tableName, String tableNameAlias) {
-		// tableName tableName, tableName AS tableName
-		String patternTableWithAliases = tableName + "\\s+" + tableName + "|" + tableName + "\\s+AS\\s+" + tableName;
-		if (!Util.isEmpty(tableNameAlias, true) && !tableName.equals(tableNameAlias)) {
-			// tableName tableAlias, tableName AS tableAlias
-			patternTableWithAliases += "|" + tableName + "\\s+" + tableNameAlias + "|" + tableName + "\\s+AS\\s+" + tableNameAlias;
-		}
-		// only table on last position
-		patternTableWithAliases += "|" + tableName;
 
-		return patternTableWithAliases;
-	}
-
-	/**
-	 * Count records
-	 * @param sql
-	 * @param tableName
-	 * @param parameters
-	 * @return
-	 */
-	public static int countRecords(String sql, String tableName, List<Object> parameters) {
-		return countRecords(sql, tableName, null, parameters);
-	}
-
-	/**
-	 * Count records
-	 * @param sql
-	 * @param tableName
-	 * @param tableNameAlias
-	 * @param parameters
-	 * @return
-	 */
-	public static int countRecords(String sql, String tableName, String tableNameAlias, List<Object> parameters) {
-		// tableName tableName, tableName AS tableName
-		String tableWithAliases = getPatternTableName(tableName, tableNameAlias);
-
-		Matcher matcherFrom = Pattern.compile(
-			"\\s+(FROM)\\s+(" + tableWithAliases + ")\\s+(WHERE|(LEFT|INNER|RIGHT)\\s+JOIN)",
-			Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-		)
-		.matcher(sql);
-
-		List<MatchResult> fromWhereParts = matcherFrom.results()
-			.collect(Collectors.toList());
-		int positionFrom = -1;
-		if (fromWhereParts != null && fromWhereParts.size() > 0) {
-			// MatchResult lastFrom = fromWhereParts.get(fromWhereParts.size() - 1);
-			MatchResult lastFrom = fromWhereParts.get(0);
-			positionFrom = lastFrom.start();
-		} else {
-			return 0;
-		}
-
-		String queryCount = "SELECT COUNT(*) " + sql.substring(positionFrom, sql.length());
-
-		// remove order by clause
-		Matcher matcherOrderBy = Pattern.compile(
-			"\\s+(ORDER BY)\\s+",
-			Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-		).matcher(queryCount);
-		if(matcherOrderBy.find()) {
-			int positionOrderBy = matcherOrderBy.start();
-			queryCount = queryCount.substring(0, positionOrderBy);
-		}
-
-		if (parameters == null) {
-			parameters = new ArrayList<Object>();
-		}
-
-		return DB.getSQLValueEx(null, queryCount, parameters);
-	}
-
-	/**
-	 * Get Query with limit
-	 * @param query
-	 * @param limit
-	 * @param offset
-	 * @return
-	 */
-	public static String getQueryWithLimit(String query, int limit, int offset) {
-		Matcher matcher = Pattern.compile("\\s+(ORDER BY)\\s+", Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(query);
-		int positionFrom = -1;
-		if(matcher.find()) {
-			positionFrom = matcher.start();
-			query = query.substring(0, positionFrom) + " AND ROWNUM >= " + offset + " AND ROWNUM <= " + limit + " " + query.substring(positionFrom);
-		} else {
-			query = query + " AND ROWNUM >= " + offset + " AND ROWNUM <= " + limit;
-		}
-		return query;
-	}
-	
 	/**
 	 * Get Date
 	 * @return
@@ -683,10 +495,8 @@ public class RecordUtil {
 			}
 			//	SELECT Key, Value, Name FROM ...
 			pstmt = DB.prepareStatement(sql, null);
-			AtomicInteger parameterIndex = new AtomicInteger(1);
-			for(Object value : params) {
-				ValueUtil.setParameterFromObject(pstmt, value, parameterIndex.getAndIncrement());
-			} 
+			ParameterUtil.setParametersFromObjectsList(pstmt, params);
+
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
@@ -729,6 +539,7 @@ public class RecordUtil {
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 		} finally {
 			DB.close(rs, pstmt);
 		}

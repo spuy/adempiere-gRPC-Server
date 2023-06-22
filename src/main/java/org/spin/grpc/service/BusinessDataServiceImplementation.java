@@ -26,7 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.adempiere.exceptions.AdempiereException;
@@ -55,6 +54,10 @@ import org.compiere.util.Msg;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.eevolution.services.dsl.ProcessBuilder;
+import org.spin.base.db.CountUtil;
+import org.spin.base.db.LimitUtil;
+import org.spin.base.db.ParameterUtil;
+import org.spin.base.db.WhereClauseUtil;
 import org.spin.base.dictionary.DictionaryUtil;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
@@ -181,10 +184,12 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
 		}
 	}
 	
@@ -497,7 +502,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			entity = RecordUtil.getEntity(Env.getCtx(), tableName, request.getUuid(), request.getId(), null);
 		} else if(request.getCriteria() != null) {
 			List<Object> parameters = new ArrayList<Object>();
-			String whereClause = ValueUtil.getWhereClauseFromCriteria(request.getCriteria(), parameters);
+			String whereClause = WhereClauseUtil.getWhereClauseFromCriteria(request.getCriteria(), parameters);
 			entity = RecordUtil.getEntity(Env.getCtx(), tableName, whereClause, parameters, null);
 		}
 		//	Return
@@ -614,7 +619,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		StringBuffer whereClause = new StringBuffer();
 		List<Object> params = new ArrayList<>();
 		//	For dynamic condition
-		String dynamicWhere = ValueUtil.getWhereClauseFromCriteria(criteria, params);
+		String dynamicWhere = WhereClauseUtil.getWhereClauseFromCriteria(criteria, params);
 		if(!Util.isEmpty(dynamicWhere)) {
 			if(whereClause.length() > 0) {
 				whereClause.append(" AND ");
@@ -634,8 +639,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		}
 		//	Get page and count
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = 0;
 
@@ -665,16 +670,16 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			String parsedSQL = MRole.getDefault().addAccessSQL(sql.toString(),
 					null, MRole.SQL_FULLYQUALIFIED,
 					MRole.SQL_RO);
+
 			String orderByClause = criteria.getOrderByClause();
-			if(Util.isEmpty(orderByClause)) {
-				orderByClause = "";
-			} else {
+			if (!Util.isEmpty(orderByClause, true)) {
 				orderByClause = " ORDER BY " + orderByClause;
 			}
+
 			//	Count records
-			count = RecordUtil.countRecords(parsedSQL, criteria.getTableName(), params);
+			count = CountUtil.countRecords(parsedSQL, criteria.getTableName(), params);
 			//	Add Row Number
-			parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
+			parsedSQL = LimitUtil.getQueryWithLimit(parsedSQL, limit, offset);
 			//	Add Order By
 			parsedSQL = parsedSQL + orderByClause;
 			builder = convertListEntitiesResult(MTable.get(context, criteria.getTableName()), parsedSQL, params);
@@ -682,8 +687,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set netxt page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -710,10 +715,8 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			}
 			//	SELECT Key, Value, Name FROM ...
 			pstmt = DB.prepareStatement(sql, null);
-			AtomicInteger parameterIndex = new AtomicInteger(1);
-			for(Object value : params) {
-				ValueUtil.setParameterFromObject(pstmt, value, parameterIndex.getAndIncrement());
-			} 
+			ParameterUtil.setParametersFromObjectsList(pstmt, params);
+
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
@@ -741,6 +744,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 						}
 					} catch (Exception e) {
 						log.severe(e.getLocalizedMessage());
+						e.printStackTrace();
 					}
 				}
 				//	
@@ -749,6 +753,7 @@ public class BusinessDataServiceImplementation extends BusinessDataImplBase {
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 		} finally {
 			DB.close(rs, pstmt);
 		}

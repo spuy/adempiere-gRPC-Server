@@ -79,8 +79,11 @@ import org.spin.backend.grpc.material_management.ProductAttributeSetInstance;
 import org.spin.backend.grpc.material_management.ProductAttributeValue;
 import org.spin.backend.grpc.material_management.SaveProductAttributeSetInstanceRequest;
 import org.spin.backend.grpc.material_management.Warehouse;
+import org.spin.base.db.CountUtil;
+import org.spin.base.db.LimitUtil;
+import org.spin.base.db.QueryUtil;
+import org.spin.base.db.WhereClauseUtil;
 import org.spin.base.util.ContextManager;
-import org.spin.base.util.DictionaryUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.SessionManager;
@@ -120,7 +123,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		//
 		String tableName = "RV_Storage";
 		MTable table = MTable.get(Env.getCtx(), tableName);
-		StringBuilder sql = new StringBuilder(DictionaryUtil.getQueryWithReferencesFromColumns(table));
+		StringBuilder sql = new StringBuilder(QueryUtil.getTableQueryWithReferences(table));
 		StringBuffer whereClause = new StringBuffer(" WHERE 1=1 ");
 
 		//	For dynamic condition
@@ -147,23 +150,23 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			);
 
 		//	Get page and count
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = 0;
 		ListEntitiesResponse.Builder builder = ListEntitiesResponse.newBuilder();
 
 		//	Count records
-		count = RecordUtil.countRecords(parsedSQL, tableName, parametersList);
+		count = CountUtil.countRecords(parsedSQL, tableName, parametersList);
 		//	Add Row Number
-		parsedSQL = RecordUtil.getQueryWithLimit(parsedSQL, limit, offset);
+		parsedSQL = LimitUtil.getQueryWithLimit(parsedSQL, limit, offset);
 		builder = RecordUtil.convertListEntitiesResult(MTable.get(Env.getCtx(), tableName), parsedSQL, parametersList);
 		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		String nexPageToken = null;
-		if(RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//	Set next page
 		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -456,8 +459,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		int count = query.count();
 
 		String nexPageToken = null;
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 
 		List<MAttributeSetInstance> productAttributeSetInstancesList = query
@@ -473,8 +476,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		});
 
 		//  Set page token
-		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if (LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		//  Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -811,8 +814,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			.setApplyAccessFilter(true)
 		;
 
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = query.count();
 
@@ -836,8 +839,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 
 		// Set page token
 		String nexPageToken = null;
-		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if (LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		// Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));
@@ -929,7 +932,7 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 		);
 		if (reference != null) {
 			// validation code of field
-			String validationCode = DictionaryUtil.getValidationCodeWithAlias(I_M_Locator.Table_Name, reference.ValidationCode);
+			String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(I_M_Locator.Table_Name, reference.ValidationCode);
 			String parsedValidationCode = Env.parseContext(Env.getCtx(), windowNo, validationCode, false);
 			if (!Util.isEmpty(reference.ValidationCode, true)) {
 				if (Util.isEmpty(parsedValidationCode, true)) {
@@ -953,8 +956,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 			.setApplyAccessFilter(true)
 		;
 
-		int pageNumber = RecordUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
-		int limit = RecordUtil.getPageSize(request.getPageSize());
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		int count = query.count();
 
@@ -978,8 +981,8 @@ public class MaterialManagementServiceImplementation extends MaterialManagementI
 
 		// Set page token
 		String nexPageToken = null;
-		if (RecordUtil.isValidNextPageToken(count, offset, limit)) {
-			nexPageToken = RecordUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		if (LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
 		}
 		// Set next page
 		builderList.setNextPageToken(ValueUtil.validateNull(nexPageToken));

@@ -16,31 +16,21 @@
 package org.spin.base.util;
 
 import java.math.BigDecimal;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.adempiere.exceptions.AdempiereException;
-import org.adempiere.core.domains.models.I_AD_Column;
 import org.adempiere.core.domains.models.I_C_Order;
-import org.compiere.model.MColumn;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
 import org.compiere.model.MLookupInfo;
-import org.compiere.model.MQuery;
-import org.compiere.model.MTable;
 import org.compiere.model.PO;
-import org.compiere.model.Query;
-import org.compiere.util.CLogger;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.Language;
@@ -48,11 +38,9 @@ import org.compiere.util.Msg;
 import org.compiere.util.NamePair;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
-import org.spin.backend.grpc.common.Criteria;
 import org.spin.backend.grpc.common.Decimal;
 import org.spin.backend.grpc.common.KeyValue;
 import org.spin.backend.grpc.common.Value;
-import org.spin.backend.grpc.common.Condition.Operator;
 import org.spin.backend.grpc.common.Value.ValueType;
 
 /**
@@ -64,10 +52,8 @@ public class ValueUtil {
 	/**	Date format	*/
 	private static final String TIME_FORMAT = "yyyy-MM-dd hh:mm:ss";
 	private static final String DATE_FORMAT = "yyyy-MM-dd";
-	
-	/**	Logger			*/
-	private static CLogger log = CLogger.getCLogger(ValueUtil.class);
-	
+
+
 	/**
 	 * Get Value 
 	 * @param value
@@ -654,268 +640,7 @@ public class ValueUtil {
 		return value.getTime();
 	}
 
-	/**
-	 * Convert operator from gRPC to SQL
-	 * @param gRpcOperator
-	 * @return
-	 */
-	public static String convertOperator(int gRpcOperator) {
-		String operator = MQuery.EQUAL;
-		switch (gRpcOperator) {
-			case Operator.BETWEEN_VALUE:
-				operator = MQuery.BETWEEN;
-				break;
-			case Operator.EQUAL_VALUE:
-				operator = MQuery.EQUAL;
-				break;
-			case Operator.GREATER_EQUAL_VALUE:
-				operator = MQuery.GREATER_EQUAL;
-				break;
-			case Operator.GREATER_VALUE:
-				operator = MQuery.GREATER;
-				break;
-			case Operator.IN_VALUE:
-				operator = " IN ";
-				break;
-			case Operator.LESS_EQUAL_VALUE:
-				operator = MQuery.LESS_EQUAL;
-				break;
-			case Operator.LESS_VALUE:
-				operator = MQuery.LESS;
-				break;
-			case Operator.LIKE_VALUE:
-				operator = MQuery.LIKE;
-				break;
-			case Operator.NOT_EQUAL_VALUE:
-				operator = MQuery.NOT_EQUAL;
-				break;
-			case Operator.NOT_IN_VALUE:
-				operator = " NOT IN ";
-				break;
-			case Operator.NOT_LIKE_VALUE:
-				operator = MQuery.NOT_LIKE;
-				break;
-			case Operator.NOT_NULL_VALUE:
-				operator = MQuery.NOT_NULL;
-				break;
-			case Operator.NULL_VALUE:
-				operator = MQuery.NULL;
-				break;
-			default:
-				break;
-			}
-		return operator;
-	}
-	
-	/**
-	 * Get default operator by display type
-	 * @param displayTypeId
-	 * @return
-	 */
-	public static int getDefaultOperatorByDisplayType(int displayTypeId) {
-		int operator = Operator.EQUAL_VALUE;
-		switch (displayTypeId) {
-			case DisplayType.String:
-			case DisplayType.Text:
-			case DisplayType.TextLong:
-			case DisplayType.Memo:
-			case DisplayType.FilePath:
-			case DisplayType.FileName:
-			case DisplayType.FilePathOrName:
-			case DisplayType.URL:
-			case DisplayType.PrinterName:
-				operator = Operator.LIKE_VALUE;
-				break;
-			default:
-				break;
-			}
-		return operator;
-	}
 
-	public static void setParametersFromObjectsList(PreparedStatement pstmt, List<Object> parameters) {
-		try {
-			AtomicInteger parameterIndex = new AtomicInteger(1);
-			for(Object value : parameters) {
-				ValueUtil.setParameterFromObject(pstmt, value, parameterIndex.getAndIncrement());
-			}
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			throw new AdempiereException(e);
-		}
-	}
-	
-	/**
-	 * Set Parameter for Statement from object
-	 * @param pstmt
-	 * @param value
-	 * @param index
-	 * @throws SQLException
-	 */
-	public static void setParameterFromObject(PreparedStatement pstmt, Object value, int index) throws SQLException {
-		if(value instanceof Integer) {
-			pstmt.setInt(index, (Integer) value);
-		} else if(value instanceof Double) {
-			pstmt.setDouble(index, (Double) value);
-		} else if(value instanceof Long) {
-			pstmt.setLong(index, (Long) value);
-		} else if(value instanceof BigDecimal) {
-			pstmt.setBigDecimal(index, (BigDecimal) value);
-		} else if(value instanceof String) {
-			pstmt.setString(index, (String) value);
-		} else if(value instanceof Timestamp) {
-			pstmt.setTimestamp(index, (Timestamp) value);
-		} else if(value instanceof Boolean) {
-			pstmt.setString(index, ((Boolean) value)? "Y": "N");
-		}
-	}
-	
-	/**
-	 * Set Parameter for Statement from value
-	 * @param pstmt
-	 * @param value
-	 * @param index
-	 * @throws SQLException
-	 */
-	public static void setParameterFromValue(PreparedStatement pstmt, Value value, int index) throws SQLException {
-		if(value.getValueType().equals(ValueType.INTEGER)) {
-			pstmt.setInt(index, ValueUtil.getIntegerFromValue(value));
-		} else if(value.getValueType().equals(ValueType.DECIMAL)) {
-			pstmt.setBigDecimal(index, ValueUtil.getDecimalFromValue(value));
-		} else if(value.getValueType().equals(ValueType.STRING)) {
-			pstmt.setString(index, ValueUtil.getStringFromValue(value));
-		} else if(value.getValueType().equals(ValueType.DATE)) {
-			pstmt.setTimestamp(index, ValueUtil.getDateFromValue(value));
-		}
-	}
-	
-	/**
-	 * Get Where Clause from criteria and dynamic condition
-	 * @param criteria
-	 * @param params
-	 * @return
-	 */
-	public static String getWhereClauseFromCriteria(Criteria criteria, List<Object> params) {
-		return getWhereClauseFromCriteria(criteria, null, params);
-	}
-	
-	/**
-	 * Get Where Clause from criteria and dynamic condition
-	 * @param criteria
-	 * @param params
-	 * @return
-	 */
-	public static String getWhereClauseFromCriteria(Criteria criteria, String tableName) {
-		List<Object> params = new ArrayList<>();
-		return getWhereClauseFromCriteria(criteria, tableName, params);
-	}
-	
-	/**
-	 * Get Where Clause from criteria and dynamic condition
-	 * @param criteria
-	 * @param params
-	 * @return
-	 */
-	public static String getWhereClauseFromCriteria(Criteria criteria) {
-		List<Object> params = new ArrayList<>();
-		return getWhereClauseFromCriteria(criteria, null, params);
-	}
-	
-	/**
-	 * Get Where Clause from criteria and dynamic condition
-	 * @param criteria
-	 * @param tableName optional table name
-	 * @param params
-	 * @return
-	 */
-	public static String getWhereClauseFromCriteria(Criteria criteria, String tableName, List<Object> params) {
-		StringBuffer whereClause = new StringBuffer();
-		if(!Util.isEmpty(criteria.getWhereClause())) {
-			whereClause.append("(").append(criteria.getWhereClause()).append(")");
-		}
-		if (Util.isEmpty(tableName, true)) {
-			tableName = criteria.getTableName();
-		}
-		final MTable table = MTable.get(Env.getCtx(), tableName);
-		//	Validate
-		if (table == null || table.getAD_Table_ID() <= 0) {
-			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
-		}
-		criteria.getConditionsList().stream()
-			.filter(condition -> !Util.isEmpty(condition.getColumnName()))
-			.forEach(condition -> {
-				int operatorValue = condition.getOperatorValue();
-				if(whereClause.length() > 0) {
-					whereClause.append(" AND ");
-				}
-				String colummName = table.getTableName() + "." + condition.getColumnName();
-				if (operatorValue == Operator.VOID_VALUE) {
-					MColumn column =  new Query(
-						Env.getCtx(),
-						I_AD_Column.Table_Name,
-						"AD_Table_ID = ? AND ColumnName = ? ",
-						null
-					)
-						.setParameters(table.getAD_Table_ID(), condition.getColumnName())
-						.first();
-					if (column != null) {
-						operatorValue = getDefaultOperatorByDisplayType(column.getAD_Reference_ID());
-					} else {
-						// no valid column set default operator
-						operatorValue = Operator.EQUAL_VALUE;
-					}
-				}
-
-				//	Open
-				whereClause.append("(");
-				if (operatorValue == Operator.LIKE_VALUE
-						|| operatorValue == Operator.NOT_LIKE_VALUE) {
-					colummName = "UPPER(" + colummName + ")";
-				}
-				//	Add operator
-				whereClause.append(colummName).append(convertOperator(operatorValue));
-				//	For in or not in
-				if(operatorValue == Operator.IN_VALUE
-						|| operatorValue == Operator.NOT_IN_VALUE) {
-					StringBuffer parameter = new StringBuffer();
-					condition.getValuesList().forEach(value -> {
-						if(parameter.length() > 0) {
-							parameter.append(", ");
-						}
-						parameter.append("?");
-						params.add(ValueUtil.getObjectFromValue(value));
-					});
-					whereClause.append("(").append(parameter).append(")");
-				} else if(operatorValue == Operator.BETWEEN_VALUE) {
-					whereClause.append(" ? ").append(" AND ").append(" ?");
-					params.add(ValueUtil.getObjectFromValue(condition.getValue()));
-					params.add(ValueUtil.getObjectFromValue(condition.getValueTo()));
-				} else if(operatorValue == Operator.LIKE_VALUE
-						|| operatorValue == Operator.NOT_LIKE_VALUE) {
-					whereClause.append("?");
-					String value = ValueUtil.validateNull(
-						(String) ValueUtil.getObjectFromValue(condition.getValue(), true)
-					);
-					if (!Util.isEmpty(value, true)) {
-						if (!value.startsWith("%")) {
-							value = "%" + value;
-						}
-						if (!value.endsWith("%")) {
-							value += "%"; 
-						}
-					}
-					params.add(value);
-				} else if(operatorValue != Operator.NULL_VALUE
-						&& operatorValue != Operator.NOT_NULL_VALUE) {
-					whereClause.append("?");
-					params.add(ValueUtil.getObjectFromValue(condition.getValue()));
-				}
-				//	Close
-				whereClause.append(")");
-		});
-		//	Return where clause
-		return whereClause.toString();
-	}
-	
 	/**
 	 * Convert string to dates
 	 * @param date
