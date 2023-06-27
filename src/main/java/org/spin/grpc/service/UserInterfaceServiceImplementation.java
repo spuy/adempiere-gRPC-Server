@@ -66,6 +66,7 @@ import org.adempiere.core.domains.models.I_AD_Record_Access;
 import org.adempiere.core.domains.models.I_AD_ReportView;
 import org.adempiere.core.domains.models.I_AD_Role;
 import org.adempiere.core.domains.models.I_AD_Tab;
+import org.adempiere.core.domains.models.I_AD_Table;
 import org.adempiere.core.domains.models.I_AD_User;
 import org.adempiere.core.domains.models.I_AD_Window;
 import org.adempiere.core.domains.models.I_CM_Chat;
@@ -2483,7 +2484,7 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				// log.warning(e.getLocalizedMessage());
 			}
 		}
-		if (ReferenceUtil.validateReference(referenceId)) {
+		if (ReferenceUtil.validateReference(referenceId) || DisplayType.Button == referenceId) {
 			if(referenceId == DisplayType.List) {
 				// (') (text) (') or (") (text) (")
 				String singleQuotesPattern = "('|\")(\\w+)('|\")";
@@ -2500,6 +2501,20 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				MRefList referenceList = MRefList.get(Env.getCtx(), referenceValueId, defaultValueList, null);
 				builder = convertDefaultValueFromResult(referenceList.getValue(), referenceList.getUUID(), referenceList.getValue(), referenceList.get_Translation(MRefList.COLUMNNAME_Name));
 			} else {
+				if (DisplayType.Button == referenceId) {
+					if (columnName.equals("Record_ID")) {
+						defaultValueAsObject = Integer.valueOf(defaultValueAsObject.toString());
+						int tableId = Env.getContextAsInt(Env.getCtx(), windowNo, I_AD_Table.COLUMNNAME_AD_Table_ID);
+						MTable table = MTable.get(Env.getCtx(), tableId);
+						String tableKeyColumn = table.getTableName() + "_ID";
+						referenceId = DisplayType.TableDir;
+						columnName = tableKeyColumn;
+					} else {
+						builder.putValues(columnName, ValueUtil.getValueFromObject(defaultValueAsObject).build());
+						return builder;
+					}
+				}
+
 				MLookupInfo lookupInfo = ReferenceUtil.getReferenceLookupInfo(referenceId, referenceValueId, columnName, validationRuleId);
 				if(!Util.isEmpty(lookupInfo.QueryDirect)) {
 					String sql = MRole.getDefault(Env.getCtx(), false).addAccessSQL(lookupInfo.QueryDirect,
