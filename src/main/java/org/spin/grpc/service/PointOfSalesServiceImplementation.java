@@ -3088,21 +3088,21 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 						isOpenRefund = true;
 					}
 					//	Set default values
+
+
+
+
 					salesOrder.setDocAction(DocAction.ACTION_Complete);
 					setCurrentDate(salesOrder);
 					if (Arrays.asList(MOrder.DocSubTypeSO_POS, MOrder.DocSubTypeSO_InvoiceOrder).contains(salesOrder.getC_DocTypeTarget().getDocSubTypeSO())) {
 						salesOrder.setPaymentRule(MOrder.PAYMENTRULE_Cash);
 					}
+					salesOrder.set_ValueOfColumn("AssignedSalesRep_ID", null);
+
 					salesOrder.saveEx();
 					salesOrder.saveEx(transactionName);
-					//	Update Process if exists
-					if (!salesOrder.processIt(MOrder.DOCACTION_Complete)) {
-						log.warning("@ProcessFailed@ :" + salesOrder.getProcessMsg());
-						throw new AdempiereException("@ProcessFailed@ :" + salesOrder.getProcessMsg());
-					}
-					//	Release Order
-					salesOrder.set_ValueOfColumn("AssignedSalesRep_ID", null);
-					salesOrder.saveEx();
+
+
 					//	Create or process payments
 					if(request.getCreatePayments()) {
 						if(request.getPaymentsList().size() == 0) {
@@ -3111,16 +3111,27 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 						//	Create
 						request.getPaymentsList().forEach(paymentRequest -> createPaymentFromOrder(salesOrder, paymentRequest, pos, transactionName));
 					}
-					processPayments(salesOrder, pos, isOpenRefund, transactionName);
+//					processPayments(salesOrder, pos, isOpenRefund, transactionName);
+					Env.setContext(Env.getCtx(), "POS_IsOpenRefund", isOpenRefund);
 				} else {
 					boolean isOpenRefund = request.getIsOpenRefund();
 					if(getPaymentReferenceAmount(salesOrder, paymentReferences).compareTo(Env.ZERO) != 0) {
 						isOpenRefund = true;
 					}
-					processPayments(salesOrder, pos, isOpenRefund, transactionName);
+//					processPayments(salesOrder, pos, isOpenRefund, transactionName);
+					Env.setContext(Env.getCtx(), "POS_IsOpenRefund", isOpenRefund);
 				}
-				//	Process all references
-				processPaymentReferences(salesOrder, pos, paymentReferences, transactionName);
+
+
+					//	Update Process if exists
+					if (!salesOrder.processIt(MOrder.DOCACTION_Complete)) {
+						log.warning("@ProcessFailed@ :" + salesOrder.getProcessMsg());
+						throw new AdempiereException("@ProcessFailed@ :" + salesOrder.getProcessMsg());
+					}
+					//	Release Order
+					salesOrder.set_ValueOfColumn("AssignedSalesRep_ID", null);
+					salesOrder.saveEx();
+
 				//	Create
 				orderReference.set(salesOrder);
 			});
