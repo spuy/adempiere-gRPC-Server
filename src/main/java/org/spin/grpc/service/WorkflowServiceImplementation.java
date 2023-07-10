@@ -26,7 +26,6 @@ import java.util.Properties;
 import java.util.logging.Level;
 
 import org.adempiere.exceptions.AdempiereException;
-import org.adempiere.core.domains.models.I_AD_PInstance;
 import org.adempiere.core.domains.models.I_AD_User;
 import org.adempiere.core.domains.models.I_AD_WF_Activity;
 import org.adempiere.core.domains.models.I_AD_WF_Node;
@@ -36,7 +35,6 @@ import org.compiere.model.MColumn;
 import org.compiere.model.MDocType;
 import org.compiere.model.MMenu;
 import org.compiere.model.MOrder;
-import org.compiere.model.MProcess;
 import org.compiere.model.MTable;
 import org.compiere.model.MUser;
 import org.compiere.model.PO;
@@ -691,8 +689,8 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 	 * Run a process from request
 	 * @param context
 	 * @param request
-	 * @throws IOException 
-	 * @throws FileNotFoundException 
+	 * @throws IOException
+	 * @throws FileNotFoundException
 	 */
 	private ProcessLog.Builder runDocumentAction(Properties context, RunDocumentActionRequest request) throws FileNotFoundException, IOException {
 		if (Util.isEmpty(request.getTableName(), true)) {
@@ -717,6 +715,9 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 		if (recordId <= 0 && Util.isEmpty(request.getUuid(), true)) {
 			throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
 		}
+
+		ProcessLog.Builder response = ProcessLog.newBuilder();
+
 		PO entity = RecordUtil.getEntity(context, request.getTableName(), request.getUuid(), recordId, null);
 		if (entity == null || entity.get_ID() <= 0) {
 			throw new AdempiereException("@Error@ @PO@ @NotFound@");
@@ -733,8 +734,6 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 			throw new AdempiereException("@DocumentStatusChanged@" + documentStatus);
 		}
 
-		//
-		ProcessLog.Builder response = ProcessLog.newBuilder();
 		//	Process
 		entity.set_ValueOfColumn(I_AD_WF_Node.COLUMNNAME_DocAction, documentAction);
 		entity.saveEx();
@@ -744,24 +743,33 @@ public class WorkflowServiceImplementation extends WorkflowImplBase {
 				response.setSummary(Msg.parseTranslation(context, document.getProcessMsg()));
 				response.setIsError(true);
 			}
-			else {
-				int columnId = MColumn.getColumn_ID(table.getTableName(), I_C_Order.COLUMNNAME_DocAction);
-				MColumn column = MColumn.get(context, columnId);
-				if (column.getAD_Process_ID() > 0) {
-					MProcess process = MProcess.get(context, column.getAD_Process_ID());
-					if (process.getAD_Workflow_ID() > 0) {
-						org.spin.base.workflow.WorkflowUtil.startWorkflow(
-							process.getAD_Workflow_ID(),
-							process.getAD_Process_ID(),
-							table.getAD_Table_ID(),
-							entity.get_ID(),
-							entity.get_TrxName()
-						);
-					}
-				}
-			}
+			// else {
+			// 	int columnId = MColumn.getColumn_ID(table.getTableName(), I_C_Order.COLUMNNAME_DocAction);
+			// 	MColumn column = MColumn.get(context, columnId);
+			// 	if (column.getAD_Process_ID() > 0) {
+			// 		MProcess process = MProcess.get(context, column.getAD_Process_ID());
+			// 		if (process.getAD_Workflow_ID() > 0) {
+			// 			org.spin.base.workflow.WorkflowUtil.startWorkflow(
+			// 				process.getAD_Workflow_ID(),
+			// 				process.getAD_Process_ID(),
+			// 				table.getAD_Table_ID(),
+			// 				entity.get_ID(),
+			// 				entity.get_TrxName()
+			// 			);
+			// 		}
+			// 	}
+			// }
 		} catch (Exception e) {
-			response.setSummary(Msg.parseTranslation(context, document.getProcessMsg()));
+			e.printStackTrace();
+			log.severe(e.getLocalizedMessage());
+
+			String summary = Msg.parseTranslation(context, document.getProcessMsg());
+			if (Util.isEmpty(summary, true)) {
+				summary = e.getLocalizedMessage();
+			}
+			response.setSummary(
+				ValueUtil.validateNull(summary)
+			);
 			response.setIsError(true);
 		}
 		response.setResultTableName(ValueUtil.validateNull(table.getTableName()));
