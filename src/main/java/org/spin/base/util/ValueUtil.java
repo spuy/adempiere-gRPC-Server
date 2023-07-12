@@ -653,8 +653,6 @@ public class ValueUtil {
 		String format = DATE_FORMAT;
 		if(date.length() == TIME_FORMAT.length()) {
 			format = TIME_FORMAT;
-		} else if(date.length() != DATE_FORMAT.length()) {
-			throw new AdempiereException("Invalid date format, please use some like this: \"" + DATE_FORMAT + "\" or \"" + TIME_FORMAT + "\"");
 		}
 		SimpleDateFormat dateConverter = new SimpleDateFormat(format);
 		try {
