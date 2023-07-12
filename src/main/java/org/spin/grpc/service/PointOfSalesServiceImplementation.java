@@ -5850,7 +5850,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	Validate
 		if(optionalTax.isPresent()) {
 			builder.setTaxRate(ConvertUtil.convertTaxRate(optionalTax.get()));
-			priceStd = priceStd.divide(Env.ONEHUNDRED.add(optionalTax.get().getRate()).divide(Env.ONEHUNDRED), RoundingMode.HALF_UP);
+//			priceStd = priceStd.divide(Env.ONEHUNDRED.add(optionalTax.get().getRate()).divide(Env.ONEHUNDRED), RoundingMode.HALF_UP);
 		}
 		//	Set currency
 		builder.setCurrency(ConvertUtil.convertCurrency(MCurrency.get(Env.getCtx(), priceList.getC_Currency_ID())));
