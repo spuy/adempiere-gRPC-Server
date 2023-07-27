@@ -1,5 +1,5 @@
 /*************************************************************************************
- * Product: ADempiere Bot                                                            *
+ * Product: ADempiere GRPC Server                                                    *
  * Copyright (C) 2012-2019 E.R.P. Consultores y Asociados, C.A.                      *
  * Contributor(s): Yamel Senih ysenih@erpya.com                                      *
  * This program is free software: you can redistribute it and/or modify              *
@@ -39,8 +39,12 @@ public class Server {
 	private String secret_key;
 	/**	Time expiration	*/
 	private long expiration;
+
+	/**	Is Enabled All Services	*/
+	private boolean is_enabled_all_services;
 	/**	Embedded services	*/
 	private List<String> services;
+
 	/**
 	 * Default constructor
 	 * @param host
@@ -53,7 +57,12 @@ public class Server {
 	 * @param log_level
 	 * @param services
 	 */
-	public Server(String host, int port, String certificate_chain_file, String private_key_file, String trust_certificate_collection_file, String log_level, String secret_key, long expiration, List<String> services) {
+	public Server(
+		String host, int port, String log_level,
+		String certificate_chain_file, String private_key_file, String trust_certificate_collection_file,
+		String secret_key, long expiration,
+		boolean is_enabled_all_services, List<String> services
+	) {
 		this.host = host;
 		this.port = port;
 		this.certificate_chain_file = certificate_chain_file;
@@ -61,7 +70,8 @@ public class Server {
 		this.trust_certificate_collection_file = trust_certificate_collection_file;
 		this.log_level = log_level;
 		this.secret_key = secret_key;
-		this.expiration= expiration; 
+		this.expiration= expiration;
+		this.is_enabled_all_services = is_enabled_all_services;
 		this.services = services;
 		if(this.log_level == null
 				|| this.log_level.trim().length() == 0) {
@@ -118,7 +128,15 @@ public class Server {
 		return getCertificate_chain_file() != null 
 				&& getPrivate_key_file() != null;
 	}
-	
+
+	/**
+	 * Get Is Enabled All Services
+	 * @return
+	 */
+	public final boolean getIs_enabled_all_services() {
+		return this.is_enabled_all_services;
+	}
+
 	/**
 	 * Get Services
 	 * @return
@@ -149,18 +167,25 @@ public class Server {
 
 	/**
 	 * Validate is a service is enabled
-	 * @param service
+	 * @param serviceName
 	 * @return
 	 */
-	public final boolean isValidService(String service) {
-		if(service == null
-				|| service.trim().length() == 0
-				|| services == null) {
+	public final boolean isValidService(String serviceName) {
+		// validate service name
+		if(serviceName == null || serviceName.trim().length() == 0) {
+			return false;
+		}
+		// overwrite services
+		if (this.is_enabled_all_services) {
+			return true;
+		}
+		// without services
+		if (this.services == null || this.services.size() <= 0) {
 			return false;
 		}
 		return getServices()
 			.stream()
-			.filter(serviceToFind -> serviceToFind != null && serviceToFind.equals(service)).findFirst().isPresent();
+			.filter(serviceToFind -> serviceToFind != null && serviceToFind.equals(serviceName)).findFirst().isPresent();
 	}
 
 	@Override
@@ -169,4 +194,5 @@ public class Server {
 				+ ", private_key_file=" + private_key_file + ", trust_certificate_collection_file="
 				+ trust_certificate_collection_file + ", log_level=" + log_level + ", services=" + services + "]";
 	}
+
 }

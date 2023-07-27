@@ -1,5 +1,6 @@
 server:
     port: 50059
+    is_enabled_all_services: true
     services:
        - bank_statement_match
        - business
@@ -14,6 +15,7 @@ server:
        - file_management
        - general_ledger
        - log
+       - import_file_loader
        - in_out
        - invoice
        - issue_management

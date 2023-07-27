@@ -16,33 +16,57 @@
 package org.spin.base.util;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 
 import org.compiere.model.MClientInfo;
 import org.compiere.util.Env;
+import org.compiere.util.Util;
 import org.spin.model.MADAttachmentReference;
 import org.spin.util.AttachmentUtil;
 
 import com.google.protobuf.ByteString;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.pdf.PdfContentByte;
-import com.itextpdf.text.pdf.PdfImportedPage;
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.PdfWriter;
 
 /**
  * A helper class for Files
  * @author Edwin Betancourt, EdwinBetanc0urt@outlook.com, https://github.com/EdwinBetanc0urt
  */
 public class FileUtil {
+
+	public static Map<String, String> imageMimeType = Map.ofEntries(
+		Map.entry(".bm", "image/bmp"),
+		Map.entry(".bmp", "image/bmp"),
+		Map.entry(".gif", "image/gif"),
+		Map.entry(".ico", "image/x-icon"),
+		Map.entry(".jfif", "image/jpeg"),
+		Map.entry(".jfif-tbnl", "image/jpeg"),
+		Map.entry(".jpe", "image/jpeg"),
+		Map.entry(".jpeg", "image/jpeg"),
+		Map.entry(".jpg", "image/jpeg"),
+		Map.entry(".pbm", "image/x-portable-bitmap"),
+		Map.entry(".png", "image/png"),
+		Map.entry(".rgb", "image/x-rgb"),
+		Map.entry(".svg", "image/svg+xml"),
+		Map.entry(".svgz", "image/svg+xml"),
+		Map.entry(".tif", "image/tiff"),
+		Map.entry(".tiff", "image/tiff")
+	);
+
+	/**
+	 * Convert Name
+	 * @param name
+	 * @return
+	 */
+	public static String getValidFileName(String fileName) {
+		if(Util.isEmpty(fileName)) {
+			return "";
+		}
+		return fileName
+			.replaceAll("[+^:&áàäéèëíìïóòöúùñÁÀÄÉÈËÍÌÏÓÒÖÚÙÜÑçÇ$()*#/><]", "")
+			.replaceAll(" ", "-")
+		;
+	}
+
 
 	/**
 	 * Get resource UUID from image id
@@ -57,6 +81,7 @@ public class FileUtil {
 		//	Return uuid
 		return reference.getUUID();
 	}
+
 
 	/**
 	 * Get Attachment reference from image ID
@@ -79,7 +104,6 @@ public class FileUtil {
 	}
 
 
-
 	public static ByteString getByteStringByOutputStream(OutputStream outputStream) {
 		ByteArrayOutputStream buffer = (ByteArrayOutputStream) outputStream;
 		byte[] bytes = buffer.toByteArray();
@@ -89,72 +113,22 @@ public class FileUtil {
 
 
 
-	public static OutputStream mergePdfFiles(List<File> inputFilesList, File outputFile) throws Exception {
-		List<InputStream> inputStreamsList = new ArrayList<InputStream>();
-		inputFilesList.stream().forEach(inputFile -> {
-			try {
-				inputStreamsList.add(new FileInputStream(inputFile));
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		});
-
-		OutputStream outputStream = mergePdfFiles(inputStreamsList, new FileOutputStream(outputFile));
-		return outputStream;
-	}
-
-	public static OutputStream mergePdfFiles(List<InputStream> inputPdfList, OutputStream outputStream) throws Exception {
-		// Create document and pdfReader objects.
-		Document document = new Document();
-		List<PdfReader> readers = new ArrayList<PdfReader>();
-		int totalPages = 0;
-
-		// Create pdf Iterator object using inputPdfList.
-		Iterator<InputStream> pdfIterator = inputPdfList.iterator();
-
-		// Create reader list for the input pdf files.
-		while (pdfIterator.hasNext()) {
-			InputStream pdf = pdfIterator.next();
-			PdfReader pdfReader = new PdfReader(pdf);
-			readers.add(pdfReader);
-			totalPages = totalPages + pdfReader.getNumberOfPages();
+	/**
+	 * Validate if is valid image mime type with extension from file name
+	 * @param fileName
+	 * @return
+	 */
+	public static boolean isValidImage(String fileName) {
+		if (Util.isEmpty(fileName, true)) {
+			return false;
 		}
-
-		// Create writer for the outputStream
-		PdfWriter writer = PdfWriter.getInstance(document, outputStream);
-
-		//Open document.
-		document.open();
-
-		//Contain the pdf data.
-		PdfContentByte pageContentByte = writer.getDirectContent();
-
-		PdfImportedPage pdfImportedPage;
-		int currentPdfReaderPage = 1;
-		Iterator<PdfReader> iteratorPDFReader = readers.iterator();
-
-		// Iterate and process the reader list.
-		while (iteratorPDFReader.hasNext()) {
-			PdfReader pdfReader = iteratorPDFReader.next();
-			//Create page and add content.
-			while (currentPdfReaderPage <= pdfReader.getNumberOfPages()) {
-				document.newPage();
-				pdfImportedPage = writer.getImportedPage(
-				pdfReader,currentPdfReaderPage);
-				pageContentByte.addTemplate(pdfImportedPage, 0, 0);
-				currentPdfReaderPage++;
-			}
-			currentPdfReaderPage = 1;
+		String extension = fileName.substring(fileName.lastIndexOf('.'));
+		if (Util.isEmpty(extension, true)) {
+			return false;
 		}
+		extension = extension.toLowerCase();
 
-		// Close document and outputStream.
-		outputStream.flush();
-		document.close();
-		outputStream.close();
-
-		// System.out.println("Pdf files merged successfully.");
-		return outputStream;
+		return imageMimeType.containsKey(extension);
 	}
 
 }
