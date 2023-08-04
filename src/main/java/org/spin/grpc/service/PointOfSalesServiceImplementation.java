@@ -5026,7 +5026,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		//	Customer Bank Account
 		if(!Util.isEmpty(request.getCustomerBankAccountUuid())) {
-			int customerBankAccountId = RecordUtil.getIdFromUuid(I_C_Bank.Table_Name, request.getCustomerBankAccountUuid(), transactionName);
+			int customerBankAccountId = RecordUtil.getIdFromUuid(I_C_BP_BankAccount.Table_Name, request.getCustomerBankAccountUuid(), transactionName);
 			if(customerBankAccountId > 0) {
 				payment.setC_BP_BankAccount_ID(customerBankAccountId);
 			}
