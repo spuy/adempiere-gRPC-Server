@@ -16,13 +16,14 @@
 package org.spin.pos.service.order;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.adempiere.core.domains.models.I_C_InvoiceLine;
+import org.adempiere.core.domains.models.I_C_OrderLine;
+import org.adempiere.core.domains.models.I_M_InOutLine;
 import org.adempiere.exceptions.AdempiereException;
-import org.compiere.model.I_C_InvoiceLine;
-import org.compiere.model.I_C_OrderLine;
-import org.compiere.model.I_M_InOutLine;
 import org.compiere.model.MDocType;
 import org.compiere.model.MInOut;
 import org.compiere.model.MInOutLine;
@@ -227,7 +228,7 @@ public class ReverseSalesTransaction {
 				line.setQtyEntered(toReturn);
 				line.setQtyEntered(toReturn
 						.multiply(returnOrderLine.getQtyEntered())
-						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), BigDecimal.ROUND_HALF_UP));	
+						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), RoundingMode.HALF_UP));	
 				line.setLine(returnOrderLine.getLine());
 				line.saveEx();
 		});
@@ -260,7 +261,7 @@ public class ReverseSalesTransaction {
 				line.setQty(toReturn);
 				line.setQtyEntered(toReturn
 						.multiply(returnOrderLine.getQtyEntered())
-						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), BigDecimal.ROUND_HALF_UP));	
+						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), RoundingMode.HALF_UP));	
 				line.setLine(returnOrderLine.getLine());
 				line.saveEx();
 		});
