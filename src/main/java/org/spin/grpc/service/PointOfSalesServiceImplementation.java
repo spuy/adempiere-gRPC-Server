@@ -5024,6 +5024,13 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			int bankId = RecordUtil.getIdFromUuid(I_C_Bank.Table_Name, request.getBankUuid(), transactionName);
 			payment.set_ValueOfColumn(MBank.COLUMNNAME_C_Bank_ID, bankId);
 		}
+		//	Customer Bank Account
+		if(!Util.isEmpty(request.getCustomerBankAccountUuid())) {
+			int customerBankAccountId = RecordUtil.getIdFromUuid(I_C_Bank.Table_Name, request.getCustomerBankAccountUuid(), transactionName);
+			if(customerBankAccountId > 0) {
+				payment.setC_BP_BankAccount_ID(customerBankAccountId);
+			}
+		}
 		//	Validate reference
 		if(!Util.isEmpty(request.getReferenceNo())) {
 			payment.setDocumentNo(request.getReferenceNo());
