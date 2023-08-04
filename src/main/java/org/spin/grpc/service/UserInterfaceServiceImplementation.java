@@ -2439,13 +2439,12 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 	 */
 	private DefaultValue.Builder getDefaultKeyAndValue(List<KeyValue> contextAttributes, String defaultValue, int referenceId, int referenceValueId, String columnName, int validationRuleId) {
 		DefaultValue.Builder builder = DefaultValue.newBuilder();
-		if(Util.isEmpty(defaultValue)) {
+		if(Util.isEmpty(defaultValue, true)) {
 			return builder;
 		}
 		Object defaultValueAsObject = null;
 
-		// Fill Env.getCtx()
-		
+		// Fill contex
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
 		ContextManager.setContextWithAttributes(windowNo, Env.getCtx(), contextAttributes);
 
@@ -2490,6 +2489,10 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				String defaultValueList = matcherSingleQuotes.replaceAll("$2");
 
 				MRefList referenceList = MRefList.get(Env.getCtx(), referenceValueId, defaultValueList, null);
+				if (referenceList == null) {
+					log.fine(Msg.parseTranslation(Env.getCtx(), "@AD_Ref_List_ID@ @NotFound@") + ": " + defaultValueList);
+					return builder;
+				}
 				builder = convertDefaultValueFromResult(referenceList.getValue(), referenceList.getUUID(), referenceList.getValue(), referenceList.get_Translation(MRefList.COLUMNNAME_Name));
 			} else {
 				if (DisplayType.Button == referenceId) {
@@ -2507,48 +2510,56 @@ public class UserInterfaceServiceImplementation extends UserInterfaceImplBase {
 				}
 
 				MLookupInfo lookupInfo = ReferenceUtil.getReferenceLookupInfo(referenceId, referenceValueId, columnName, validationRuleId);
-				if(!Util.isEmpty(lookupInfo.QueryDirect)) {
-					String sql = MRole.getDefault(Env.getCtx(), false).addAccessSQL(lookupInfo.QueryDirect,
-							lookupInfo.TableName, MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO);
-					PreparedStatement pstmt = null;
-					ResultSet rs = null;
-					try {
-						//	SELECT Key, Value, Name FROM ...
-						pstmt = DB.prepareStatement(sql.toString(), null);
-						DB.setParameter(pstmt, 1, defaultValueAsObject);
+				if(lookupInfo == null || Util.isEmpty(lookupInfo.QueryDirect, true)) {
+					return builder;
+				}
+				String sql = MRole.getDefault(Env.getCtx(), false).addAccessSQL(
+					lookupInfo.QueryDirect,
+					lookupInfo.TableName,
+					MRole.SQL_FULLYQUALIFIED,
+					MRole.SQL_RO
+				);
+				PreparedStatement pstmt = null;
+				ResultSet rs = null;
+				try {
+					//	SELECT Key, Value, Name FROM ...
+					pstmt = DB.prepareStatement(sql.toString(), null);
+					DB.setParameter(pstmt, 1, defaultValueAsObject);
 
-						//	Get from Query
-						rs = pstmt.executeQuery();
-						if (rs.next()) {
-							//	1 = Key Column
-							//	2 = Optional Value
-							//	3 = Display Value
-							ResultSetMetaData metaData = rs.getMetaData();
-							int keyValueType = metaData.getColumnType(1);
-							Object keyValue = null;
-							if(keyValueType == Types.VARCHAR
-									|| keyValueType == Types.NVARCHAR
-									|| keyValueType == Types.CHAR
-									|| keyValueType == Types.NCHAR) {
-								keyValue = rs.getString(2);
-							} else {
-								keyValue = rs.getInt(1);
-							}
-							String uuid = null;
-							//	Validate if exist UUID
-							int uuidIndex = getColumnIndex(metaData, I_AD_Element.COLUMNNAME_UUID);
-							if(uuidIndex != -1) {
-								uuid = rs.getString(uuidIndex);
-							}
-							//	
-							builder = convertDefaultValueFromResult(keyValue, uuid, rs.getString(2), rs.getString(3));
+					//	Get from Query
+					rs = pstmt.executeQuery();
+					if (rs.next()) {
+						//	1 = Key Column
+						//	2 = Optional Value
+						//	3 = Display Value
+						ResultSetMetaData metaData = rs.getMetaData();
+						int keyValueType = metaData.getColumnType(1);
+						Object keyValue = null;
+						if(keyValueType == Types.VARCHAR
+								|| keyValueType == Types.NVARCHAR
+								|| keyValueType == Types.CHAR
+								|| keyValueType == Types.NCHAR) {
+							keyValue = rs.getString(2);
+						} else {
+							keyValue = rs.getInt(1);
 						}
-					} catch (Exception e) {
-						log.severe(e.getLocalizedMessage());
-						throw new AdempiereException(e);
-					} finally {
-						DB.close(rs, pstmt);
+						String uuid = null;
+						//	Validate if exist UUID
+						int uuidIndex = getColumnIndex(metaData, I_AD_Element.COLUMNNAME_UUID);
+						if(uuidIndex != -1) {
+							uuid = rs.getString(uuidIndex);
+						}
+						//	
+						builder = convertDefaultValueFromResult(keyValue, uuid, rs.getString(2), rs.getString(3));
 					}
+				} catch (Exception e) {
+					log.severe(e.getLocalizedMessage());
+					e.printStackTrace();
+					throw new AdempiereException(e);
+				} finally {
+					DB.close(rs, pstmt);
+					rs = null;
+					pstmt = null;
 				}
 			}
 		} else {
