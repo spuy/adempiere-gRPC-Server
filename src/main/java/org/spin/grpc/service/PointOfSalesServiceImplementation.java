@@ -767,10 +767,11 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			posController.setWindowNo(1);
 			POSTicketHandler handler = POSTicketHandler.getTicketHandler(posController);
 			if(handler == null) {
-				throw new AdempiereException("@TicketClassName@ " + pos.getTicketClassName() + " @NotFound@");
+				log.fine("Ticket Class Name " + pos.getTicketClassName() + " Not Found");
+			} else {
+				//	Print it
+				handler.printTicket();
 			}
-			//	Print it
-			handler.printTicket();
 			PrintTicketResponse.Builder ticket = PrintTicketResponse.newBuilder().setResult("Ok");
 			responseObserver.onNext(ticket.build());
 			responseObserver.onCompleted();
