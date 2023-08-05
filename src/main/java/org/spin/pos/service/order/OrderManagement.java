@@ -358,6 +358,14 @@ public class OrderManagement {
 			//	Test allocation
 			paymentsIds.stream().map(paymentId -> new MPayment(Env.getCtx(), paymentId, transactionName)).forEach(payment -> {
 				payment.setIsAllocated(true);
+				payment.setC_Invoice_ID(invoiceId);
+				payment.setIsApproved(false);
+				payment.saveEx();
+				boolean isOk = payment.processOnline();
+				if(!isOk) {
+					throw new AdempiereException(payment.getErrorMessage());
+				}
+				payment.setIsApproved(true);
 				payment.saveEx();
 			});
 		}
