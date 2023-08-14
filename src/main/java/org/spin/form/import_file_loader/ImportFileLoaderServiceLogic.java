@@ -18,7 +18,9 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.nio.charset.Charset;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,8 +29,10 @@ import java.util.stream.Collectors;
 import org.adempiere.core.domains.models.I_AD_ImpFormat;
 import org.adempiere.core.domains.models.I_AD_Process;
 import org.adempiere.core.domains.models.I_AD_Table;
+import org.adempiere.core.domains.models.X_AD_ImpFormat;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.impexp.ImpFormat;
+import org.compiere.impexp.ImpFormatRow;
 import org.compiere.impexp.MImpFormat;
 import org.compiere.model.MLookupInfo;
 import org.compiere.model.MProcess;
@@ -39,6 +43,7 @@ import org.compiere.util.Env;
 import org.compiere.util.Ini;
 import org.compiere.util.Msg;
 import org.compiere.util.Util;
+import org.spin.backend.grpc.common.Entity;
 import org.spin.backend.grpc.common.ListEntitiesResponse;
 import org.spin.backend.grpc.common.ListLookupItemsResponse;
 import org.spin.backend.grpc.common.LookupItem;
@@ -69,6 +74,10 @@ import org.spin.util.AttachmentUtil;
  * Service logic of Import File Loader form
  */
 public class ImportFileLoaderServiceLogic {
+
+	public static int MAX_SHOW_LINES = 100;
+
+
 
 	public static MImpFormat validateAndGetImportFormat(int importFormatId) {
 		if (importFormatId <= 0) {
@@ -256,7 +265,7 @@ public class ImportFileLoaderServiceLogic {
 			.withAttachmentReferenceId(attachmentReferenceId)
 			.getAttachment();
 		if (file == null) {
-			new AdempiereException("@NotFound@");
+			throw new AdempiereException("@AD_AttachmentReference_ID@ @NotFound@");
 		}
 
 		String charsetValue = request.getCharset();
@@ -272,35 +281,43 @@ public class ImportFileLoaderServiceLogic {
 		//	not safe see p108 Network pgm
 		String s = null;
 		ArrayList<String> data = new ArrayList<String>();
+		int count = 0;
+		int totalRows = 0;
+		int importedRows = 0;
 		while ((s = in.readLine()) != null) {
 			data.add(s);
+			count++;
+			totalRows++;
+			// paging/partition of data to process
+			if (count == 100) {
+				count = 0;
+				// import bd
+				importedRows += saveOnDataBase(format, data);
+				data.clear();
+			}
 		}
 		in.close();
 
-		//	For all rows - update/insert DB table
-		int row = 0;
-		int imported = 0;
-		for(String line : data) {
-			row++;
-			if (format.updateDB(Env.getCtx(), line, null)) {
-				imported++;
-			}
+		// first data of total less than 100, or remainder of last data
+		if (data.size() > 0) {
+			importedRows += saveOnDataBase(format, data);
 		}
 		//	Clear
 		data.clear();
-		String message = Msg.parseTranslation(Env.getCtx(), "@FileImportR/I@") + " (" + row + " / " + imported + "#)";
+
+		String message = Msg.parseTranslation(Env.getCtx(), "@FileImportR/I@") + " (" + totalRows + " / " + importedRows + "#)";
 		SaveRecordsResponse.Builder builder = SaveRecordsResponse.newBuilder()
 			.setMessage(message)
-			.setTotal(imported)
+			.setTotal(importedRows)
 		;
 
 		if (request.getIsProcess()) {
 			if (request.getProcessId() <= 0) {
-				new AdempiereException("@FillMandatory@ @AD_Process_ID@");
+				throw new AdempiereException("@FillMandatory@ @AD_Process_ID@");
 			}
 			MProcess process = MProcess.get(Env.getCtx(), request.getProcessId());
 			if (process == null || process.getAD_Process_ID() <= 0) {
-				new AdempiereException("@AD_Process_ID@ @NotFound@");
+				throw new AdempiereException("@AD_Process_ID@ @NotFound@");
 			}
 
 			RunBusinessProcessRequest.Builder runProcessRequest = RunBusinessProcessRequest.newBuilder()
@@ -318,8 +335,214 @@ public class ImportFileLoaderServiceLogic {
 	}
 
 
-	public static ListEntitiesResponse.Builder listFilePreview(ListFilePreviewRequest request) {
-		return ListEntitiesResponse.newBuilder();
+	private static int saveOnDataBase(ImpFormat format, ArrayList<String> data) {
+		int imported = 0;
+		for(String line : data) {
+			if (format.updateDB(Env.getCtx(), line, null)) {
+				imported++;
+			}
+		}
+		return imported;
+	}
+
+
+
+
+	/**
+	 * TODO: Delete this redundant method with accept the changes on https://github.com/adempiere/adempiere/pull/4125
+	 *  Parse flexible line format.
+	 *  A bit inefficient as it always starts from the start
+	 *
+	 *  @param line the line to be parsed
+	 *  @param formatType Comma or Tab
+	 *  @param fieldNo number of field to be returned
+	 *  @return field in lime or ""
+	@throws IllegalArgumentException if format unknowns
+	 */
+	private static String parseFlexFormat(String line, String formatType, int fieldNo, String separatorChar)
+	{
+		final char QUOTE = '"';
+		//  check input
+		char delimiter = ' ';
+		if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_CommaSeparated)) {
+			delimiter = ',';
+		} else if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_TabSeparated)) {
+			delimiter = '\t';
+		} else if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_CustomSeparatorChar)) {
+			delimiter = separatorChar.charAt(0);
+		} else {
+			throw new IllegalArgumentException ("ImpFormat.parseFlexFormat - unknown format: " + formatType);
+		}
+		if (line == null || line.length() == 0 || fieldNo < 0) {
+			return "";
+		}
+
+		//  We need to read line sequentially as the fields may be delimited
+		//  with quotes (") when fields contain the delimiter
+		//  Example:    "Artikel,bez","Artikel,""nr""",DEM,EUR
+		//  needs to result in - Artikel,bez - Artikel,"nr" - DEM - EUR
+		int pos = 0;
+		int length = line.length();
+		for (int field = 1; field <= fieldNo && pos < length; field++) {
+			StringBuffer content = new StringBuffer();
+			//  two delimiter directly after each other
+			if (line.charAt(pos) == delimiter) {
+				pos++;
+				continue;
+			}
+			//  Handle quotes
+			if (line.charAt(pos) == QUOTE) {
+				pos++;  //  move over beginning quote
+				while (pos < length) {
+					//  double quote
+					if (line.charAt(pos) == QUOTE && pos+1 < length && line.charAt(pos+1) == QUOTE) {
+						content.append(line.charAt(pos++));
+						pos++;
+					}
+					//  end quote
+					else if (line.charAt(pos) == QUOTE) {
+						pos++;
+						break;
+					}
+					//  normal character
+					else {
+						content.append(line.charAt(pos++));
+					}
+				}
+				//  we should be at end of line or a delimiter
+				if (pos < length && line.charAt(pos) != delimiter) {
+					// log.info("Did not find delimiter at pos " + pos + " " + line);
+				}
+				pos++;  //  move over delimiter
+			}
+			// plain copy
+			else {
+				while (pos < length && line.charAt(pos) != delimiter)
+					content.append(line.charAt(pos++));
+				pos++;  //  move over delimiter
+			}
+			if (field == fieldNo) {
+				return content.toString();
+			}
+		}
+
+		//  nothing found
+		return "";
+	}   //  parseFlexFormat
+
+
+	public static ListEntitiesResponse.Builder listFilePreview(ListFilePreviewRequest request) throws Exception {
+		MImpFormat importFormat = validateAndGetImportFormat(request.getImportFormatId());
+		//	Get class from parent
+		ImpFormat format = ImpFormat.load(importFormat.getName());
+		if (format == null) {
+			throw new AdempiereException("@FileImportNoFormat@");
+		}
+
+		// validate attachment reference
+		int attachmentReferenceId = request.getResourceId();
+		if (attachmentReferenceId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @AD_AttachmentReference_ID@");
+		}
+
+		byte[] file = AttachmentUtil.getInstance()
+			.withClientId(Env.getAD_Client_ID(Env.getCtx()))
+			.withAttachmentReferenceId(attachmentReferenceId)
+			.getAttachment();
+		if (file == null) {
+			throw new AdempiereException("@NotFound@");
+		}
+
+		String charsetValue = request.getCharset();
+		if (Util.isEmpty(charsetValue, true) || !Charset.isSupported(charsetValue)) {
+			charsetValue = Charset.defaultCharset().name();
+		}
+		Charset charset = Charset.forName(charsetValue);
+
+		InputStream inputStream = new ByteArrayInputStream(file);
+		InputStreamReader inputStreamReader = new InputStreamReader(inputStream, charset);
+		BufferedReader in = new BufferedReader(inputStreamReader, 10240);
+
+		//	not safe see p108 Network pgm
+		String s = null;
+		ArrayList<String> data = new ArrayList<String>();
+		int count = 0;
+		while ((s = in.readLine()) != null) {
+			data.add(s);
+			count++;
+			// paging/partition of data to process
+			if (count == MAX_SHOW_LINES) {
+				break;
+			}
+		}
+		in.close();
+
+		ListEntitiesResponse.Builder builderList = ListEntitiesResponse.newBuilder()
+			.setRecordCount(count)
+		;
+
+		MTable table = MTable.get(Env.getCtx(), importFormat.getAD_Table_ID());
+
+		data.forEach(line -> {
+			Entity.Builder entitBuilder = Entity.newBuilder()
+				.setTableName(table.getTableName())
+			;
+
+			for (int i = 0; i < format.getRowCount(); i++) {
+				ImpFormatRow row = (ImpFormatRow) format.getRow(i);
+
+				//	Get Data
+				String info = null;
+				if (row.isConstant()) {
+					// info = "Constant";
+					info = row.getConstantValue();
+				} else if (X_AD_ImpFormat.FORMATTYPE_FixedPosition.equals(format.getFormatType())) {
+					//	check length
+					if (row.getStartNo() > 0 && row.getEndNo() <= line.length()) {
+						info = line.substring(row.getStartNo()-1, row.getEndNo());
+					}
+				} else {
+					info = parseFlexFormat(line, format.getFormatType(), row.getStartNo(), format.getSeparatorChar());
+				}
+
+				if (Util.isEmpty(info, true)) {
+					if (row.getDefaultValue() != null ) {
+						info = row.getDefaultValue();
+					}
+					else {
+						info = "";
+					}
+				}
+				String entry = info;
+
+				Value.Builder valueBuilder = Value.newBuilder();
+				if (row.isDate()) {
+					Timestamp dateValue = Timestamp.valueOf(entry);
+					valueBuilder = ValueUtil.getValueFromDate(dateValue);
+				} else if (row.isNumber()) {
+					BigDecimal numberValue = null;
+					if (!Util.isEmpty(entry, true)) {
+						numberValue = new BigDecimal(entry);
+						// if (row.isDivideBy100()) {
+						// 	numberValue = numberValue.divide(BigDecimal.valueOf(100));
+						// }
+					}
+					valueBuilder = ValueUtil.getValueFromDecimal(numberValue);
+				} else {
+					valueBuilder = ValueUtil.getValueFromString(entry);
+				}
+
+				entitBuilder.putValues(
+					row.getColumnName(),
+					valueBuilder.build()
+				);
+			}
+
+			// columns.fo
+			builderList.addRecords(entitBuilder);
+		});
+
+		return builderList;
 	}
 
 

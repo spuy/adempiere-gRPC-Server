@@ -1065,6 +1065,7 @@ message CreatePaymentRequest {
 	string charge_uuid = 17;
 	string collecting_agent_uuid = 18;
 	string reference_bank_account_uuid = 19;
+	string customer_bank_account_uuid = 20;
 }
 
 //	Update Payment
