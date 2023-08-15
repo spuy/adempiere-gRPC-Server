@@ -133,7 +133,7 @@ import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
-import org.spin.pos.service.CashManagement;
+import org.spin.pos.service.cash.CashManagement;
 import org.spin.pos.util.POSConvertUtil;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
@@ -1560,7 +1560,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			throw new AdempiereException("@C_POS_ID@ @IsMandatory@");
 		}
 		MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
-		MBankStatement cashClosing = CashManagement.getCurrentCashclosing(pos, RecordUtil.getDate(), true, null);
+		MBankStatement cashClosing = CashManagement.getCurrentCashClosing(pos, RecordUtil.getDate(), true, null);
 		if(cashClosing == null
 				|| cashClosing.getC_BankStatement_ID() <= 0) {
 			throw new AdempiereException("@C_BankStatement_ID@ @NotFound@");
