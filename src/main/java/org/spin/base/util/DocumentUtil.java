@@ -37,6 +37,19 @@ public class DocumentUtil {
 	}
 	
 	/**
+	 * Verify if a document is completed
+	 * @param document
+	 * @return
+	 */
+	public static boolean isClosed(DocAction document) {
+		if(document == null) {
+			return false;
+		}
+		//	
+		return DocAction.STATUS_Closed.equals(document.getDocStatus());
+	}
+	
+	/**
 	 * Verify is is voided / reversed
 	 * @param document
 	 * @return
@@ -62,6 +75,7 @@ public class DocumentUtil {
 		//	
 		return !isCompleted(document) 
 				&& !isVoided(document) 
+				&& !isClosed(document)
 				&& DocAction.STATUS_Drafted.equals(document.getDocStatus());
 	}
 }
