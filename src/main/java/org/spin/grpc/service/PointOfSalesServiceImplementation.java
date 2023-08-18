@@ -2178,6 +2178,9 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@SalesRep_ID@ @NotFound@");
 			}
 			MOrder salesOrder = new MOrder(Env.getCtx(), orderId, transactionName);
+			if(!OrderManagement.isValidOrder(salesOrder)) {
+				throw new AdempiereException("@ActionNotAllowedHere@");
+			}
 			if(salesOrder.isDelivered()) {
 				throw new AdempiereException("@C_Order_ID@ @IsDelivered@");
 			}
@@ -4361,12 +4364,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				if (discountRate != null) {
 					discountRateToOrder = discountRate;
 					priceToOrder = getFinalPrice(orderLine.getPriceList(), discountRate, precision);
+					priceToOrder = MUOMConversion.convertProductFrom(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceToOrder);
 				}
-//				validateLineDiscount(pos, discountRateToOrder);
-				BigDecimal priceEntered = MUOMConversion.convertProductTo(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceToOrder);
 				orderLine.setDiscount(discountRateToOrder);
-				orderLine.setPriceActual(priceToOrder); //	sets List/limit
-				orderLine.setPriceEntered(priceEntered);
+				orderLine.setPrice(priceToOrder);
 			}
 			//	
 			if(warehouseId > 0) {
@@ -4401,7 +4402,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		BigDecimal quantityEntered = orderLine.getQtyEntered();
 		BigDecimal priceEntered = orderLine.getPriceEntered();
 		BigDecimal convertedQuantity = MUOMConversion.convertProductFrom(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), quantityEntered);
-		BigDecimal convertedPrice = MUOMConversion.convertProductFrom(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceEntered);
+		BigDecimal convertedPrice = MUOMConversion.convertProductTo(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceEntered);
 		orderLine.setQtyOrdered(convertedQuantity);
 		orderLine.setPriceActual(convertedPrice);
 		orderLine.setLineNetAmt();

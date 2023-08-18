@@ -58,6 +58,11 @@ import org.spin.pos.service.cash.CashUtil;
  */
 public class OrderManagement {
 	
+	public static boolean isValidOrder(MOrder order) {
+		MDocType documentType = MDocType.get(order.getCtx(), order.getC_DocTypeTarget_ID());
+		return !documentType.isOffer() && !documentType.isProposal();
+	}
+	
 	public static MOrder processOrder(MPOS pos, int orderId, boolean isRefundOpen) {
 		AtomicReference<MOrder> orderReference = new AtomicReference<MOrder>();
 		Trx.run(transactionName -> {
@@ -66,6 +71,9 @@ public class OrderManagement {
 			}
 			MOrder salesOrder = new MOrder(Env.getCtx(), orderId, transactionName);
 			List<PO> paymentReferences = getPaymentReferences(salesOrder);
+			if(!isValidOrder(salesOrder)) {
+				throw new AdempiereException("@ActionNotAllowedHere@");
+			}
 			if(DocumentUtil.isDrafted(salesOrder)) {
 				// In case the Order is Invalid, set to In Progress; otherwise it will not be completed
 				if (salesOrder.getDocStatus().equalsIgnoreCase(MOrder.STATUS_Invalid))  {
