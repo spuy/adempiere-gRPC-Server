@@ -1682,6 +1682,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			refundReferenceToCreate.set_ValueOfColumn("IsReceipt", request.getIsReceipt());
 			refundReferenceToCreate.set_ValueOfColumn("TenderType", request.getTenderTypeCode());
 			refundReferenceToCreate.set_ValueOfColumn("Description", request.getDescription());
+			refundReferenceToCreate.setAD_Org_ID(salesOrder.getAD_Org_ID());
 			refundReferenceToCreate.saveEx(transactionName);
 			refundReference.set(refundReferenceToCreate);
 		});
@@ -2180,24 +2181,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		//	Convert Line
 		return ConvertUtil.convertShipmentLine(shipmentLineReference.get());
-	}
-	
-	/**
-	 * Set UOM and Quantity based on unit of measure
-	 * @param inOutLine
-	 * @param unitOfMeasureId
-	 * @param quantity
-	 */
-	private void updateUomAndQuantityForShipment(MInOutLine inOutLine, int unitOfMeasureId, BigDecimal quantity) {
-		if(quantity != null) {
-			inOutLine.setQty(quantity);
-		}
-		if(unitOfMeasureId > 0) {
-			inOutLine.setC_UOM_ID(unitOfMeasureId);
-		}
-		BigDecimal quantityEntered = inOutLine.getQtyEntered();
-		BigDecimal convertedQuantity = MUOMConversion.convertProductFrom(inOutLine.getCtx(), inOutLine.getM_Product_ID(), inOutLine.getC_UOM_ID(), quantityEntered);
-		inOutLine.setMovementQty(convertedQuantity);
 	}
 	
 	/**
@@ -4798,8 +4781,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					priceToOrder = getFinalPrice(orderLine.getPriceList(), discountRate, precision);
 				}
 //				validateLineDiscount(pos, discountRateToOrder);
+				BigDecimal priceEntered = MUOMConversion.convertProductTo(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceToOrder);
 				orderLine.setDiscount(discountRateToOrder);
-				orderLine.setPrice(priceToOrder); //	sets List/limit
+				orderLine.setPriceActual(priceToOrder); //	sets List/limit
+				orderLine.setPriceEntered(priceEntered);
 			}
 			//	
 			if(warehouseId > 0) {
@@ -4819,7 +4804,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 	} //	UpdateLine
 	
 	/**
-	 * Set UOM and Quantiry based on unit of measure
+	 * Set UOM and Quantity based on unit of measure
 	 * @param orderLine
 	 * @param unitOfMeasureId
 	 * @param quantity
@@ -4838,6 +4823,24 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		orderLine.setPriceEntered(convertedPrice);
 		orderLine.setLineNetAmt();
 		orderLine.saveEx();
+	}
+	
+	/**
+	 * Set UOM and Quantity based on unit of measure
+	 * @param inOutLine
+	 * @param unitOfMeasureId
+	 * @param quantity
+	 */
+	private void updateUomAndQuantityForShipment(MInOutLine inOutLine, int unitOfMeasureId, BigDecimal quantity) {
+		if(quantity != null) {
+			inOutLine.setQty(quantity);
+		}
+		if(unitOfMeasureId > 0) {
+			inOutLine.setC_UOM_ID(unitOfMeasureId);
+		}
+		BigDecimal quantityEntered = inOutLine.getQtyEntered();
+		BigDecimal convertedQuantity = MUOMConversion.convertProductFrom(inOutLine.getCtx(), inOutLine.getM_Product_ID(), inOutLine.getC_UOM_ID(), quantityEntered);
+		inOutLine.setMovementQty(convertedQuantity);
 	}
 	
 	
@@ -5397,7 +5400,9 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		if(pointOfSalesDefinition.getC_BankAccount_ID() <= 0) {
 			throw new AdempiereException("@NoCashBook@");
 		}
-		if(request.getAmount() == null) {
+        //	Amount
+        BigDecimal paymentAmount = ValueUtil.getBigDecimalFromDecimal(request.getAmount());
+		if(paymentAmount == null || paymentAmount.compareTo(Env.ZERO) == 0) {
 			throw new AdempiereException("@PayAmt@ @NotFound@");
 		}
 		//	Order
@@ -5442,8 +5447,6 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
         if(pointOfSalesDefinition.get_ValueAsInt(I_C_ConversionType.COLUMNNAME_C_ConversionType_ID) > 0) {
         	payment.setC_ConversionType_ID(pointOfSalesDefinition.get_ValueAsInt(I_C_ConversionType.COLUMNNAME_C_ConversionType_ID));
         }
-        //	Amount
-        BigDecimal paymentAmount = ValueUtil.getBigDecimalFromDecimal(request.getAmount());
         payment.setPayAmt(paymentAmount);
         //	Order Reference
         payment.setC_Order_ID(salesOrder.getC_Order_ID());

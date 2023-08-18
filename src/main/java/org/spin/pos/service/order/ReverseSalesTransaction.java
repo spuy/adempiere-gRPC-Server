@@ -43,6 +43,7 @@ import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
+import org.spin.base.util.DocumentUtil;
 
 /**
  * This class was created for Reverse Sales Transaction
@@ -61,6 +62,11 @@ public class ReverseSalesTransaction {
 		AtomicReference<MOrder> returnOrderReference = new AtomicReference<MOrder>();
 		Trx.run(transactionName -> {
 			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
+			//	Validate source document
+			if(DocumentUtil.isDrafted(sourceOrder) 
+					|| sourceOrder.isReturnOrder()) {
+				throw new AdempiereException("@invalid@");
+			}
 			MOrder returnOrder = createReturnOrder(pos, sourceOrder, pos.getC_POS_ID(), transactionName);
 			if(!Util.isEmpty(description)) {
 				returnOrder.setDescription(description);
@@ -92,6 +98,7 @@ public class ReverseSalesTransaction {
     	MPayment.getOfOrder(sourceOrder).forEach(sourcePayment -> {
         	MPayment returnPayment = new MPayment(sourceOrder.getCtx(), 0, transactionName);
             PO.copyValues(sourcePayment, returnPayment);
+            returnPayment.setC_Invoice_ID(-1);
             returnPayment.setDateTrx(getToday());
             returnPayment.setDateAcct(getToday());
             returnPayment.addDescription(Msg.parseTranslation(sourceOrder.getCtx(), " @From@ " + sourcePayment.getDocumentNo() + " @of@ @C_Order_ID@ " + sourceOrder.getDocumentNo()));
@@ -174,6 +181,7 @@ public class ReverseSalesTransaction {
 		returnOrder.setIsTransferred (false);
 		returnOrder.setPosted (false);
 		returnOrder.setProcessed (false);
+		returnOrder.setAD_Org_ID(sourceOrder.getAD_Org_ID());
 		returnOrder.saveEx(sourceOrder.get_TrxName());
 		int targetDocumentTypeId = getReturnDocumentTypeId(sourceOrder.getC_POS_ID(), posId, sourceOrder.getC_DocTypeTarget_ID());
 		//	Set Document base for return
