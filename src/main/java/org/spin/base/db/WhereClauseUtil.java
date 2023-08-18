@@ -526,11 +526,13 @@ public class WhereClauseUtil {
 					mainColumnName = childColumn;
 				}
 
-				whereClause.append(table.getTableName()).append(".").append(childColumn);
-				if (mainColumnName != null && mainColumnName.endsWith("_ID")) {
-					whereClause.append(" = ").append("@").append(mainColumnName).append("@");
-				} else {
-					whereClause.append(" = ").append("'@").append(mainColumnName).append("@'");
+				if (table.getColumn(childColumn) != null) {
+					whereClause.append(table.getTableName()).append(".").append(childColumn);
+					if (mainColumnName != null && mainColumnName.endsWith("_ID")) {
+						whereClause.append(" = ").append("@").append(mainColumnName).append("@");
+					} else {
+						whereClause.append(" = ").append("'@").append(mainColumnName).append("@'");
+					}
 				}
 				if(optionalTab.isPresent()) {
 					parentTabUuid = optionalTab.get().getUUID();
