@@ -108,6 +108,7 @@ dependencies {
 	implementation "${baseGroupId}:adempiere-pos-improvements:1.0.0"
 	// Business Processors (To Task's and Schedulers)
 	implementation "${baseGroupId}:adempiere-business-processors:1.0.5"
+	implementation "${baseGroupId}:adempiere-kafka-connector:1.0.0"
 }
 
 configurations.all {

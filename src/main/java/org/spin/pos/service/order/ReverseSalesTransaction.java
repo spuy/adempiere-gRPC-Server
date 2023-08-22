@@ -64,8 +64,10 @@ public class ReverseSalesTransaction {
 			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
 			//	Validate source document
 			if(DocumentUtil.isDrafted(sourceOrder) 
-					|| sourceOrder.isReturnOrder()) {
-				throw new AdempiereException("@invalid@");
+					|| DocumentUtil.isClosed(sourceOrder)
+					|| sourceOrder.isReturnOrder()
+					|| !OrderManagement.isValidOrder(sourceOrder)) {
+				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
 			MOrder returnOrder = createReturnOrder(pos, sourceOrder, pos.getC_POS_ID(), transactionName);
 			if(!Util.isEmpty(description)) {
