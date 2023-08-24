@@ -3263,7 +3263,21 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		return -1;
 	}
-	
+
+	/**
+	 * Get write off amount tolerance
+	 * @param pos
+	 * @return
+	 */
+	private BigDecimal getWriteOffAmtTolerance(MPOS pos) {
+		BigDecimal writeOffAmtTolerance = getBigDecimalValueFromPOS(pos, Env.getAD_User_ID(Env.getCtx()), "WriteOffAmtTolerance");
+		int currencyId = getIntegerValueFromPOS(pos, Env.getAD_User_ID(Env.getCtx()), "WriteOffAmtCurrency_ID");
+		if(currencyId > 0) {
+			writeOffAmtTolerance = OrderUtil.getConvetedAmount(pos, currencyId, writeOffAmtTolerance);
+		}
+		return writeOffAmtTolerance;
+	}
+
 	/**
 	 * Process payment of Order
 	 * @param salesOrder
@@ -4903,6 +4917,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			orderLine.setC_UOM_ID(unitOfMeasureId);
 		}
 		BigDecimal quantityEntered = orderLine.getQtyEntered();
+		BigDecimal priceEntered = orderLine.getPriceEntered();
 		BigDecimal convertedQuantity = MUOMConversion.convertProductFrom(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), quantityEntered);
 		BigDecimal convertedPrice = MUOMConversion.convertProductTo(orderLine.getCtx(), orderLine.getM_Product_ID(), orderLine.getC_UOM_ID(), priceEntered);
 		orderLine.setQtyOrdered(convertedQuantity);
