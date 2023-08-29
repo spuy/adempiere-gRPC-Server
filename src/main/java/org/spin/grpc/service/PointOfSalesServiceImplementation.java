@@ -14,6 +14,9 @@
  ************************************************************************************/
 package org.spin.grpc.service;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -24,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -116,6 +120,7 @@ import org.compiere.util.DB;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
+import org.compiere.util.MimeType;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
@@ -131,6 +136,7 @@ import org.spin.base.db.CountUtil;
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.DocumentUtil;
+import org.spin.base.util.FileUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.SessionManager;
 import org.spin.base.util.ValueUtil;
@@ -141,8 +147,12 @@ import org.spin.pos.service.cash.CollectingManagement;
 import org.spin.pos.service.order.OrderManagement;
 import org.spin.pos.service.order.OrderUtil;
 import org.spin.pos.util.POSConvertUtil;
+import org.spin.pos.util.TicketHandler;
+import org.spin.pos.util.TicketResult;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
+
+import com.google.protobuf.ByteString;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -764,27 +774,53 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 	@Override
 	public void printTicket(PrintTicketRequest request, StreamObserver<PrintTicketResponse> responseObserver) {
 		try {
-			if(Util.isEmpty(request.getOrderUuid())) {
+			if(request.getOrderId() <= 0) {
 				log.warning("Sales Order Not Found");
 				return;
 			}
 			log.fine("Print Ticket = " + request);
-			MPOS pos = getPOSFromUuid(request.getPosUuid(), true);
-			int orderId = RecordUtil.getIdFromUuid(I_C_Order.Table_Name, request.getOrderUuid(), null);
-			Env.clearWinContext(1);
-			CPOS posController = new CPOS();
-			posController.setOrder(orderId);
-			posController.setM_POS(pos);
-			posController.setWindowNo(1);
-			POSTicketHandler handler = POSTicketHandler.getTicketHandler(posController);
-			if(handler == null) {
-				log.warning("Ticket Class Name " + pos.getTicketClassName() + " Not Found");
-			} else {
-				//	Print it
-				handler.printTicket();
+			//	Print based on handler
+			TicketResult ticketResult = TicketHandler.getInstance().withPosId(request.getPosId()).withTableName(I_C_Order.Table_Name).withRecordId(request.getOrderId()).printTicket();
+			//	Process response
+			PrintTicketResponse.Builder builder = PrintTicketResponse.newBuilder();
+			if(ticketResult != null) {
+				builder
+					.setIsError(ticketResult.isError())
+					.setSummary(ValueUtil.validateNull(ticketResult.getSummary()))
+				;
+				File fileReport = ticketResult.getReportFile();
+				if(fileReport != null
+						&& fileReport.exists()) {
+					String validFileName = FileUtil.getValidFileName(fileReport.getName());
+					String fileType = FileUtil.getExtension(validFileName);
+					if(Util.isEmpty(fileType)) {
+						fileType = fileType.replaceAll(".", "");
+					}
+					ByteString resultFile = ByteString.empty();
+					try {
+						resultFile = ByteString.readFrom(new FileInputStream(fileReport));
+					} catch (IOException e) {
+						log.warning(e.getLocalizedMessage());
+						builder
+							.setSummary(ValueUtil.validateNull(e.getLocalizedMessage()))
+							.setIsError(true);
+					}
+					builder
+						.setFileName(ValueUtil.validateNull(validFileName))
+						.setMimeType(ValueUtil.validateNull(MimeType.getMimeType(validFileName)))
+						.setResultType(ValueUtil.validateNull(fileType))
+						.setOutputStream(resultFile)
+					;
+				}
+				//	Write map
+				if(ticketResult.getResultValues() != null) {
+					Map<String, Object> resultValues = ticketResult.getResultValues();
+					resultValues.entrySet().forEach(set -> {
+						builder.putResultValues(ValueUtil.validateNull(set.getKey()), ValueUtil.validateNull(String.valueOf(set.getValue())));
+					});
+				}
 			}
-			PrintTicketResponse.Builder ticket = PrintTicketResponse.newBuilder().setResult("Ok");
-			responseObserver.onNext(ticket.build());
+			responseObserver.onNext(builder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
@@ -1712,10 +1748,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				.setConvertedAmount(ValueUtil.getDecimalFromBigDecimal(convertedPaymentAmount))
 				.setCharge(ConvertUtil.convertCharge(payment.getC_Charge_ID()))
 				.setDocumentStatus(ConvertUtil.convertDocumentStatus(
-						ValueUtil.validateNull(payment.getDocStatus()),
-						ValueUtil.validateNull(ValueUtil.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
+						ValueUtil.validateNull(payment.getDocStatus()), 
+						ValueUtil.validateNull(ValueUtil.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)), 
 						ValueUtil.validateNull(ValueUtil.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))));
-			//
+			//	
 			if(payment.getCollectingAgent_ID() > 0) {
 				paymentDetail.setCollectingAgent(ConvertUtil.convertSalesRepresentative(MUser.get(payment.getCtx(), payment.getCollectingAgent_ID())));
 			}
@@ -1731,7 +1767,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			}
 			builder.addCashMovements(paymentDetail.build());
 		});
-		//
+		//	
 		builder.setRecordCount(count);
 		//	Set page token
 		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
@@ -1742,7 +1778,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		//	Return
 		return builder;
 	}
-
+	
 	/**
 	 * List all movements from cash
 	 * @return
@@ -1919,7 +1955,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		});
 		return Empty.newBuilder();
 	}
-
+	
 	/**
 	 * Closing
 	 * @param request
@@ -3367,7 +3403,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		return -1;
 	}
-
+	
 	/**
 	 * Get write off amount tolerance
 	 * @param pos
@@ -3723,7 +3759,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 
 		final String whereClauseWithoutProposal = " AND NOT EXISTS(SELECT 1 FROM C_DocType dt "
 			+ "WHERE dt.C_DocType_ID = C_Order.C_DocTypeTarget_ID "
-			+ "AND dt.DocSubTypeSO IN('ON', OB', 'PR'))"
+			+ "AND dt.DocSubTypeSO IN('ON', 'OB', 'PR'))"
 		;
 
 		StringBuffer whereClause = new StringBuffer();
