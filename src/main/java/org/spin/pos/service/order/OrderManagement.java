@@ -92,6 +92,10 @@ public class OrderManagement {
 					throw new AdempiereException("@ProcessFailed@ :" + salesOrder.getProcessMsg());
 				}
 				//	Release Order
+				int invoiceId = salesOrder.getC_Invoice_ID();
+				if(invoiceId > 0) {
+					salesOrder.setIsInvoiced(true);
+				}
 				salesOrder.set_ValueOfColumn("AssignedSalesRep_ID", null);
 				salesOrder.saveEx();
 				processPayments(salesOrder, pos, isOpenRefund, transactionName);
@@ -247,6 +251,18 @@ public class OrderManagement {
 		}
 		creditMemo.setDocumentNo(payment.getDocumentNo());
 		creditMemo.saveEx(transactionName);
+	}
+	
+	/**
+	 * Validate if a order is released
+	 * @param salesOrder
+	 * @return void
+	 */
+	public static void validateOrderReleased(MOrder salesOrder) {
+		if(salesOrder.get_ValueAsInt("AssignedSalesRep_ID") > 0
+				&& salesOrder.get_ValueAsInt("AssignedSalesRep_ID") != Env.getAD_User_ID(Env.getCtx())) {
+			throw new AdempiereException("@POS.SalesRepAssigned@");
+		}
 	}
 	
 	/**
