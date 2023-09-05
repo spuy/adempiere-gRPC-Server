@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MAllocationHdr;
 import org.compiere.model.MAllocationLine;
@@ -144,6 +145,54 @@ public class OrderManagement {
 			targetOrder.set_ValueOfColumn("AssignedSalesRep_ID", currentUser.getAD_User_ID());
 			targetOrder.saveEx();
 			OrderUtil.copyOrderLinesFromOrder(sourceOrder, targetOrder, transactionName);
+			orderReference.set(targetOrder);
+		});
+		return orderReference.get();
+	}
+	
+	public static MOrder createOrderFromRMA(int posId, int salesRepresentativeId, int sourceOrderId) {
+		if(posId <= 0) {
+			throw new AdempiereException("@C_POS_ID@ @NotFound@");
+		}
+		if(sourceOrderId <= 0) {
+			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+		}
+		MPOS pos = new MPOS(Env.getCtx(), posId, null);
+		AtomicReference<MOrder> orderReference = new AtomicReference<MOrder>();
+		MOrder returnOrder = new Query(Env.getCtx(), I_C_Order.Table_Name, 
+				"ECA14_Source_RMA_ID = ? ", null)
+				.setParameters(sourceOrderId)
+				.first();
+		if(returnOrder != null) {
+			return returnOrder;
+		}
+		Trx.run(transactionName -> {
+			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
+			if(DocumentUtil.isClosed(sourceOrder)
+					|| DocumentUtil.isVoided(sourceOrder)
+					|| sourceOrder.isReturnOrder()) {
+				throw new AdempiereException("@ActionNotAllowedHere@");
+			}
+			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);
+			MBPartner businessPartner = (MBPartner) targetOrder.getC_BPartner();
+			OrderUtil.setCurrentDate(targetOrder);
+			int salesRepId = salesRepresentativeId;
+			MUser currentUser = MUser.get(Env.getCtx());
+			if (pos.get_ValueAsBoolean("IsSharedPOS")) {
+				salesRepId = currentUser.getAD_User_ID();
+			} else if (businessPartner.getSalesRep_ID() != 0) {
+				salesRepId = businessPartner.getSalesRep_ID();
+			} else {
+				salesRepId = pos.getSalesRep_ID();
+			}
+			if(salesRepId > 0) {
+				targetOrder.setSalesRep_ID(salesRepId);
+			}
+			targetOrder.set_ValueOfColumn("AssignedSalesRep_ID", currentUser.getAD_User_ID());
+			//	Set reference
+			targetOrder.set_ValueOfColumn("ECA14_Source_RMA_ID", sourceOrder.getC_Order_ID());
+			targetOrder.saveEx();
+			OrderUtil.copyOrderLinesFromRMA(sourceOrder, targetOrder, transactionName);
 			orderReference.set(targetOrder);
 		});
 		return orderReference.get();
@@ -402,7 +451,8 @@ public class OrderManagement {
 				paymentAllocationLine.saveEx();
 			});
 			//	Add write off
-			if(!isOpenRefund) {
+			if(!isOpenRefund
+					|| OrderUtil.isAutoWriteOff(salesOrder, openAmount.get())) {
 				if(openAmount.get().compareTo(Env.ZERO) != 0) {
 					MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, Env.ZERO, Env.ZERO, openAmount.get(), Env.ZERO);
 					paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), invoiceId);

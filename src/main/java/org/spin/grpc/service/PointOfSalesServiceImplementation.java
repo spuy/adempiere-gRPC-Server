@@ -1666,6 +1666,109 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 	}
 	
+	@Override
+	public void createOrderFromRMA(CreateOrderFromRMARequest request, StreamObserver<Order> responseObserver) {
+		try {
+			log.fine("Create Order from RMA");
+			Order.Builder salesOrder = ConvertUtil.convertOrder(OrderManagement.createOrderFromRMA(request.getPosId(), request.getSalesRepresentativeId(), request.getSourceRmaId()));
+			responseObserver.onNext(salesOrder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+	
+	@Override
+	public void listCustomerCredits(ListCustomerCreditsRequest request, StreamObserver<ListCustomerCreditsResponse> responseObserver) {
+		try {
+			log.fine("List Customer Credit Memos");
+			ListCustomerCreditsResponse.Builder response = listCustomerCredits(request);
+			responseObserver.onNext(response.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
+	
+	/**
+	 * List shipment Lines from Order UUID
+	 * @param request
+	 * @return
+	 */
+	private ListCustomerCreditsResponse.Builder listCustomerCredits(ListCustomerCreditsRequest request) {
+		if(request.getPosId() <= 0) {
+			throw new AdempiereException("@C_POS_ID@ @NotFound@");
+		}
+		if(request.getCustomerId() <= 0) {
+			throw new AdempiereException("@C_BPartner_ID@ @NotFound@");
+		}
+		ListCustomerCreditsResponse.Builder builder = ListCustomerCreditsResponse.newBuilder();
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+		//	
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		int count = 0;
+		try {
+			//	Get Bank statement
+			String sql = "SELECT i.C_Invoice_ID, i.DocumentNo, i.Description, i.DateInvoiced, i.C_Currency_ID, i.GrandTotal, InvoiceOpen(i.C_Invoice_ID, null) AS OpenAmount "
+					+ "FROM C_Invoice i "
+					+ "WHERE i.IsSOTrx = 'Y' "
+					+ "AND i.DocStatus IN('CO', 'CL') "
+					+ "AND i.IsPaid = 'N' "
+					+ "AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') "
+					+ "AND i.C_BPartner_ID = ? "
+					+ "AND InvoiceOpen(i.C_Invoice_ID, null) > 0";
+			//	Count records
+			List<Object> parameters = new ArrayList<Object>();
+			parameters.add(request.getCustomerId());
+			count = CountUtil.countRecords(sql, "C_Invoice i", parameters);
+			pstmt = DB.prepareStatement(sql, null);
+			pstmt.setInt(1, request.getCustomerId());
+			//	Get from Query
+			rs = pstmt.executeQuery();
+			while(rs.next()) {
+				
+				CreditMemo.Builder creditMemo = CreditMemo.newBuilder()
+						.setId(rs.getInt("C_Invoice_ID"))
+						.setDocumentNo(ValueUtil.validateNull(rs.getString("DocumentNo")))
+						.setDescription(ValueUtil.validateNull(rs.getString("Description")))
+						.setDocumentDate(ValueUtil.convertDateToString(rs.getTimestamp("DateInvoiced")))
+						.setCurrency(ConvertUtil.convertCurrency(MCurrency.get(Env.getCtx(), rs.getInt("C_Currency_ID"))))
+						.setAmount(ValueUtil.getDecimalFromBigDecimal(rs.getBigDecimal("GrandTotal")))
+						.setOpenAmount(ValueUtil.getDecimalFromBigDecimal(rs.getBigDecimal("OpenAmount")))
+				;
+				//	
+				builder.addRecords(creditMemo.build());
+				count++;
+			}
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			throw new AdempiereException(e);
+		} finally {
+			DB.close(rs, pstmt);
+		}
+		//	
+		builder.setRecordCount(count);
+		//	Set page token
+		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		//	Set next page
+		builder.setNextPageToken(ValueUtil.validateNull(nexPageToken));
+		return builder;
+	}
+	
 	/**
 	 * List shipment Lines from Order UUID
 	 * @param request

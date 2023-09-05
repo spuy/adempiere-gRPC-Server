@@ -1707,11 +1707,12 @@ message RMALine {
 // Customer Credit Memo
 message CreditMemo {
 	int32 id = 1;
-	string uuid = 2;
-	string name = 3;
-	string description = 4;
-	int64 start_date = 5;
-	int64 end_date = 6;
+	string document_no = 2;
+	string description = 3;
+	string document_date = 4;
+	Decimal amount = 5;
+	Decimal open_amount = 6;
+	Currency currency = 7;
 }
 
 message ListCustomerCreditsRequest {
@@ -1719,7 +1720,8 @@ message ListCustomerCreditsRequest {
 	string page_token = 2;
 	// filters
 	string search_value = 3;
-	string pos_id = 4;
+	int32 pos_id = 4;
+	int32 customer_id = 5;
 }
 
 message ListCustomerCreditsResponse {
