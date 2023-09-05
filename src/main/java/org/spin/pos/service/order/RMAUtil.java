@@ -155,6 +155,7 @@ public class RMAUtil {
             		MDocType.DOCBASETYPE_SalesOrder , MDocType.DOCSUBTYPESO_ReturnMaterial));
     	}
         //	Set references
+		returnOrder.setC_POS_ID(pos.getC_POS_ID());
 		returnOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
 		returnOrder.setRef_Order_ID(sourceOrder.getC_Order_ID());
 		returnOrder.setProcessed(false);

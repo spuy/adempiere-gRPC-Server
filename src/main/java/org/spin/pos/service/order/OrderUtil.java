@@ -248,8 +248,8 @@ public class OrderUtil {
 		salesOrder.setProcessed (false);
 		salesOrder.setAD_Org_ID(sourceOrder.getAD_Org_ID());
 		salesOrder.setC_DocTypeTarget_ID(sourceOrder.getC_DocTypeTarget_ID());
-		salesOrder.setC_POS_ID(pos.getC_POS_ID());
         //	Set references
+		salesOrder.setC_POS_ID(pos.getC_POS_ID());
 		salesOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
 		salesOrder.setProcessed(false);
 		//	
@@ -262,10 +262,11 @@ public class OrderUtil {
      * Copy a order line and create a new instance for Order Line
      * @param targetOrder
      * @param sourcerOrderLine
+     * @param keepPrice
      * @param transactionName
      * @return
      */
-    public static MOrderLine copyOrderLine(MOrderLine sourcerOrderLine, MOrder targetOrder, String transactionName) {
+    public static MOrderLine copyOrderLine(MOrderLine sourcerOrderLine, MOrder targetOrder, boolean keepPrice, String transactionName) {
     	MOrderLine salesOrderLine = new MOrderLine(targetOrder);
 		if (sourcerOrderLine.getM_Product_ID() > 0) {
 			salesOrderLine.setM_Product_ID(sourcerOrderLine.getM_Product_ID());
@@ -278,12 +279,22 @@ public class OrderUtil {
 		//	
 		copyAccountDimensions(sourcerOrderLine, salesOrderLine);
 		//	Set quantity
-		salesOrderLine.setQty(sourcerOrderLine.getQtyEntered());
-		salesOrderLine.setQtyOrdered(sourcerOrderLine.getQtyOrdered());
-		salesOrderLine.setC_UOM_ID(sourcerOrderLine.getC_UOM_ID());
-		salesOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
-		salesOrderLine.setPrice();
-		salesOrderLine.setTax();
+		if(keepPrice) {
+			salesOrderLine.setQty(sourcerOrderLine.getQtyEntered());
+			salesOrderLine.setQtyOrdered(sourcerOrderLine.getQtyOrdered());
+			salesOrderLine.setC_UOM_ID(sourcerOrderLine.getC_UOM_ID());
+			salesOrderLine.setPriceList(sourcerOrderLine.getPriceList());
+			salesOrderLine.setPriceEntered(sourcerOrderLine.getPriceEntered());
+			salesOrderLine.setPriceActual(sourcerOrderLine.getPriceActual());
+			salesOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
+		} else {
+			salesOrderLine.setQty(sourcerOrderLine.getQtyEntered());
+			salesOrderLine.setQtyOrdered(sourcerOrderLine.getQtyOrdered());
+			salesOrderLine.setC_UOM_ID(sourcerOrderLine.getC_UOM_ID());
+			salesOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
+			salesOrderLine.setPrice();
+			salesOrderLine.setTax();
+		}
 		return salesOrderLine;
     }
     
@@ -301,9 +312,30 @@ public class OrderUtil {
     		.forEach(sourceOrderLineId -> {
     			MOrderLine sourcerOrderLine = new MOrderLine(sourceOrder.getCtx(), sourceOrderLineId, transactionName);
 				//	Create new Invoice Line
-				MOrderLine returnOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, transactionName);
+				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, false, transactionName);
 				//	Save
-				returnOrderLine.saveEx(transactionName);
+				targetOrderLine.saveEx(transactionName);
+    		});
+    }
+    
+    /**
+     * Create all lines from order
+     * @param sourceOrder
+     * @param targetOrder
+     * @param transactionName
+     */
+    public static void copyOrderLinesFromRMA(MOrder sourceOrder, MOrder targetOrder, String transactionName) {
+    	new Query(sourceOrder.getCtx(), I_C_OrderLine.Table_Name, "C_Order_ID = ?", transactionName)
+    		.setParameters(sourceOrder.getC_Order_ID())
+    		.setClient_ID()
+    		.getIDsAsList()
+    		.forEach(sourceOrderLineId -> {
+    			MOrderLine sourcerOrderLine = new MOrderLine(sourceOrder.getCtx(), sourceOrderLineId, transactionName);
+				//	Create new Invoice Line
+				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, true, transactionName);
+				targetOrderLine.set_ValueOfColumn("ECA14_Source_RMALine_ID", sourcerOrderLine.getC_OrderLine_ID());
+				//	Save
+				targetOrderLine.saveEx(transactionName);
     		});
     }
     
@@ -384,6 +416,21 @@ public class OrderUtil {
 		BigDecimal grandTotalWithCreditCharges = grandTotal.subtract(creditAmt).add(chargeAmt);
 
 		return grandTotalWithCreditCharges;
+	}
+	
+	/**
+	 * Return true if the document should be apply for writeoff
+	 * @param order
+	 * @param openAmount
+	 * @return
+	 */
+	public static boolean isAutoWriteOff(MOrder order, BigDecimal openAmount) {
+		if (order == null
+				|| openAmount == null) {
+			return false;
+		}
+		MPriceList priceList = MPriceList.get(Env.getCtx(), order.getM_PriceList_ID(), order.get_TrxName());
+		return openAmount.setScale(priceList.getStandardPrecision()).compareTo(Env.ZERO) == 0;
 	}
 	
 	/**
