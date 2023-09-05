@@ -53,6 +53,7 @@ import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.pos.service.cash.CashManagement;
 import org.spin.pos.service.cash.CashUtil;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * A util class for change values for documents
@@ -264,6 +265,19 @@ public class OrderManagement {
 				.first();
 	}
 	
+	private static void createCreditMemoReference(MOrder salesOrder, MPayment payment, String transactionName) {
+		if(payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) <= 0) {
+			return;
+		}
+		MInvoice creditMemo = new MInvoice(salesOrder.getCtx(), payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID), transactionName);
+		payment.setC_Invoice_ID(-1);
+		payment.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount, payment.getPayAmt());
+		payment.setPayAmt(Env.ZERO);
+		payment.saveEx(transactionName);
+		creditMemo.setC_Payment_ID(payment.getC_Payment_ID());
+		creditMemo.saveEx(transactionName);
+	}
+	
 	/**
 	 * Create Credit Memo from payment
 	 * @param salesOrder
@@ -380,7 +394,11 @@ public class OrderManagement {
 				payment.setIsPrepayment(true);
 				payment.setOverUnderAmt(Env.ZERO);
 				if(payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo)) {
-					createCreditMemo(salesOrder, payment, transactionName);
+					if(payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) <= 0) {
+						createCreditMemo(salesOrder, payment, transactionName);
+					} else {
+						createCreditMemoReference(salesOrder, payment, transactionName);
+					}
 				}
 				payment.setDocAction(MPayment.DOCACTION_Complete);
 				CashUtil.setCurrentDate(payment);
@@ -439,7 +457,11 @@ public class OrderManagement {
 				}
 				BigDecimal multiplier = Env.ONE.negate();
 				MInvoice creditMemo = new Query(payment.getCtx(), MInvoice.Table_Name, "C_Payment_ID = ?", payment.get_TrxName()).setParameters(payment.getC_Payment_ID()).first();
-				BigDecimal paymentAmount = OrderUtil.getConvetedAmount(salesOrder, payment, creditMemo.getGrandTotal());
+				BigDecimal creditMemoAmount = Optional.ofNullable((BigDecimal) payment.get_Value(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount)).orElse(Env.ZERO);
+				if(creditMemoAmount.compareTo(Env.ZERO) == 0) {
+					creditMemoAmount = creditMemo.getGrandTotal();
+				}
+				BigDecimal paymentAmount = OrderUtil.getConvetedAmount(salesOrder, payment, creditMemoAmount);
 				BigDecimal discountAmount = Env.ZERO;
 				BigDecimal overUnderAmount = Env.ZERO;
 				BigDecimal writeOffAmount = Env.ZERO;

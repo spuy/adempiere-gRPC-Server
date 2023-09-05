@@ -69,4 +69,7 @@ public class ColumnsAdded {
 	public static final String COLUMNNAME_RefundReferenceCurrency_ID = "RefundReferenceCurrency_ID";
 	/**	For Sales Order	*/
 	public static final String COLUMNNAME_AssignedSalesRep_ID = "AssignedSalesRep_ID";
+	/**	For Payment	*/
+	public static final String COLUMNNAME_ECA14_Invoice_Reference_ID = "ECA14_Invoice_Reference_ID";
+	public static final String COLUMNNAME_ECA14_Reference_Amount = "ECA14_Reference_Amount";
 }

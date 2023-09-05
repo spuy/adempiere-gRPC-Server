@@ -1729,12 +1729,22 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					+ "AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') "
 					+ "AND i.C_BPartner_ID = ? "
 					+ "AND InvoiceOpen(i.C_Invoice_ID, null) > 0";
-			//	Count records
+			StringBuffer whereClause = new StringBuffer();
 			List<Object> parameters = new ArrayList<Object>();
+			//	Count records
 			parameters.add(request.getCustomerId());
+			if(!Util.isEmpty(request.getSearchValue())) {
+				whereClause.append(" AND UPPER(i.DocumentNo) LIKE '%' || UPPER(?) || '%'");
+				//	Add parameters
+				parameters.add(request.getSearchValue());
+			}
+			sql = sql + whereClause.toString();
 			count = CountUtil.countRecords(sql, "C_Invoice i", parameters);
 			pstmt = DB.prepareStatement(sql, null);
 			pstmt.setInt(1, request.getCustomerId());
+			if(whereClause.length() > 0) {
+				pstmt.setString(2, request.getSearchValue());
+			}
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
