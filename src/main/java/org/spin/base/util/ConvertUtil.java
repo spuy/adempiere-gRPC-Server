@@ -680,6 +680,9 @@ public class ConvertUtil {
 			.setChargeAmount(ValueUtil.getDecimalFromBigDecimal(chargeAmt))
 			.setCreditAmount(ValueUtil.getDecimalFromBigDecimal(creditAmt))
 			.setSourceRmaId(order.get_ValueAsInt("ECA14_Source_RMA_ID"))
+			.setIsRma(order.isReturnOrder())
+			.setIsOrder(!order.isReturnOrder())
+			.setIsBindingOffer(OrderUtil.isBindingOffer(order))
 		;
 	}
 	

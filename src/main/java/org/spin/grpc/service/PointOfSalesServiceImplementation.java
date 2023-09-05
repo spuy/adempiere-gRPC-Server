@@ -3665,6 +3665,13 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		if(request.getIsNullified()) {
 			whereClause.append(" AND DocStatus IN('VO') ");
 		}
+		//	Is RMA
+		if(request.getIsOnlyRma()) {
+			whereClause.append(" AND DocStatus IN('CO', 'CL')")
+				.append(" AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = C_Order.C_DocTypeTarget_ID AND dt.DocSubTypeSO IN('RM') AND dt.IsSOTrx = 'Y') ")
+				.append(whereClauseWithoutProposal)
+			;
+		}
 		//	Date Order From
 		if(!Util.isEmpty(request.getDateOrderedFrom())) {
 			whereClause.append(" AND DateOrdered >= ?");

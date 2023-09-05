@@ -83,8 +83,12 @@ public class OrderUtil {
 	}
 
 	public static boolean isValidOrder(MOrder order) {
+		return !isBindingOffer(order);
+	}
+	
+	public static boolean isBindingOffer(MOrder order) {
 		MDocType documentType = MDocType.get(order.getCtx(), order.getC_DocTypeTarget_ID());
-		return !documentType.isOffer() && !documentType.isProposal();
+		return documentType.isOffer() || documentType.isProposal();
 	}
 
 	/**

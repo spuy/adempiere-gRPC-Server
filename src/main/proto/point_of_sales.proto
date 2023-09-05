@@ -997,14 +997,15 @@ message ListOrdersRequest {
 	bool is_binding_offer = 12;
 	bool is_closed = 13;
 	bool is_nullified = 14;
-	string date_ordered_from = 15;
-	string date_ordered_to = 16;
-	string sales_representative_uuid = 17;
-	string search_value = 18;
-	int32 page_size = 19;
-	string page_token = 20;
+	bool is_only_rma = 15;
+	string date_ordered_from = 16;
+	string date_ordered_to = 17;
+	string sales_representative_uuid = 18;
+	string search_value = 19;
+	int32 page_size = 20;
+	string page_token = 21;
 	// Query
-	Criteria criteria = 21;
+	Criteria criteria = 22;
 }
 
 //	List Order Lines Response
@@ -1342,6 +1343,9 @@ message Order {
 	Decimal charge_amount = 24;
 	Decimal credit_amount = 25;
 	int32 source_rma_id = 26;
+	bool is_rma = 27;
+	bool is_binding_offer = 28;
+	bool is_order = 29;
 }
 
 // Sales Order Line
