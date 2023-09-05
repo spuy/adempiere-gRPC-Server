@@ -446,15 +446,6 @@ public class OrderManagement {
 			paymentsIds.stream().map(paymentId -> new MPayment(Env.getCtx(), paymentId, transactionName))
 			.filter(payment -> payment.getC_POS_ID() != 0 && payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo))
 			.forEach(payment -> {
-				//	Create new Line
-				if(!isAllocationLineCreated.get()) {
-					BigDecimal discountAmount = Env.ZERO;
-					BigDecimal overUnderAmount = Env.ZERO;
-					BigDecimal writeOffAmount = Env.ZERO;
-					MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, currentAmount.get(), discountAmount, writeOffAmount, overUnderAmount);
-					paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), invoiceId);
-					paymentAllocationLine.saveEx();
-				}
 				BigDecimal multiplier = Env.ONE.negate();
 				MInvoice creditMemo = new Query(payment.getCtx(), MInvoice.Table_Name, "C_Payment_ID = ?", payment.get_TrxName()).setParameters(payment.getC_Payment_ID()).first();
 				BigDecimal creditMemoAmount = Optional.ofNullable((BigDecimal) payment.get_Value(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount)).orElse(Env.ZERO);
@@ -467,6 +458,12 @@ public class OrderManagement {
 				BigDecimal writeOffAmount = Env.ZERO;
 				if (overUnderAmount.signum() < 0 && paymentAmount.signum() > 0) {
 					paymentAmount = paymentAmount.add(overUnderAmount);
+				}
+				//	Create new Line
+				if(!isAllocationLineCreated.get() || payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) > 0) {
+					MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, paymentAmount, discountAmount, writeOffAmount, overUnderAmount);
+					paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), invoiceId);
+					paymentAllocationLine.saveEx();
 				}
 				MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, paymentAmount.multiply(multiplier), discountAmount.multiply(multiplier), writeOffAmount.multiply(multiplier), overUnderAmount.multiply(multiplier));
 				paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), creditMemo.getC_Invoice_ID());
