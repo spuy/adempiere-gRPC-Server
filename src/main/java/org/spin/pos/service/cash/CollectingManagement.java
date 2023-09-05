@@ -40,6 +40,7 @@ import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ValueUtil;
 import org.spin.pos.service.order.OrderManagement;
 import org.spin.pos.service.order.OrderUtil;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * This class manage all related to collecting and payment methods
@@ -180,6 +181,9 @@ public class CollectingManagement {
 	        payment.setDocumentNo(value);
 		}
 		//	
+		if(request.getInvoiceReferenceId() > 0) {
+			payment.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID, request.getInvoiceReferenceId());
+		}
 		payment.saveEx(transactionName);
 		return payment;
 	}
