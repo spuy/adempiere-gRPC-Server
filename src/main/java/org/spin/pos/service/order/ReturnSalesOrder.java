@@ -22,10 +22,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.exceptions.AdempiereException;
+import org.compiere.model.MBPartner;
 import org.compiere.model.MInOut;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MPOS;
+import org.compiere.model.MUser;
 import org.compiere.model.Query;
 import org.compiere.util.Env;
 import org.compiere.util.Trx;
@@ -37,6 +39,44 @@ import org.spin.base.util.DocumentUtil;
  * @author Yamel Senih, ysenih@erpya.com , http://www.erpya.com
  */
 public class ReturnSalesOrder {
+	
+	public static MOrder createOrderFromRMA(int posId, int salesRepresentativeId, int sourceOrderId) {
+		if(posId <= 0) {
+			throw new AdempiereException("@C_POS_ID@ @NotFound@");
+		}
+		if(sourceOrderId <= 0) {
+			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+		}
+		MPOS pos = new MPOS(Env.getCtx(), posId, null);
+		AtomicReference<MOrder> orderReference = new AtomicReference<MOrder>();
+		Trx.run(transactionName -> {
+			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
+			if(DocumentUtil.isVoided(sourceOrder)
+					|| !sourceOrder.isReturnOrder()) {
+				throw new AdempiereException("@ActionNotAllowedHere@");
+			}
+			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);
+			MBPartner businessPartner = (MBPartner) targetOrder.getC_BPartner();
+			OrderUtil.setCurrentDate(targetOrder);
+			int salesRepId = salesRepresentativeId;
+			MUser currentUser = MUser.get(Env.getCtx());
+			if (pos.get_ValueAsBoolean("IsSharedPOS")) {
+				salesRepId = currentUser.getAD_User_ID();
+			} else if (businessPartner.getSalesRep_ID() != 0) {
+				salesRepId = businessPartner.getSalesRep_ID();
+			} else {
+				salesRepId = pos.getSalesRep_ID();
+			}
+			if(salesRepId > 0) {
+				targetOrder.setSalesRep_ID(salesRepId);
+			}
+			targetOrder.set_ValueOfColumn("AssignedSalesRep_ID", currentUser.getAD_User_ID());
+			targetOrder.saveEx();
+			OrderUtil.copyOrderLinesFromOrder(sourceOrder, targetOrder, transactionName);
+			orderReference.set(targetOrder);
+		});
+		return orderReference.get();
+	}
 	
 	/**
 	 * Create a Return order and cancel all payments
@@ -55,37 +95,38 @@ public class ReturnSalesOrder {
 			throw new AdempiereException("@C_Order_ID@ @NotFound@");
 		}
 		MPOS pos = new MPOS(Env.getCtx(), posId, null);
-		AtomicReference<MOrder> returnOrderReference = new AtomicReference<MOrder>();
+		MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, null);
+		//	Validate source document
+		if(DocumentUtil.isDrafted(sourceOrder) 
+				|| DocumentUtil.isClosed(sourceOrder)
+				|| sourceOrder.isReturnOrder()
+				|| !OrderUtil.isValidOrder(sourceOrder)) {
+			throw new AdempiereException("@ActionNotAllowedHere@");
+		}
+		MOrder returnOrder = new Query(Env.getCtx(), I_C_Order.Table_Name, 
+				"DocStatus = 'DR' "
+				+ "AND Ref_Order_ID = ? ", null)
+				.setParameters(sourceOrderId)
+				.first();
+		if(returnOrder != null) {
+			return returnOrder;
+		}
+		AtomicReference<MOrder> orderReference = new AtomicReference<MOrder>();
 		Trx.run(transactionName -> {
-			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
-			//	Validate source document
-			if(DocumentUtil.isDrafted(sourceOrder) 
-					|| DocumentUtil.isClosed(sourceOrder)
-					|| sourceOrder.isReturnOrder()
-					|| !OrderUtil.isValidOrder(sourceOrder)) {
-				throw new AdempiereException("@ActionNotAllowedHere@");
-			}
-			MOrder returnOrder = new Query(Env.getCtx(), I_C_Order.Table_Name, 
-					"DocStatus = 'DR' "
-					+ "AND Ref_Order_ID = ? ", transactionName)
-					.setParameters(sourceOrderId)
-					.first();
-			if(returnOrder == null) {
-				returnOrder = RMAUtil.copyRMAFromOrder(pos, sourceOrder, transactionName);
-				if(salesRepresentativeId > 0) {
-					returnOrder.setSalesRep_ID(salesRepresentativeId);
-				}
+			MOrder targetOrder = RMAUtil.copyRMAFromOrder(pos, sourceOrder, transactionName);
+			if(salesRepresentativeId > 0) {
+				targetOrder.setSalesRep_ID(salesRepresentativeId);
 			}
 			if(!Util.isEmpty(description)) {
-				returnOrder.setDescription(description);
+				targetOrder.setDescription(description);
 			}
-        	returnOrder.saveEx();
-        	if(copyLines) {
-        		RMAUtil.copyRMALinesFromOrder(sourceOrder, returnOrder, transactionName);
-        	}
-			returnOrderReference.set(returnOrder);
+			targetOrder.saveEx();
+	    	if(copyLines) {
+	    		RMAUtil.copyRMALinesFromOrder(sourceOrder, targetOrder, transactionName);
+	    	}
+	    	orderReference.set(targetOrder);
 		});
-		return returnOrderReference.get();
+		return orderReference.get();
 	}
     
 	public static MOrderLine updateRMALine(int rmaLineId, BigDecimal quantity, String descrption) {
@@ -107,18 +148,22 @@ public class ReturnSalesOrder {
 			if(sourcerOrderLine.getC_OrderLine_ID() <= 0) {
 				throw new AdempiereException("@Ref_OrderLine_ID@ @NotFound@");
 			}
-			BigDecimal quantityToOrder = quantity;
-			if(quantity == null) {
-				quantityToOrder = rmaLine.getQtyEntered();
-				quantityToOrder = quantityToOrder.add(Env.ONE);
-			}
-			//	Validate available
-			if(sourcerOrderLine.getQtyEntered().compareTo(quantityToOrder) < 0) {
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
+			if(availableQuantity.compareTo(Env.ZERO) > 0) {
+				//	Update order quantity
+				BigDecimal quantityToOrder = quantity;
+				if(quantity == null) {
+					quantityToOrder = rmaLine.getQtyEntered();
+					quantityToOrder = quantityToOrder.add(Env.ONE);
+				}
+				if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+					OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
+				} else {
+					throw new AdempiereException("@QtyInsufficient@");
+				}
+			} else {
 				throw new AdempiereException("@QtyInsufficient@");
 			}
-			//	Update order quantity
-			OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
-			rmaLine.saveEx();
 			returnOrderReference.set(rmaLine);
 		});
 		return returnOrderReference.get();
@@ -155,6 +200,7 @@ public class ReturnSalesOrder {
 					.stream()
 					.filter(rmaLineTofind -> rmaLineTofind.getRef_OrderLine_ID() == sourceOrderLineId)
 					.findFirst();
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
 			if(maybeOrderLine.isPresent()) {
 				MOrderLine rmaLine = maybeOrderLine.get();
 				//	Set Quantity
@@ -163,26 +209,26 @@ public class ReturnSalesOrder {
 					quantityToOrder = rmaLine.getQtyEntered();
 					quantityToOrder = quantityToOrder.add(Env.ONE);
 				}
-				//	Validate available
-				if(sourcerOrderLine.getQtyEntered().compareTo(quantityToOrder) < 0) {
-					throw new AdempiereException("@QtyInsufficient@");
-				}
-				//	Update order quantity
-				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
-				rmaLine.saveEx();
-				returnOrderReference.set(rmaLine);
+    			if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+    				//	Update order quantity
+    				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
+    				returnOrderReference.set(rmaLine);
+    			} else {
+    				throw new AdempiereException("@QtyInsufficient@");
+    			}
 			} else {
-				MOrderLine rmaLine = RMAUtil.copyRMALineFromOrder(rma, sourcerOrderLine, transactionName);
 				BigDecimal quantityToOrder = quantity;
 				if(quantity == null) {
 					quantityToOrder = Env.ONE;
 				}
-		        Optional.ofNullable(descrption).ifPresent(description -> rmaLine.setDescription(description));
-				//	Update movement quantity
-		        OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
-				//	Save Line
-		        rmaLine.saveEx();
-		        returnOrderReference.set(rmaLine);
+		        if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+		        	MOrderLine rmaLine = RMAUtil.copyRMALineFromOrder(rma, sourcerOrderLine, transactionName);
+		        	Optional.ofNullable(descrption).ifPresent(description -> rmaLine.setDescription(description));
+		        	OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
+		        	returnOrderReference.set(rmaLine);
+    			} else {
+    				throw new AdempiereException("@QtyInsufficient@");
+    			}
 			}
 		});
 		return returnOrderReference.get();
@@ -194,7 +240,7 @@ public class ReturnSalesOrder {
      * @param documentAction
      * @return
      */
-    public static MOrder processRMAOrder(int rmaId, int posId, String documentAction, String description) {
+    public static MOrder processRMA(int rmaId, int posId, String documentAction, String description) {
     	if(rmaId <= 0) {
 			throw new AdempiereException("@M_RMA_ID@ @NotFound@");
 		}
@@ -224,6 +270,10 @@ public class ReturnSalesOrder {
 			RMAUtil.generateReturnFromRMA(rma, transactionName);
 	        //	Generate Credit Memo
 			RMAUtil.generateCreditMemoFromRMA(rma, transactionName);
+			if(!rma.processIt(MOrder.DOCACTION_Close)) {
+				throw new AdempiereException("@ProcessFailed@ :" + rma.getProcessMsg());
+	        }
+			rma.saveEx(transactionName);
 			rmaReference.set(rma);
 		});
 		return rmaReference.get();

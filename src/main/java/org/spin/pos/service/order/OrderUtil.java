@@ -1,35 +1,45 @@
 /*************************************************************************************
  * Product: Adempiere ERP & CRM Smart Business Solution                              *
- * This program is free software; you can redistribute it and/or modify it    		 *
+ * This program is free software; you can redistribute it and/or modify it           *
  * under the terms version 2 or later of the GNU General Public License as published *
- * by the Free Software Foundation. This program is distributed in the hope   		 *
- * that it will be useful, but WITHOUT ANY WARRANTY; without even the implied 		 *
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.           		 *
- * See the GNU General Public License for more details.                       		 *
- * You should have received a copy of the GNU General Public License along    		 *
- * with this program; if not, write to the Free Software Foundation, Inc.,    		 *
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                     		 *
- * For the text or an alternative of this public license, you may reach us    		 *
+ * by the Free Software Foundation. This program is distributed in the hope          *
+ * that it will be useful, but WITHOUT ANY WARRANTY; without even the implied        *
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
+ * See the GNU General Public License for more details.                              *
+ * You should have received a copy of the GNU General Public License along           *
+ * with this program; if not, write to the Free Software Foundation, Inc.,           *
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                            *
+ * For the text or an alternative of this public license, you may reach us           *
  * Copyright (C) 2012-2018 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
- * Contributor(s): Yamel Senih www.erpya.com				  		                 *
+ * Contributor(s): Yamel Senih www.erpya.com                                         *
  *************************************************************************************/
 package org.spin.pos.service.order;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.sql.Timestamp;
+import java.math.RoundingMode;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.adempiere.core.domains.models.I_C_OrderLine;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MDocType;
+import org.compiere.model.MInvoice;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MPOS;
 import org.compiere.model.MPayment;
 import org.compiere.model.MUOMConversion;
+import org.compiere.model.MPriceList;
 import org.compiere.model.PO;
+import org.compiere.model.Query;
+import org.compiere.process.DocAction;
 import org.compiere.util.Env;
 import org.compiere.util.TimeUtil;
+import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
 
 /**
@@ -37,7 +47,18 @@ import org.spin.base.util.RecordUtil;
  * @author Yamel Senih, ysenih@erpya.com , http://www.erpya.com
  */
 public class OrderUtil {
-	
+
+	public static MOrder validateAndGetOrder(int orderId) {
+		if (orderId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
+		}
+		MOrder order = new MOrder(Env.getCtx(), orderId, null);
+		if (order == null || order.getC_Order_ID() <= 0) {
+			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+		}
+		return order;
+	}
+
 	/**
 	 * Set UOM and Quantity based on unit of measure
 	 * @param orderLine
@@ -60,12 +81,12 @@ public class OrderUtil {
 		orderLine.setLineNetAmt();
 		orderLine.saveEx();
 	}
-	
+
 	public static boolean isValidOrder(MOrder order) {
 		MDocType documentType = MDocType.get(order.getCtx(), order.getC_DocTypeTarget_ID());
 		return !documentType.isOffer() && !documentType.isProposal();
 	}
-	
+
 	/**
 	 * Set current date to order
 	 * @param salesOrder
@@ -187,4 +208,289 @@ public class OrderUtil {
     public static Timestamp getToday() {
     	return TimeUtil.getDay(System.currentTimeMillis());
     }
+    
+    
+    /**
+     * Create new order from source order
+     * @param pos
+     * @param sourceOrder
+     * @param transactionName
+     * @return
+     */
+    public static MOrder copyOrder(MPOS pos, MOrder sourceOrder, String transactionName) {
+    	MOrder salesOrder = new MOrder (sourceOrder.getCtx(), 0, transactionName);
+		salesOrder.set_TrxName(transactionName);
+		PO.copyValues(sourceOrder, salesOrder, false);
+		//
+		salesOrder.setDocStatus (DocAction.STATUS_Drafted);		//	Draft
+		salesOrder.setDocAction(DocAction.ACTION_Complete);
+		//
+		salesOrder.setIsSelected (false);
+		salesOrder.setDateOrdered(OrderUtil.getToday());
+		salesOrder.setDateAcct(OrderUtil.getToday());
+		salesOrder.setDatePromised(OrderUtil.getToday());	//	assumption
+		salesOrder.setDatePrinted(null);
+		salesOrder.setIsPrinted (false);
+		//
+		salesOrder.setIsApproved (false);
+		salesOrder.setIsCreditApproved(false);
+		salesOrder.setC_Payment_ID(0);
+		salesOrder.setC_CashLine_ID(0);
+		//	Amounts are updated  when adding lines
+		salesOrder.setGrandTotal(Env.ZERO);
+		salesOrder.setTotalLines(Env.ZERO);
+		//
+		salesOrder.setIsDelivered(false);
+		salesOrder.setIsInvoiced(false);
+		salesOrder.setIsSelfService(false);
+		salesOrder.setIsTransferred (false);
+		salesOrder.setPosted (false);
+		salesOrder.setProcessed (false);
+		salesOrder.setAD_Org_ID(sourceOrder.getAD_Org_ID());
+		salesOrder.setC_DocTypeTarget_ID(sourceOrder.getC_DocTypeTarget_ID());
+        //	Set references
+		salesOrder.setC_POS_ID(pos.getC_POS_ID());
+		salesOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
+		salesOrder.setProcessed(false);
+		//	
+		copyAccountDimensions(sourceOrder, salesOrder);
+		salesOrder.setM_PriceList_ID(sourceOrder.getM_PriceList_ID());
+		return salesOrder;
+    }
+    
+    /**
+     * Copy a order line and create a new instance for Order Line
+     * @param targetOrder
+     * @param sourcerOrderLine
+     * @param keepPrice
+     * @param transactionName
+     * @return
+     */
+    public static MOrderLine copyOrderLine(MOrderLine sourcerOrderLine, MOrder targetOrder, boolean keepPrice, String transactionName) {
+    	MOrderLine salesOrderLine = new MOrderLine(targetOrder);
+		if (sourcerOrderLine.getM_Product_ID() > 0) {
+			salesOrderLine.setM_Product_ID(sourcerOrderLine.getM_Product_ID());
+			if(sourcerOrderLine.getM_AttributeSetInstance_ID() > 0) {
+				salesOrderLine.setM_AttributeSetInstance_ID(sourcerOrderLine.getM_AttributeSetInstance_ID());
+			}
+		} else if(sourcerOrderLine.getC_Charge_ID() != 0) {
+			salesOrderLine.setC_Charge_ID(sourcerOrderLine.getC_Charge_ID());
+		}
+		//	
+		copyAccountDimensions(sourcerOrderLine, salesOrderLine);
+		//	Set quantity
+		if(keepPrice) {
+			salesOrderLine.setQty(sourcerOrderLine.getQtyEntered());
+			salesOrderLine.setQtyOrdered(sourcerOrderLine.getQtyOrdered());
+			salesOrderLine.setC_UOM_ID(sourcerOrderLine.getC_UOM_ID());
+			salesOrderLine.setPriceList(sourcerOrderLine.getPriceList());
+			salesOrderLine.setPriceEntered(sourcerOrderLine.getPriceEntered());
+			salesOrderLine.setPriceActual(sourcerOrderLine.getPriceActual());
+			salesOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
+		} else {
+			salesOrderLine.setQty(sourcerOrderLine.getQtyEntered());
+			salesOrderLine.setQtyOrdered(sourcerOrderLine.getQtyOrdered());
+			salesOrderLine.setC_UOM_ID(sourcerOrderLine.getC_UOM_ID());
+			salesOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
+			salesOrderLine.setPrice();
+			salesOrderLine.setTax();
+		}
+		return salesOrderLine;
+    }
+    
+    /**
+     * Create all lines from order
+     * @param sourceOrder
+     * @param targetOrder
+     * @param transactionName
+     */
+    public static void copyOrderLinesFromOrder(MOrder sourceOrder, MOrder targetOrder, String transactionName) {
+    	new Query(sourceOrder.getCtx(), I_C_OrderLine.Table_Name, "C_Order_ID = ?", transactionName)
+    		.setParameters(sourceOrder.getC_Order_ID())
+    		.setClient_ID()
+    		.getIDsAsList()
+    		.forEach(sourceOrderLineId -> {
+    			MOrderLine sourcerOrderLine = new MOrderLine(sourceOrder.getCtx(), sourceOrderLineId, transactionName);
+				//	Create new Invoice Line
+				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, false, transactionName);
+				//	Save
+				targetOrderLine.saveEx(transactionName);
+    		});
+    }
+    
+    /**
+     * Create all lines from order
+     * @param sourceOrder
+     * @param targetOrder
+     * @param transactionName
+     */
+    public static void copyOrderLinesFromRMA(MOrder sourceOrder, MOrder targetOrder, String transactionName) {
+    	new Query(sourceOrder.getCtx(), I_C_OrderLine.Table_Name, "C_Order_ID = ?", transactionName)
+    		.setParameters(sourceOrder.getC_Order_ID())
+    		.setClient_ID()
+    		.getIDsAsList()
+    		.forEach(sourceOrderLineId -> {
+    			MOrderLine sourcerOrderLine = new MOrderLine(sourceOrder.getCtx(), sourceOrderLineId, transactionName);
+				//	Create new Invoice Line
+				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, true, transactionName);
+				targetOrderLine.set_ValueOfColumn("ECA14_Source_RMALine_ID", sourcerOrderLine.getC_OrderLine_ID());
+				//	Save
+				targetOrderLine.saveEx(transactionName);
+    		});
+    }
+    
+    /**
+     * Copy all account dimensions
+     * @param source
+     * @param target
+     */
+    public static void copyAccountDimensions(PO source, PO target) {
+		//	
+		if(source.get_ValueAsInt("AD_OrgTrx_ID") != 0) {
+			target.set_ValueOfColumn("AD_OrgTrx_ID", source.get_ValueAsInt("AD_OrgTrx_ID"));
+		}
+		if(source.get_ValueAsInt("C_Project_ID") != 0) {
+			target.set_ValueOfColumn("C_Project_ID", source.get_ValueAsInt("C_Project_ID"));
+		}
+		if(source.get_ValueAsInt("C_Campaign_ID") != 0) {
+			target.set_ValueOfColumn("C_Campaign_ID", source.get_ValueAsInt("C_Campaign_ID"));
+		}
+		if(source.get_ValueAsInt("C_Activity_ID") != 0) {
+			target.set_ValueOfColumn("C_Activity_ID", source.get_ValueAsInt("C_Activity_ID"));
+		}
+		if(source.get_ValueAsInt("User1_ID") != 0) {
+			target.set_ValueOfColumn("User1_ID", source.get_ValueAsInt("User1_ID"));
+		}
+		if(source.get_ValueAsInt("User2_ID") != 0) {
+			target.set_ValueOfColumn("User2_ID", source.get_ValueAsInt("User2_ID"));
+		}
+		if(source.get_ValueAsInt("User3_ID") != 0) {
+			target.set_ValueOfColumn("User3_ID", source.get_ValueAsInt("User3_ID"));
+		}
+		if(source.get_ValueAsInt("User4_ID") != 0) {
+			target.set_ValueOfColumn("User4_ID", source.get_ValueAsInt("User4_ID"));
+		}
+    }
+
+	public static BigDecimal getCreditAmount(MOrder order) {
+		if (order == null) {
+			return BigDecimal.ZERO;
+		}
+		MPriceList priceList = MPriceList.get(Env.getCtx(), order.getM_PriceList_ID(), order.get_TrxName());
+		int standardPrecision = priceList.getStandardPrecision();
+
+		BigDecimal creditAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
+		Optional<BigDecimal> maybeCreditAmt = ConvertUtil.getPaymentChageOrCredit(order, true);
+		if (maybeCreditAmt.isPresent()) {
+			creditAmt = maybeCreditAmt.get()
+				.setScale(standardPrecision, RoundingMode.HALF_UP);
+		}
+		return creditAmt;
+	}
+
+	public static BigDecimal getChargeAmount(MOrder order) {
+		if (order == null) {
+			return BigDecimal.ZERO;
+		}
+		MPriceList priceList = MPriceList.get(Env.getCtx(), order.getM_PriceList_ID(), order.get_TrxName());
+		int standardPrecision = priceList.getStandardPrecision();
+
+		BigDecimal chargeAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
+		Optional<BigDecimal> maybeChargeAmt = ConvertUtil.getPaymentChageOrCredit(order, false);
+		if (maybeChargeAmt.isPresent()) {
+			chargeAmt = maybeChargeAmt.get()
+				.setScale(standardPrecision, RoundingMode.HALF_UP);
+		}
+		return chargeAmt;
+	}
+
+	public static BigDecimal getTotalOpenAmount(MOrder order) {
+		if (order == null) {
+			return BigDecimal.ZERO;
+		}
+		
+		BigDecimal grandTotal = order.getGrandTotal();
+		BigDecimal creditAmt = getCreditAmount(order);
+		BigDecimal chargeAmt = getChargeAmount(order);
+
+		BigDecimal grandTotalWithCreditCharges = grandTotal.subtract(creditAmt).add(chargeAmt);
+
+		return grandTotalWithCreditCharges;
+	}
+	
+	/**
+	 * Return true if the document should be apply for writeoff
+	 * @param order
+	 * @param openAmount
+	 * @return
+	 */
+	public static boolean isAutoWriteOff(MOrder order, BigDecimal openAmount) {
+		if (order == null
+				|| openAmount == null) {
+			return false;
+		}
+		MPriceList priceList = MPriceList.get(Env.getCtx(), order.getM_PriceList_ID(), order.get_TrxName());
+		return openAmount.setScale(priceList.getStandardPrecision()).compareTo(Env.ZERO) == 0;
+	}
+	
+	/**
+	 * Get Write Off Amount based on open amount vs payment amount
+	 * @param openAmount
+	 * @param paymentAmount
+	 * @return
+	 */
+	public static BigDecimal getWriteOffPercent(BigDecimal openAmount, BigDecimal paymentAmount, int precision) {
+		if(Optional.ofNullable(openAmount).orElse(Env.ZERO).compareTo(Env.ZERO) == 0) {
+			return null;
+		}
+		BigDecimal difference = Optional.ofNullable(openAmount).orElse(Env.ZERO).subtract(Optional.ofNullable(paymentAmount).orElse(Env.ZERO));
+		return difference.divide(Optional.ofNullable(openAmount).orElse(Env.ZERO), MathContext.DECIMAL128).setScale(precision, RoundingMode.HALF_UP).multiply(Env.ONEHUNDRED);
+	}
+	
+	/**
+	 * Get Payment Amount
+	 * @param order
+	 * @return
+	 */
+	public static BigDecimal getTotalPaymentAmount(MOrder order) {
+		if (order == null) {
+			return BigDecimal.ZERO;
+		}
+		Optional<BigDecimal> paidAmount = MPayment.getOfOrder(order).stream().map(payment -> {
+			BigDecimal paymentAmount = payment.getPayAmt();
+			if(paymentAmount.compareTo(Env.ZERO) == 0
+					&& payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo)) {
+				MInvoice creditMemo = new Query(payment.getCtx(), MInvoice.Table_Name, "C_Payment_ID = ?", payment.get_TrxName()).setParameters(payment.getC_Payment_ID()).first();
+				if(creditMemo != null) {
+					paymentAmount = creditMemo.getGrandTotal();
+				}
+			}
+			if(!payment.isReceipt()) {
+				paymentAmount = payment.getPayAmt().negate();
+			}
+			return getConvetedAmount(order, payment, paymentAmount);
+		}).collect(Collectors.reducing(BigDecimal::add));
+
+		List<PO> paymentReferencesList = ConvertUtil.getPaymentReferencesList(order);
+		Optional<BigDecimal> paymentReferenceAmount = paymentReferencesList.stream()
+				.map(paymentReference -> {
+			BigDecimal amount = ((BigDecimal) paymentReference.get_Value("Amount"));
+			if(paymentReference.get_ValueAsBoolean("IsReceipt")) {
+				amount = amount.negate();
+			}
+			return getConvetedAmount(order, paymentReference, amount);
+		}).collect(Collectors.reducing(BigDecimal::add));
+
+		BigDecimal paymentAmount = Env.ZERO;
+		if(paidAmount.isPresent()) {
+			paymentAmount = paidAmount.get();
+		}		
+		BigDecimal totalPaymentAmount = paymentAmount;
+		if(paymentReferenceAmount.isPresent()) {
+			totalPaymentAmount = totalPaymentAmount.subtract(paymentReferenceAmount.get());
+		}
+
+		return totalPaymentAmount;
+	}
+
 }

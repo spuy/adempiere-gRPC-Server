@@ -183,6 +183,11 @@ service Store {
 	rpc ListRMALines(ListRMALinesRequest) returns (ListRMALinesResponse) {}
 	//	Process Return
 	rpc ProcessRMA(ProcessRMARequest) returns (RMA) {}
+	//	Create Order from RMA
+	rpc CreateOrderFromRMA(CreateOrderFromRMARequest) returns (Order) {}
+	//	Credit Memo as Payment Method
+	//	List Refund References
+	rpc ListCustomerCredits(ListCustomerCreditsRequest) returns (ListCustomerCreditsResponse) {}
 }
 
 //	Delete Refund reference request
@@ -1094,8 +1099,12 @@ message PointOfSales {
 	bool is_pos_manager = 46;
 	bool is_allows_modify_discount = 47;
 	bool is_keep_price_from_customer = 48;
-	Decimal maximum_line_discount_allowed = 59;
+	Decimal maximum_line_discount_allowed = 49;
 	bool is_allows_modify_customer = 50;
+	bool is_allows_detail_cash_closing = 51;
+	Decimal write_off_percentage_tolerance = 52;
+	bool is_write_off_by_percent = 53;
+	bool is_allows_write_off_amount = 54;
 }
 
 // Request for create a order
@@ -1551,7 +1560,8 @@ message ListCampaignsResponse {
 // Request for Copy a Order from Source Order
 message CopyOrderRequest {
 	int32 source_order_id = 1;
-	int32 pos_id = 2;
+	int32 sales_representative_id = 2;
+	int32 pos_id = 3;
 }
 
 //	Return Order
@@ -1622,6 +1632,13 @@ message ProcessRMARequest {
 	int32 pos_id = 4;
 }
 
+// Request for Create a new Sales Order from a RMA
+message CreateOrderFromRMARequest {
+	int32 source_rma_id = 1;
+	int32 sales_representative_id = 2;
+	int32 pos_id = 3;
+}
+
 // Return Order
 message RMA {
 	int32 id = 1;
@@ -1685,4 +1702,30 @@ message RMALine {
 	ProductConversion uom = 30;
 	ProductConversion product_uom = 31;
 	int32 source_order_line_id = 32;
+}
+
+// Customer Credit Memo
+message CreditMemo {
+	int32 id = 1;
+	string document_no = 2;
+	string description = 3;
+	string document_date = 4;
+	Decimal amount = 5;
+	Decimal open_amount = 6;
+	Currency currency = 7;
+}
+
+message ListCustomerCreditsRequest {
+	int32 page_size = 1;
+	string page_token = 2;
+	// filters
+	string search_value = 3;
+	int32 pos_id = 4;
+	int32 customer_id = 5;
+}
+
+message ListCustomerCreditsResponse {
+	int64 record_count = 1;
+	repeated CreditMemo records = 2;
+	string next_page_token = 3;
 }
