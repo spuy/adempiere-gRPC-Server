@@ -115,11 +115,12 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 				throw new AdempiereException("Object Request Null");
 			}
 			log.fine("Session Requested = " + request.getUserName());
-			Session.Builder sessionBuilder = createSession(request, true);
+			Session.Builder sessionBuilder = runLogin(request, true);
 			responseObserver.onNext(sessionBuilder.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 					.withDescription(e.getLocalizedMessage())
 					.withCause(e)
@@ -384,7 +385,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 	 * @param request
 	 * @return
 	 */
-	private Session.Builder createSession(LoginRequest request, boolean isDefaultRole) {
+	private Session.Builder runLogin(LoginRequest request, boolean isDefaultRole) {
 		//	Validate if is token based
 		int userId = -1;
 		int roleId = -1;
@@ -599,9 +600,10 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			// set language with current session
 			language = Env.getContext(currentSession.getCtx(), Env.LANGUAGE);
 		}
+
 		// Session values
 		Session.Builder builder = Session.newBuilder();
-		final String bearerToken = SessionManager.createSession(currentSession.getWebSession(), request.getLanguage(), roleId, userId, organizationId, warehouseId);
+		final String bearerToken = SessionManager.createSession(currentSession.getWebSession(), language, roleId, userId, organizationId, warehouseId);
 		builder.setToken(bearerToken);
 		// Logout
 		logoutSession(LogoutRequest.newBuilder().build());
