@@ -169,9 +169,9 @@ public class OrderManagement {
 		}
 		Trx.run(transactionName -> {
 			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
-			if(DocumentUtil.isClosed(sourceOrder)
+			if(!DocumentUtil.isClosed(sourceOrder)
 					|| DocumentUtil.isVoided(sourceOrder)
-					|| sourceOrder.isReturnOrder()) {
+					|| !sourceOrder.isReturnOrder()) {
 				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
 			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);

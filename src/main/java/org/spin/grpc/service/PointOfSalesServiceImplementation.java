@@ -1716,6 +1716,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		//	
+		MPOS pos = new MPOS(Env.getCtx(), request.getPosId(), null);
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		int count = 0;
@@ -1728,11 +1729,13 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					+ "AND i.IsPaid = 'N' "
 					+ "AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') "
 					+ "AND i.C_BPartner_ID = ? "
+					+ "AND i.AD_Org_ID = ? "
 					+ "AND InvoiceOpen(i.C_Invoice_ID, null) > 0";
 			StringBuffer whereClause = new StringBuffer();
 			List<Object> parameters = new ArrayList<Object>();
 			//	Count records
 			parameters.add(request.getCustomerId());
+			parameters.add(pos.getAD_Org_ID());
 			if(!Util.isEmpty(request.getSearchValue())) {
 				whereClause.append(" AND UPPER(i.DocumentNo) LIKE '%' || UPPER(?) || '%'");
 				//	Add parameters
@@ -1742,8 +1745,9 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 			count = CountUtil.countRecords(sql, "C_Invoice i", parameters);
 			pstmt = DB.prepareStatement(sql, null);
 			pstmt.setInt(1, request.getCustomerId());
+			pstmt.setInt(2, pos.getAD_Org_ID());
 			if(whereClause.length() > 0) {
-				pstmt.setString(2, request.getSearchValue());
+				pstmt.setString(3, request.getSearchValue());
 			}
 			//	Get from Query
 			rs = pstmt.executeQuery();
