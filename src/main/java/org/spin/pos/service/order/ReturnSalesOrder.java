@@ -31,6 +31,7 @@ import org.compiere.util.Env;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.spin.base.util.DocumentUtil;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * This class was created for return a order by product
@@ -104,23 +105,19 @@ public class ReturnSalesOrder {
 					|| !OrderUtil.isValidOrder(rma)) {
 				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
-			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), rmaLine.getRef_OrderLine_ID(), transactionName);
+			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), rmaLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 			if(sourcerOrderLine.getC_OrderLine_ID() <= 0) {
 				throw new AdempiereException("@Ref_OrderLine_ID@ @NotFound@");
 			}
-			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
-			if(availableQuantity.compareTo(Env.ZERO) > 0) {
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), rmaLineId, sourcerOrderLine.getQtyEntered(), quantity);
+			if(availableQuantity.compareTo(Env.ZERO) >= 0) {
 				//	Update order quantity
 				BigDecimal quantityToOrder = quantity;
 				if(quantity == null) {
 					quantityToOrder = rmaLine.getQtyEntered();
 					quantityToOrder = quantityToOrder.add(Env.ONE);
 				}
-				if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
-					OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
-				} else {
-					throw new AdempiereException("@QtyInsufficient@");
-				}
+				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
 			} else {
 				throw new AdempiereException("@QtyInsufficient@");
 			}
@@ -158,9 +155,9 @@ public class ReturnSalesOrder {
 			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), sourceOrderLineId, transactionName);
 			Optional<MOrderLine> maybeOrderLine = Arrays.asList(rma.getLines(true, null))
 					.stream()
-					.filter(rmaLineTofind -> rmaLineTofind.getRef_OrderLine_ID() == sourceOrderLineId)
+					.filter(rmaLineTofind -> rmaLineTofind.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID) == sourceOrderLineId)
 					.findFirst();
-			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), sourcerOrderLine.getQtyEntered(), quantity);
 			if(maybeOrderLine.isPresent()) {
 				MOrderLine rmaLine = maybeOrderLine.get();
 				//	Set Quantity
@@ -169,7 +166,7 @@ public class ReturnSalesOrder {
 					quantityToOrder = rmaLine.getQtyEntered();
 					quantityToOrder = quantityToOrder.add(Env.ONE);
 				}
-    			if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+    			if(availableQuantity.compareTo(Env.ZERO) >= 0) {
     				//	Update order quantity
     				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
     				returnOrderReference.set(rmaLine);
@@ -181,7 +178,7 @@ public class ReturnSalesOrder {
 				if(quantity == null) {
 					quantityToOrder = Env.ONE;
 				}
-		        if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+		        if(availableQuantity.compareTo(Env.ZERO) >= 0) {
 		        	MOrderLine rmaLine = RMAUtil.copyRMALineFromOrder(rma, sourcerOrderLine, transactionName);
 		        	Optional.ofNullable(descrption).ifPresent(description -> rmaLine.setDescription(description));
 		        	OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);

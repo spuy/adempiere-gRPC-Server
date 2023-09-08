@@ -1722,15 +1722,15 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int count = 0;
 		try {
 			//	Get Bank statement
-			String sql = "SELECT i.C_Invoice_ID, i.DocumentNo, i.Description, i.DateInvoiced, i.C_Currency_ID, i.GrandTotal, InvoiceOpen(i.C_Invoice_ID, null) AS OpenAmount "
-					+ "FROM C_Invoice i "
-					+ "WHERE i.IsSOTrx = 'Y' "
-					+ "AND i.DocStatus IN('CO', 'CL') "
-					+ "AND i.IsPaid = 'N' "
-					+ "AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') "
-					+ "AND i.C_BPartner_ID = ? "
-					+ "AND i.AD_Org_ID = ? "
-					+ "AND InvoiceOpen(i.C_Invoice_ID, null) > 0";
+			StringBuffer sql = new StringBuffer("SELECT i.C_Invoice_ID, i.DocumentNo, i.Description, i.DateInvoiced, i.C_Currency_ID, i.GrandTotal, (InvoiceOpen(i.C_Invoice_ID, null) * -1) AS OpenAmount ")
+					.append("FROM C_Invoice i ")
+					.append("WHERE i.IsSOTrx = 'Y' ")
+					.append("AND i.DocStatus IN('CO', 'CL') ")
+					.append("AND i.IsPaid = 'N' ")
+					.append("AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') ")
+					.append("AND i.C_BPartner_ID = ? ")
+					.append("AND i.AD_Org_ID = ? ")
+					.append("AND InvoiceOpen(i.C_Invoice_ID, null) <> 0");
 			StringBuffer whereClause = new StringBuffer();
 			List<Object> parameters = new ArrayList<Object>();
 			//	Count records
@@ -1741,9 +1741,10 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				//	Add parameters
 				parameters.add(request.getSearchValue());
 			}
-			sql = sql + whereClause.toString();
-			count = CountUtil.countRecords(sql, "C_Invoice i", parameters);
-			pstmt = DB.prepareStatement(sql, null);
+			sql.append(whereClause);
+			sql.append(" ORDER BY i.DateInvoiced DESC");
+			count = CountUtil.countRecords(sql.toString(), "C_Invoice i", parameters);
+			pstmt = DB.prepareStatement(sql.toString(), null);
 			pstmt.setInt(1, request.getCustomerId());
 			pstmt.setInt(2, pos.getAD_Org_ID());
 			if(whereClause.length() > 0) {
