@@ -339,8 +339,7 @@ public class OrderUtil {
 				//	Create new Invoice Line
 				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, true, transactionName);
 				targetOrderLine.set_ValueOfColumn("ECA14_Source_RMALine_ID", sourcerOrderLine.getC_OrderLine_ID());
-				//	Save
-				targetOrderLine.saveEx(transactionName);
+				OrderUtil.updateUomAndQuantity(targetOrderLine, targetOrderLine.getC_UOM_ID(), targetOrderLine.getQtyEntered());
     		});
     }
     

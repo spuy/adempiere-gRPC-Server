@@ -120,6 +120,7 @@ import org.spin.grpc.service.TimeControlServiceImplementation;
 import org.spin.util.AttachmentUtil;
 import org.spin.model.MADAttachmentReference;
 import org.spin.pos.service.order.OrderUtil;
+import org.spin.pos.util.ColumnsAdded;
 import org.spin.pos.util.POSConvertUtil;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
@@ -1270,7 +1271,7 @@ public class ConvertUtil {
 				.setUuid(
 					ValueUtil.validateNull(orderLine.getUUID())
 				)
-				.setSourceOrderLineId(orderLine.getRef_OrderLine_ID())
+				.setSourceOrderLineId(orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID))
 				.setLine(orderLine.getLine())
 				.setDescription(ValueUtil.validateNull(orderLine.getDescription()))
 				.setLineDescription(ValueUtil.validateNull(orderLine.getName()))
