@@ -175,6 +175,7 @@ public class OrderManagement {
 				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
 			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);
+			setDefaultValuesFromPOS(pos, targetOrder);
 			MBPartner businessPartner = (MBPartner) targetOrder.getC_BPartner();
 			OrderUtil.setCurrentDate(targetOrder);
 			int salesRepId = salesRepresentativeId;
@@ -197,6 +198,31 @@ public class OrderManagement {
 			orderReference.set(targetOrder);
 		});
 		return orderReference.get();
+	}
+	
+	private static void setDefaultValuesFromPOS(MPOS pos, MOrder salesOrder) {
+		salesOrder.setM_PriceList_ID(pos.getM_PriceList_ID());
+		salesOrder.setM_Warehouse_ID(pos.getM_Warehouse_ID());
+		//	Document Type
+		int documentTypeId = pos.getC_DocType_ID();
+		//	Validate
+		if(documentTypeId > 0) {
+			salesOrder.setC_DocTypeTarget_ID(documentTypeId);
+		} else {
+			salesOrder.setC_DocTypeTarget_ID(MOrder.DocSubTypeSO_POS);
+		}
+		//	Delivery Rules
+		if (pos.getDeliveryRule() != null) {
+			salesOrder.setDeliveryRule(pos.getDeliveryRule());
+		}
+		//	Invoice Rule
+		if (pos.getInvoiceRule() != null) {
+			salesOrder.setInvoiceRule(pos.getInvoiceRule());
+		}
+		//	Conversion Type
+		if(pos.get_ValueAsInt(MOrder.COLUMNNAME_C_ConversionType_ID) > 0) {
+			salesOrder.setC_ConversionType_ID(pos.get_ValueAsInt(MOrder.COLUMNNAME_C_ConversionType_ID));
+		}
 	}
 	
 	/**
