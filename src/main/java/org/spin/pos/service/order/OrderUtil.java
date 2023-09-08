@@ -255,6 +255,7 @@ public class OrderUtil {
         //	Set references
 		salesOrder.setC_POS_ID(pos.getC_POS_ID());
 		salesOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
+		salesOrder.setRef_Order_ID(0);
 		salesOrder.setProcessed(false);
 		//	
 		copyAccountDimensions(sourceOrder, salesOrder);
