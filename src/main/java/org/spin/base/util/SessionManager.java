@@ -48,6 +48,7 @@ import org.compiere.util.Util;
 import org.spin.authentication.BearerToken;
 import org.spin.authentication.Constants;
 import org.spin.base.setup.SetupLoader;
+import org.spin.eca52.util.JWTUtil;
 import org.spin.model.MADToken;
 import org.spin.model.MADTokenDefinition;
 import org.spin.util.IThirdPartyAccessGenerator;
@@ -90,7 +91,7 @@ public class SessionManager {
 		String [] values = tokenValue.split("[.]");
 		//	Is a JWT
 		if(values != null && values.length == 3) {
-			JwtParser parser = Jwts.parserBuilder().setSigningKey(SetupLoader.getInstance().getServer().getSecret_key()).build();
+			JwtParser parser = Jwts.parserBuilder().setSigningKey(getSecretKey()).build();
 	        Jws<Claims> claims = parser.parseClaimsJws(tokenValue);
 	        int userId = claims.getBody().get("AD_User_ID", Integer.class);
 			int roleId = claims.getBody().get("AD_Role_ID", Integer.class);
@@ -184,6 +185,17 @@ public class SessionManager {
 		return bearerToken;
 	}
 	
+	private static String getSecretKey() {
+		String secretKey = MSysConfig.getValue(JWTUtil.ECA52_JWT_SECRET_KEY, Env.getAD_Client_ID(Env.getCtx()));
+		if(Util.isEmpty(secretKey)) {
+			secretKey = SetupLoader.getInstance().getServer().getSecret_key();
+		}
+        if(Util.isEmpty(secretKey)) {
+        	throw new AdempiereException("@ECA52_JWT_SECRET_KEY@ @NotFound@");
+        }
+        return secretKey;
+	}
+	
 	/**
 	 * Create token as bearer
 	 * @param session
@@ -197,7 +209,8 @@ public class SessionManager {
 		if(sessionTimeout == 0) {
 			sessionTimeout = SetupLoader.getInstance().getServer().getExpiration();
 		}
-		byte[] keyBytes = Decoders.BASE64.decode(SetupLoader.getInstance().getServer().getSecret_key());
+		
+		byte[] keyBytes = Decoders.BASE64.decode(getSecretKey());
         Key key = Keys.hmacShaKeyFor(keyBytes);
         return Jwts.builder()
         		.setId(String.valueOf(session.getAD_Session_ID()))
