@@ -2407,7 +2407,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int offset = (pageNumber - 1) * limit;
 
 		List<Object> parameters = new ArrayList<Object>();
-		StringBuffer whereClause = new StringBuffer("IsPaid = 'N' AND Processed = 'N'");
+		StringBuffer whereClause = new StringBuffer("(IsPaid = 'N' AND Processed = 'N' OR IsKeepReferenceAfterProcess = 'Y')");
 		if(!Util.isEmpty(request.getOrderUuid())) {
 			parameters.add(RecordUtil.getIdFromUuid(I_C_Order.Table_Name, request.getOrderUuid(), null));
 			whereClause.append(" AND C_Order_ID = ?");
