@@ -344,6 +344,9 @@ public class OrderManagement {
 		creditMemo.setC_ConversionType_ID(payment.getC_ConversionType_ID());
 		creditMemo.setC_Order_ID(salesOrder.getC_Order_ID());
 		creditMemo.setC_Payment_ID(payment.getC_Payment_ID());
+		creditMemo.setDateInvoiced(payment.getDateTrx());
+		creditMemo.setDateAcct(payment.getDateAcct());
+		OrderUtil.copyAccountDimensions(salesOrder, creditMemo);
 		creditMemo.saveEx(transactionName);
 		//	Add line
 		MInvoiceLine creditMemoLine = new MInvoiceLine(creditMemo);
@@ -400,7 +403,7 @@ public class OrderManagement {
 	public static void processPayments(MOrder salesOrder, MPOS pos, boolean isOpenRefund, String transactionName) {
 		//	Get invoice if exists
 		int invoiceId = salesOrder.getC_Invoice_ID();
-		AtomicReference<BigDecimal> openAmount = new AtomicReference<BigDecimal>(salesOrder.getGrandTotal());
+		AtomicReference<BigDecimal> openAmount = new AtomicReference<BigDecimal>(OrderUtil.getTotalOpenAmount(salesOrder));
 		AtomicReference<BigDecimal> currentAmount = new AtomicReference<BigDecimal>(salesOrder.getGrandTotal());
 		List<Integer> paymentsIds = new ArrayList<Integer>();
 		//	Complete Payments
