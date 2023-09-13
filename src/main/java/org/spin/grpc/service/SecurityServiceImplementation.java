@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_AD_Menu;
-import org.adempiere.core.domains.models.I_AD_Org;
 import org.adempiere.core.domains.models.I_AD_Role;
 import org.adempiere.core.domains.models.I_M_Warehouse;
 import org.adempiere.exceptions.AdempiereException;
@@ -51,6 +50,7 @@ import org.compiere.util.Util;
 import org.compiere.wf.MWorkflow;
 import org.spin.authentication.services.OpenIDUtil;
 import org.spin.backend.grpc.security.ChangeRoleRequest;
+import org.spin.backend.grpc.security.Client;
 import org.spin.backend.grpc.security.ContextValue;
 import org.spin.backend.grpc.security.ListRolesRequest;
 import org.spin.backend.grpc.security.ListRolesResponse;
@@ -299,6 +299,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -355,7 +356,9 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		query.setLimit(limit, offset)
 			.<MRole>list()
 			.forEach(role -> {
-				builder.addRoles(convertRole(role, false));
+				builder.addRoles(
+					convertRole(role)
+				);
 			});
 		//	
 		builder.setRecordCount(count);
@@ -404,14 +407,20 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			if(userId < 0) {
 				throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 			}
-			if(!Util.isEmpty(request.getRoleUuid())) {
-				roleId = RecordUtil.getIdFromUuid(I_AD_Role.Table_Name, request.getRoleUuid(), null);
+			MUser user = MUser.get(Env.getCtx(), userId);
+			if (user == null) {
+				throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 			}
-			if(!Util.isEmpty(request.getOrganizationUuid())) {
-				organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
+
+			// TODO: Validate values
+			if (request.getRoleId() >= 0) {
+				roleId = request.getRoleId();
 			}
-			if(!Util.isEmpty(request.getWarehouseUuid())) {
-				warehouseId = RecordUtil.getIdFromUuid(I_M_Warehouse.Table_Name, request.getWarehouseUuid(), null);
+			if(request.getOrganizationId() >= 0) {
+				organizationId = request.getOrganizationId();
+			}
+			if(request.getWarehouseId() >= 0) {
+				warehouseId = request.getWarehouseId();
 			}
 		}
 		return createValidSession(isDefaultRole, request.getClientVersion(), request.getLanguage(), roleId, userId, organizationId, warehouseId);
@@ -534,6 +543,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -554,7 +564,7 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		MSession currentSession = MSession.get(context, false, false);
 		int userId = currentSession.getCreatedBy();
 		//	Get Values from role
-		int roleId = DB.getSQLValue(null, "SELECT AD_Role_ID FROM AD_Role WHERE UUID = ?", request.getRoleUuid());
+		int roleId = request.getRoleId();
 		if (roleId < 0) {
 			throw new AdempiereException("@AD_User_ID@ / @AD_Role_ID@ / @AD_Org_ID@ @NotFound@");
 		}
@@ -562,12 +572,8 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 
 		// Get organization
 		int organizationId = -1;
-		if (!Util.isEmpty(request.getOrganizationUuid(), true)) {
-			organizationId = DB.getSQLValue(
-				null,
-				"SELECT AD_Org_ID FROM AD_Org WHERE UUID = ?",
-				request.getOrganizationUuid()
-			);
+		if (request.getOrganizationId() >= 0) {
+			organizationId = request.getOrganizationId();
 			if (!role.isOrgAccess(organizationId, true)) {
 				// invlaid organization from role
 				organizationId = -1;
@@ -576,19 +582,15 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		if (organizationId < 0) {
 			organizationId = SessionManager.getDefaultOrganizationId(roleId, userId);
 			if (organizationId < 0) {
+				// TODO: Verify it access
 				organizationId = 0;
 			}
 		}
 
 		// Get warehouse
 		int warehouseId = -1;
-		if (!Util.isEmpty(request.getWarehouseUuid(), true)) {
-			warehouseId = DB.getSQLValue(
-				null,
-				"SELECT M_Warehouse_ID FROM M_Warehouse WHERE UUID = ? AND AD_Org_ID = ?",
-				request.getWarehouseUuid(),
-				organizationId
-			);
+		if (request.getWarehouseId() >= 0) {
+			warehouseId = request.getWarehouseId();
 		}
 		if (warehouseId < 0) {
 			warehouseId = 0;
@@ -672,7 +674,9 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		builder.setName(ValueUtil.validateNull(session.getDescription()));
 		builder.setUserInfo(convertUserInfo(MUser.get(context, session.getCreatedBy())).build());
 		//	Set role
-		Role.Builder roleBuilder = convertRole(MRole.get(context, session.getAD_Role_ID()), false);
+		Role.Builder roleBuilder = convertRole(
+			MRole.get(context, session.getAD_Role_ID())
+		);
 		builder.setRole(roleBuilder.build());
 		//	Set default context
 		populateDefaultPreferences(builder);
@@ -732,263 +736,130 @@ public class SecurityServiceImplementation extends SecurityImplBase {
 		//	Return
 		return convertUserInfo(user);
 	}
-	
+
+
+	private Client.Builder convertClient(int clientId) {
+		Client.Builder builder = Client.newBuilder();
+		if (clientId < 0) {
+			return builder;
+		}
+		MClient client = MClient.get(Env.getCtx(), clientId);
+		if (client == null) {
+			return builder;
+		}
+		builder.setId(client.getAD_Client_ID())
+			.setUuid(
+				ValueUtil.validateNull(client.getUUID())
+			)
+			.setName(
+				ValueUtil.validateNull(client.getName())
+			)
+			.setDescription(
+				ValueUtil.validateNull(client.getDescription())
+			)
+		;
+
+		// Add client logo
+		if (AttachmentUtil.getInstance().isValidForClient(client.getAD_Client_ID())) {
+			MClientInfo clientInfo = MClientInfo.get(Env.getCtx(), client.getAD_Client_ID());
+			if (clientInfo.getLogo_ID() > 0) {
+				MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
+					Env.getCtx(),
+					clientInfo.getFileHandler_ID(),
+					clientInfo.getLogo_ID(),
+					null
+				);
+				if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
+					builder.setLogo(
+						ValueUtil.validateNull(
+							attachmentReference.getValidFileName()
+						)
+					);
+				}
+			}
+			if (clientInfo.getLogoReport_ID() > 0) {
+				MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
+					Env.getCtx(),
+					clientInfo.getFileHandler_ID(),
+					clientInfo.getLogoReport_ID(),
+					null
+				);
+				if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
+					builder.setLogoReport(
+						ValueUtil.validateNull(
+							attachmentReference.getValidFileName()
+						)
+					);
+				}
+			}
+			if (clientInfo.getLogoWeb_ID() > 0) {
+				MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
+					Env.getCtx(),
+					clientInfo.getFileHandler_ID(),
+					clientInfo.getLogoWeb_ID(),
+					null
+				);
+				if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
+					builder.setLogoWeb(
+						ValueUtil.validateNull(
+							attachmentReference.getValidFileName()
+						)
+					);
+				}
+			}
+		}
+
+		return builder;
+	}
+
+
 	/**
 	 * Convert role from model class
 	 * @param role
 	 * @param withAccess
 	 * @return
 	 */
-	private Role.Builder convertRole(MRole role, boolean withAccess) {
-		Role.Builder builder = null;
+	private Role.Builder convertRole(MRole role) {
+		Role.Builder builder = Role.newBuilder();
 		//	Validate
-		if(role != null) {
-			MClient client = MClient.get(Env.getCtx(), role.getAD_Client_ID());
-			builder = Role.newBuilder()
-					.setId(role.getAD_Role_ID())
-					.setUuid(ValueUtil.validateNull(role.getUUID()))
-					.setName(ValueUtil.validateNull(role.getName()))
-					.setDescription(ValueUtil.validateNull(role.getDescription()))
-					.setClientName(ValueUtil.validateNull(client.getName()))
-					.setClientId(role.getAD_Client_ID())
-					.setIsCanExport(role.isCanExport())
-					.setIsCanReport(role.isCanReport())
-					.setIsPersonalAccess(role.isPersonalAccess())
-					.setIsPersonalLock(role.isPersonalLock())
-					.setIsAllowHtmlView(role.isAllow_HTML_View())
-					.setIsAllowInfoAccount(role.isAllow_Info_Account())
-					.setIsAllowInfoAsset(role.isAllow_Info_Asset())
-					.setIsAllowInfoBusinessPartner(role.isAllow_Info_BPartner())
-					.setIsAllowInfoCashJournal(role.isAllow_Info_CashJournal())
-					.setIsAllowInfoCrp(role.isAllow_Info_CRP())
-					.setIsAllowInfoInOut(role.isAllow_Info_InOut())
-					.setIsAllowInfoInvoice(role.isAllow_Info_Invoice())
-					.setIsAllowInfoMrp(role.isAllow_Info_MRP())
-					.setIsAllowInfoOrder(role.isAllow_Info_Order())
-					.setIsAllowInfoPayment(role.isAllow_Info_Payment())
-					.setIsAllowInfoProduct(role.isAllow_Info_Product())
-					.setIsAllowInfoResource(role.isAllow_Info_Resource())
-					.setIsAllowInfoSchedule(role.isAllow_Info_Schedule())
-					.setIsAllowXlsView(role.isAllow_XLS_View());
-
-			// Add client logo
-			if (AttachmentUtil.getInstance().isValidForClient(client.getAD_Client_ID())) {
-				MClientInfo clientInfo = MClientInfo.get(Env.getCtx(), client.getAD_Client_ID());
-				if (clientInfo.getLogo_ID() > 0) {
-					MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
-						Env.getCtx(),
-						clientInfo.getFileHandler_ID(),
-						clientInfo.getLogo_ID(),
-						null
-					);
-					if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
-						builder.setClientLogo(
-							ValueUtil.validateNull(
-								attachmentReference.getValidFileName()
-							)
-						);
-					}
-				}
-				if (clientInfo.getLogoReport_ID() > 0) {
-					MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
-						Env.getCtx(),
-						clientInfo.getFileHandler_ID(),
-						clientInfo.getLogoReport_ID(),
-						null
-					);
-					if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
-						builder.setClientLogo(
-							ValueUtil.validateNull(
-								attachmentReference.getValidFileName()
-							)
-						);
-					}
-				}
-				if (clientInfo.getLogoWeb_ID() > 0) {
-					MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
-						Env.getCtx(),
-						clientInfo.getFileHandler_ID(),
-						clientInfo.getLogoWeb_ID(),
-						null
-					);
-					if (attachmentReference != null && attachmentReference.getAD_AttachmentReference_ID() > 0) {
-						builder.setClientLogo(
-							ValueUtil.validateNull(
-								attachmentReference.getValidFileName()
-							)
-						);
-					}
-				}
-			}
-
-			//	With Access
-			// TODO: load from other service
-			if(withAccess) {
-				//	Org Access
-//				List<MRoleOrgAccess> orgAccessList = new Query(Env.getCtx(), I_AD_Role_OrgAccess.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MRoleOrgAccess>list();
-//				for(MRoleOrgAccess access : orgAccessList) {
-//					MOrg organization = MOrg.get(Env.getCtx(), access.getAD_Org_ID());
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(organization.getUUID()))
-//							.setIsReadOnly(access.isReadOnly());
-//					builder.addOrganizations(accessBuilder.build());
-//				}
-//				//	Process Access
-//				List<MProcessAccess> processAccessList = new Query(Env.getCtx(), I_AD_Process_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MProcessAccess>list();
-//				for(MProcessAccess access : processAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Process().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addProcess(accessBuilder.build());
-//				}
-//				//	Window Access
-//				List<MWindowAccess> windowAccessList = new Query(Env.getCtx(), I_AD_Window_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MWindowAccess>list();
-//				for(MWindowAccess access : windowAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Window().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addWindows(accessBuilder.build());
-//				}
-//				//	Form Access
-//				List<MFormAccess> formAccessList = new Query(Env.getCtx(), I_AD_Form_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MFormAccess>list();
-//				for(MFormAccess access : formAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Form().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addForms(accessBuilder.build());
-//				}
-//				//	Browse Access
-//				List<X_AD_Browse_Access> browseAccessList = new Query(Env.getCtx(), I_AD_Browse_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<X_AD_Browse_Access>list();
-//				for(X_AD_Browse_Access access : browseAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Browse().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addBrowsers(accessBuilder.build());
-//				}
-//				//	Task Access
-//				List<X_AD_Task_Access> taskAccessList = new Query(Env.getCtx(), I_AD_Task_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<X_AD_Task_Access>list();
-//				for(X_AD_Task_Access access : taskAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Task().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addTasks(accessBuilder.build());
-//				}
-//				//	Dashboard Access
-//				List<X_AD_Dashboard_Access> dashboardAccessList = new Query(Env.getCtx(), I_AD_Dashboard_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<X_AD_Dashboard_Access>list();
-//				for(X_AD_Dashboard_Access access : dashboardAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getPA_DashboardContent().getUUID()));
-//					builder.addDashboards(accessBuilder.build());
-//				}
-//				//	Workflow Access
-//				List<MWorkflowAccess> workflowAccessList = new Query(Env.getCtx(), I_AD_Workflow_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MWorkflowAccess>list();
-//				for(MWorkflowAccess access : workflowAccessList) {
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(access.getAD_Workflow().getUUID()))
-//							.setIsReadOnly(!access.isReadWrite());
-//					builder.addWorkflows(accessBuilder.build());
-//				}
-//				//	Document Action Access
-//				List<X_AD_Document_Action_Access> documentActionAccessList = new Query(Env.getCtx(), I_AD_Document_Action_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<X_AD_Document_Action_Access>list();
-//				for(X_AD_Document_Action_Access access : documentActionAccessList) {
-//					MDocType documentType = MDocType.get(Env.getCtx(), access.getC_DocType_ID());
-//					Access.Builder accessBuilder = Access.newBuilder()
-//							.setUuid(ValueUtil.validateNull(documentType.getUUID()))
-//							.setAction(access.getAD_Ref_List().getValue());
-//					builder.addDocumentActions(accessBuilder.build());
-//				}
-//				//	Table Access
-//				List<MTableAccess> tableAccessList = new Query(Env.getCtx(), I_AD_Table_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MTableAccess>list();
-//				for(MTableAccess access : tableAccessList) {
-//					AccessTypeRule accessTypeRule = AccessTypeRule.ACCESSING;
-//					if(access.getAccessTypeRule().equals(X_AD_Table_Access.ACCESSTYPERULE_Exporting)) {
-//						accessTypeRule = AccessTypeRule.EXPORTING;
-//					} else if(access.getAccessTypeRule().equals(X_AD_Table_Access.ACCESSTYPERULE_Reporting)) {
-//						accessTypeRule = AccessTypeRule.REPORTING;
-//					}
-//					TableAccess.Builder accessBuilder = TableAccess.newBuilder()
-//							.setTableName(ValueUtil.validateNull(access.getAD_Table().getTableName()))
-//							.setIsExclude(access.isExclude())
-//							.setIsCanReport(access.isCanReport())
-//							.setIsCanExport(access.isCanExport())
-//							.setAccessTypeRules(accessTypeRule);
-//					builder.addTables(accessBuilder.build());
-//				}
-//				//	Column Access
-//				List<MColumnAccess> columnAccessList = new Query(Env.getCtx(), I_AD_Column_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MColumnAccess>list();
-//				for(MColumnAccess access : columnAccessList) {
-//					ColumnAccess.Builder accessBuilder = ColumnAccess.newBuilder()
-//							.setIsExclude(access.isExclude())
-//							.setIsReadOnly(access.isReadOnly());
-//					//	For Table
-//					if(access.getAD_Table_ID() > 0) {
-//						MTable table = MTable.get(Env.getCtx(), access.getAD_Table_ID());
-//						accessBuilder.setTableName(table.getTableName());
-//					}
-//					//	For Column
-//					if(access.getAD_Column_ID() > 0) {
-//						MColumn column = MColumn.get(Env.getCtx(), access.getAD_Column_ID());
-//						accessBuilder.setColumnName(column.getColumnName());
-//					}
-//					builder.addColumns(accessBuilder.build());
-//				}
-//				//	Record Access
-//				List<MRecordAccess> recordAccessList = new Query(Env.getCtx(), I_AD_Record_Access.Table_Name, "AD_Role_ID = ?", null)
-//					.setParameters(role.getAD_Role_ID())
-//					.setOnlyActiveRecords(true)
-//					.<MRecordAccess>list();
-//				for(MRecordAccess access : recordAccessList) {
-//					RecordAccess.Builder accessBuilder = RecordAccess.newBuilder()
-//							.setIsReadOnly(access.isReadOnly())
-//							.setIsExclude(access.isExclude())
-//							.setIsDependentEntities(access.isDependentEntities())
-//							.setRecordId(access.getRecord_ID());
-//					//	For Table
-//					if(access.getAD_Table_ID() > 0) {
-//						MTable table = MTable.get(Env.getCtx(), access.getAD_Table_ID());
-//						accessBuilder.setTableName(table.getTableName());
-//					}
-//					builder.addRecords(accessBuilder.build());
-//				}
-			}
+		if(role == null) {
+			return builder;
 		}
+		Client.Builder clientBuilder = convertClient(role.getAD_Client_ID());
+		builder = Role.newBuilder()
+			.setId(role.getAD_Role_ID())
+			.setUuid(ValueUtil.validateNull(role.getUUID()))
+			.setName(ValueUtil.validateNull(role.getName()))
+			.setDescription(ValueUtil.validateNull(role.getDescription()))
+			.setClient(
+				clientBuilder
+			)
+			.setIsCanExport(role.isCanExport())
+			.setIsCanReport(role.isCanReport())
+			.setIsPersonalAccess(role.isPersonalAccess())
+			.setIsPersonalLock(role.isPersonalLock())
+			.setIsAllowHtmlView(role.isAllow_HTML_View())
+			.setIsAllowInfoAccount(role.isAllow_Info_Account())
+			.setIsAllowInfoAsset(role.isAllow_Info_Asset())
+			.setIsAllowInfoBusinessPartner(role.isAllow_Info_BPartner())
+			.setIsAllowInfoCashJournal(role.isAllow_Info_CashJournal())
+			.setIsAllowInfoCrp(role.isAllow_Info_CRP())
+			.setIsAllowInfoInOut(role.isAllow_Info_InOut())
+			.setIsAllowInfoInvoice(role.isAllow_Info_Invoice())
+			.setIsAllowInfoMrp(role.isAllow_Info_MRP())
+			.setIsAllowInfoOrder(role.isAllow_Info_Order())
+			.setIsAllowInfoPayment(role.isAllow_Info_Payment())
+			.setIsAllowInfoProduct(role.isAllow_Info_Product())
+			.setIsAllowInfoResource(role.isAllow_Info_Resource())
+			.setIsAllowInfoSchedule(role.isAllow_Info_Schedule())
+			.setIsAllowXlsView(role.isAllow_XLS_View())
+		;
+
 		//	return
 		return builder;
 	}
-	
+
+
 	/**
 	 * Convert Menu
 	 * @return
