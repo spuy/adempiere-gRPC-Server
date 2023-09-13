@@ -22,61 +22,22 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.exceptions.AdempiereException;
-import org.compiere.model.MBPartner;
 import org.compiere.model.MInOut;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MPOS;
-import org.compiere.model.MUser;
 import org.compiere.model.Query;
 import org.compiere.util.Env;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 import org.spin.base.util.DocumentUtil;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * This class was created for return a order by product
  * @author Yamel Senih, ysenih@erpya.com , http://www.erpya.com
  */
 public class ReturnSalesOrder {
-	
-	public static MOrder createOrderFromRMA(int posId, int salesRepresentativeId, int sourceOrderId) {
-		if(posId <= 0) {
-			throw new AdempiereException("@C_POS_ID@ @NotFound@");
-		}
-		if(sourceOrderId <= 0) {
-			throw new AdempiereException("@C_Order_ID@ @NotFound@");
-		}
-		MPOS pos = new MPOS(Env.getCtx(), posId, null);
-		AtomicReference<MOrder> orderReference = new AtomicReference<MOrder>();
-		Trx.run(transactionName -> {
-			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
-			if(DocumentUtil.isVoided(sourceOrder)
-					|| !sourceOrder.isReturnOrder()) {
-				throw new AdempiereException("@ActionNotAllowedHere@");
-			}
-			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);
-			MBPartner businessPartner = (MBPartner) targetOrder.getC_BPartner();
-			OrderUtil.setCurrentDate(targetOrder);
-			int salesRepId = salesRepresentativeId;
-			MUser currentUser = MUser.get(Env.getCtx());
-			if (pos.get_ValueAsBoolean("IsSharedPOS")) {
-				salesRepId = currentUser.getAD_User_ID();
-			} else if (businessPartner.getSalesRep_ID() != 0) {
-				salesRepId = businessPartner.getSalesRep_ID();
-			} else {
-				salesRepId = pos.getSalesRep_ID();
-			}
-			if(salesRepId > 0) {
-				targetOrder.setSalesRep_ID(salesRepId);
-			}
-			targetOrder.set_ValueOfColumn("AssignedSalesRep_ID", currentUser.getAD_User_ID());
-			targetOrder.saveEx();
-			OrderUtil.copyOrderLinesFromOrder(sourceOrder, targetOrder, transactionName);
-			orderReference.set(targetOrder);
-		});
-		return orderReference.get();
-	}
 	
 	/**
 	 * Create a Return order and cancel all payments
@@ -144,23 +105,19 @@ public class ReturnSalesOrder {
 					|| !OrderUtil.isValidOrder(rma)) {
 				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
-			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), rmaLine.getRef_OrderLine_ID(), transactionName);
+			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), rmaLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 			if(sourcerOrderLine.getC_OrderLine_ID() <= 0) {
 				throw new AdempiereException("@Ref_OrderLine_ID@ @NotFound@");
 			}
-			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
-			if(availableQuantity.compareTo(Env.ZERO) > 0) {
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), rmaLineId, sourcerOrderLine.getQtyEntered(), quantity);
+			if(availableQuantity.compareTo(Env.ZERO) >= 0) {
 				//	Update order quantity
 				BigDecimal quantityToOrder = quantity;
 				if(quantity == null) {
 					quantityToOrder = rmaLine.getQtyEntered();
 					quantityToOrder = quantityToOrder.add(Env.ONE);
 				}
-				if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
-					OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
-				} else {
-					throw new AdempiereException("@QtyInsufficient@");
-				}
+				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
 			} else {
 				throw new AdempiereException("@QtyInsufficient@");
 			}
@@ -198,9 +155,9 @@ public class ReturnSalesOrder {
 			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), sourceOrderLineId, transactionName);
 			Optional<MOrderLine> maybeOrderLine = Arrays.asList(rma.getLines(true, null))
 					.stream()
-					.filter(rmaLineTofind -> rmaLineTofind.getRef_OrderLine_ID() == sourceOrderLineId)
+					.filter(rmaLineTofind -> rmaLineTofind.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID) == sourceOrderLineId)
 					.findFirst();
-			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
+			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), sourcerOrderLine.getQtyEntered(), quantity);
 			if(maybeOrderLine.isPresent()) {
 				MOrderLine rmaLine = maybeOrderLine.get();
 				//	Set Quantity
@@ -209,7 +166,7 @@ public class ReturnSalesOrder {
 					quantityToOrder = rmaLine.getQtyEntered();
 					quantityToOrder = quantityToOrder.add(Env.ONE);
 				}
-    			if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+    			if(availableQuantity.compareTo(Env.ZERO) >= 0) {
     				//	Update order quantity
     				OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);
     				returnOrderReference.set(rmaLine);
@@ -221,7 +178,7 @@ public class ReturnSalesOrder {
 				if(quantity == null) {
 					quantityToOrder = Env.ONE;
 				}
-		        if(availableQuantity.subtract(quantityToOrder).compareTo(Env.ZERO) >= 0) {
+		        if(availableQuantity.compareTo(Env.ZERO) >= 0) {
 		        	MOrderLine rmaLine = RMAUtil.copyRMALineFromOrder(rma, sourcerOrderLine, transactionName);
 		        	Optional.ofNullable(descrption).ifPresent(description -> rmaLine.setDescription(description));
 		        	OrderUtil.updateUomAndQuantity(rmaLine, rmaLine.getC_UOM_ID(), quantityToOrder);

@@ -1729,25 +1729,40 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
 		//
+		MPOS pos = new MPOS(Env.getCtx(), request.getPosId(), null);
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		int count = 0;
 		try {
 			//	Get Bank statement
-			String sql = "SELECT i.C_Invoice_ID, i.DocumentNo, i.Description, i.DateInvoiced, i.C_Currency_ID, i.GrandTotal, InvoiceOpen(i.C_Invoice_ID, null) AS OpenAmount "
-					+ "FROM C_Invoice i "
-					+ "WHERE i.IsSOTrx = 'Y' "
-					+ "AND i.DocStatus IN('CO', 'CL') "
-					+ "AND i.IsPaid = 'N' "
-					+ "AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') "
-					+ "AND i.C_BPartner_ID = ? "
-					+ "AND InvoiceOpen(i.C_Invoice_ID, null) > 0";
-			//	Count records
+			StringBuffer sql = new StringBuffer("SELECT i.C_Invoice_ID, i.DocumentNo, i.Description, i.DateInvoiced, i.C_Currency_ID, i.GrandTotal, (InvoiceOpen(i.C_Invoice_ID, null) * -1) AS OpenAmount ")
+					.append("FROM C_Invoice i ")
+					.append("WHERE i.IsSOTrx = 'Y' ")
+					.append("AND i.DocStatus IN('CO', 'CL') ")
+					.append("AND i.IsPaid = 'N' ")
+					.append("AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = i.C_DocType_ID AND dt.DocBaseType = 'ARC') ")
+					.append("AND i.C_BPartner_ID = ? ")
+					.append("AND i.AD_Org_ID = ? ")
+					.append("AND InvoiceOpen(i.C_Invoice_ID, null) <> 0");
+			StringBuffer whereClause = new StringBuffer();
 			List<Object> parameters = new ArrayList<Object>();
+			//	Count records
 			parameters.add(request.getCustomerId());
-			count = CountUtil.countRecords(sql, "C_Invoice i", parameters);
-			pstmt = DB.prepareStatement(sql, null);
+			parameters.add(pos.getAD_Org_ID());
+			if(!Util.isEmpty(request.getSearchValue())) {
+				whereClause.append(" AND UPPER(i.DocumentNo) LIKE '%' || UPPER(?) || '%'");
+				//	Add parameters
+				parameters.add(request.getSearchValue());
+			}
+			sql.append(whereClause);
+			sql.append(" ORDER BY i.DateInvoiced DESC");
+			count = CountUtil.countRecords(sql.toString(), "C_Invoice i", parameters);
+			pstmt = DB.prepareStatement(sql.toString(), null);
 			pstmt.setInt(1, request.getCustomerId());
+			pstmt.setInt(2, pos.getAD_Org_ID());
+			if(whereClause.length() > 0) {
+				pstmt.setString(3, request.getSearchValue());
+			}
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
@@ -2456,7 +2471,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		int offset = (pageNumber - 1) * limit;
 
 		List<Object> parameters = new ArrayList<Object>();
-		StringBuffer whereClause = new StringBuffer("IsPaid = 'N' AND Processed = 'N'");
+		StringBuffer whereClause = new StringBuffer("(IsPaid = 'N' AND Processed = 'N' OR IsKeepReferenceAfterProcess = 'Y')");
 		if(!Util.isEmpty(request.getOrderUuid())) {
 			parameters.add(RecordUtil.getIdFromUuid(I_C_Order.Table_Name, request.getOrderUuid(), null));
 			whereClause.append(" AND C_Order_ID = ?");
@@ -4125,6 +4140,13 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 		}
 		if(request.getIsNullified()) {
 			whereClause.append(" AND DocStatus IN('VO') ");
+		}
+		//	Is RMA
+		if(request.getIsOnlyRma()) {
+			whereClause.append(" AND DocStatus IN('CO', 'CL')")
+				.append(" AND EXISTS(SELECT 1 FROM C_DocType dt WHERE dt.C_DocType_ID = C_Order.C_DocTypeTarget_ID AND dt.DocSubTypeSO IN('RM') AND dt.IsSOTrx = 'Y') ")
+				.append(whereClauseWithoutProposal)
+			;
 		}
 		//	Date Order From
 		if(!Util.isEmpty(request.getDateOrderedFrom())) {

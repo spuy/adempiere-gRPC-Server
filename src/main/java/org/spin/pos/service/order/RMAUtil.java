@@ -41,6 +41,7 @@ import org.compiere.process.DocAction;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
 import org.compiere.util.Trx;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * A util class for change values for documents
@@ -157,7 +158,7 @@ public class RMAUtil {
         //	Set references
 		returnOrder.setC_POS_ID(pos.getC_POS_ID());
 		returnOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
-		returnOrder.setRef_Order_ID(sourceOrder.getC_Order_ID());
+		returnOrder.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Source_Order_ID, sourceOrder.getC_Order_ID());
 		returnOrder.setProcessed(false);
 		//	
 		OrderUtil.copyAccountDimensions(sourceOrder, returnOrder);
@@ -193,7 +194,7 @@ public class RMAUtil {
 		returnOrderLine.setPriceEntered(sourcerOrderLine.getPriceEntered());
 		returnOrderLine.setPriceActual(sourcerOrderLine.getPriceActual());
 		returnOrderLine.setC_Tax_ID(sourcerOrderLine.getC_Tax_ID());
-		returnOrderLine.setRef_OrderLine_ID(sourcerOrderLine.getC_OrderLine_ID());
+		returnOrderLine.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID, sourcerOrderLine.getC_OrderLine_ID());
 		//	Foreign references
 		int invoioceLineId = RMAUtil.getInvoiceLineReferenceId(sourcerOrderLine, transactionName);
 		if(invoioceLineId > 0) {
@@ -246,7 +247,7 @@ public class RMAUtil {
 			.getIDsAsList()
 			.forEach(returnOrderLineId -> {
 				MOrderLine returnOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLineId, transactionName);
-				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.getRef_OrderLine_ID(), transactionName);
+				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 				MInvoiceLine line = new MInvoiceLine (invoice);
 				line.setOrderLine(returnOrderLine);
 				BigDecimal toReturn = sourcerOrderLine.getQtyInvoiced();
@@ -283,7 +284,7 @@ public class RMAUtil {
 			.getIDsAsList()
 			.forEach(returnOrderLineId -> {
 				MOrderLine returnOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLineId, transactionName);
-				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.getRef_OrderLine_ID(), transactionName);
+				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 				MInOutLine line = new MInOutLine (shipment);
 				BigDecimal toReturn = sourcerOrderLine.getQtyDelivered();
 				line.setOrderLine(returnOrderLine, 0, Env.ZERO);
@@ -362,7 +363,7 @@ public class RMAUtil {
     		.getIDsAsList()
     		.forEach(sourceOrderLineId -> {
     			MOrderLine sourcerOrderLine = new MOrderLine(sourceOrder.getCtx(), sourceOrderLineId, transactionName);
-    			BigDecimal availableQuantity = getAvailableQuantityForReturn(sourcerOrderLine, transactionName);
+    			BigDecimal availableQuantity = getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), sourcerOrderLine.getQtyEntered(), sourcerOrderLine.getQtyEntered());
     			if(availableQuantity.compareTo(Env.ZERO) > 0) {
     				//	Create new Invoice Line
     				MOrderLine returnOrderLine = RMAUtil.copyRMALineFromOrder(returnOrder, sourcerOrderLine, transactionName);
@@ -374,15 +375,39 @@ public class RMAUtil {
     /**
      * Get Available Quantity for Return Order
      * @param sourceOrderLineId
-     * @param transactionName
+     * @param sourceQuantity
+     * @param quantityToReturn
      * @return
      */
-    public static BigDecimal getAvailableQuantityForReturn(MOrderLine sourceOrderLine, String transactionName) {
-    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, "Ref_OrderLine_ID = ? "
-    			+ "AND EXISTS(SELECT 1 FROM C_Order o WHERE o.C_Order_ID = C_OrderLine.C_Order_ID)", transactionName)
-    			.setParameters(sourceOrderLine.getC_OrderLine_ID())
+    public static BigDecimal getAvailableQuantityForReturn(int sourceOrderLineId, BigDecimal sourceQuantity, BigDecimal quantityToReturn) {
+    	BigDecimal quantity = getReturnedQuantity(sourceOrderLineId);
+    	return Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO)).subtract(Optional.ofNullable(quantityToReturn).orElse(Env.ZERO));
+    }
+    
+    public static BigDecimal getAvailableQuantityForReturn(int sourceOrderLineId, int rmaLineId, BigDecimal sourceQuantity, BigDecimal quantityToReturn) {
+    	BigDecimal quantity = getReturnedQuantityExcludeRMA(sourceOrderLineId, rmaLineId);
+    	return Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO)).subtract(Optional.ofNullable(quantityToReturn).orElse(Env.ZERO));
+    }
+    
+    /**
+     * Get sum of complete returned quantity for order
+     * @param sourceOrderLineId
+     * @return
+     */
+    public static BigDecimal getReturnedQuantity(int sourceOrderLineId) {
+    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, "ECA14_Source_OrderLine_ID = ? "
+    			+ "AND EXISTS(SELECT 1 FROM C_Order o WHERE o.C_Order_ID = C_OrderLine.C_Order_ID)", null)
+    			.setParameters(sourceOrderLineId)
     			.aggregate(I_C_OrderLine.COLUMNNAME_QtyEntered, Query.AGGREGATE_SUM);
-    	return sourceOrderLine.getQtyEntered().subtract(Optional.ofNullable(quantity).orElse(Env.ZERO));
+    	return Optional.ofNullable(quantity).orElse(Env.ZERO);
+    }
+    
+    public static BigDecimal getReturnedQuantityExcludeRMA(int sourceOrderLineId, int rmaLineId) {
+    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, "ECA14_Source_OrderLine_ID = ? AND C_OrderLine_ID <> ? "
+    			+ "AND EXISTS(SELECT 1 FROM C_Order o WHERE o.C_Order_ID = C_OrderLine.C_Order_ID)", null)
+    			.setParameters(sourceOrderLineId, rmaLineId)
+    			.aggregate(I_C_OrderLine.COLUMNNAME_QtyEntered, Query.AGGREGATE_SUM);
+    	return Optional.ofNullable(quantity).orElse(Env.ZERO);
     }
     
     /**

@@ -852,10 +852,10 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 		String nexPageToken = null;
 		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = LimitUtil.getPageSize(request.getPageSize());
-		int offset = (pageNumber - 1) * limit;
+		// int offset = (pageNumber - 1) * limit;
 
 		int organizationId = request.getOrganizationId();
-		if (organizationId <= 0) {
+		if (organizationId <= 0 && !Util.isEmpty(request.getOrganizationUuid(), true)) {
 			organizationId = RecordUtil.getIdFromUuid(I_AD_Org.Table_Name, request.getOrganizationUuid(), null);
 		}
 

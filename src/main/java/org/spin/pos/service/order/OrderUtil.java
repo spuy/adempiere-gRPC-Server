@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.sql.Timestamp;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,12 +35,12 @@ import org.compiere.model.MPOS;
 import org.compiere.model.MPayment;
 import org.compiere.model.MUOMConversion;
 import org.compiere.model.MPriceList;
+import org.compiere.model.MTable;
 import org.compiere.model.PO;
 import org.compiere.model.Query;
 import org.compiere.process.DocAction;
 import org.compiere.util.Env;
 import org.compiere.util.TimeUtil;
-import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
 
 /**
@@ -57,6 +58,43 @@ public class OrderUtil {
 			throw new AdempiereException("@C_Order_ID@ @NotFound@");
 		}
 		return order;
+	}
+	
+	/**
+	 * Get Refund references from order
+	 * @param order
+	 * @return
+	 * @return List<PO>
+	 */
+	private static List<PO> getPaymentReferences(MOrder order) {
+		if(MTable.get(Env.getCtx(), "C_POSPaymentReference") == null) {
+			return new ArrayList<PO>();
+		}
+		//	
+		return new Query(order.getCtx(), "C_POSPaymentReference", "C_Order_ID = ?", order.get_TrxName()).setParameters(order.getC_Order_ID()).list();
+	}
+	
+	public static List<PO> getPaymentReferencesList(MOrder order) {
+		return getPaymentReferences(order)
+			.stream()
+			.filter(paymentReference -> {
+				return (!paymentReference.get_ValueAsBoolean("Processed") && !paymentReference.get_ValueAsBoolean("IsPaid")) 
+					|| paymentReference.get_ValueAsBoolean("IsKeepReferenceAfterProcess");
+			})
+			.collect(Collectors.toList());
+	}
+
+	public static Optional<BigDecimal> getPaymentChageOrCredit(MOrder order, boolean isCredit) {
+		return getPaymentReferencesList(order)
+			.stream()
+			.filter(paymentReference -> {
+				return paymentReference.get_ValueAsBoolean("IsReceipt") == isCredit;
+			})
+			.map(paymentReference -> {
+				BigDecimal amount = ((BigDecimal) paymentReference.get_Value("Amount"));
+				return getConvetedAmount(order, paymentReference, amount);
+			})
+			.collect(Collectors.reducing(BigDecimal::add));
 	}
 
 	/**
@@ -83,8 +121,12 @@ public class OrderUtil {
 	}
 
 	public static boolean isValidOrder(MOrder order) {
+		return !isBindingOffer(order);
+	}
+	
+	public static boolean isBindingOffer(MOrder order) {
 		MDocType documentType = MDocType.get(order.getCtx(), order.getC_DocTypeTarget_ID());
-		return !documentType.isOffer() && !documentType.isProposal();
+		return documentType.isOffer() || documentType.isProposal();
 	}
 
 	/**
@@ -251,6 +293,7 @@ public class OrderUtil {
         //	Set references
 		salesOrder.setC_POS_ID(pos.getC_POS_ID());
 		salesOrder.setC_BPartner_ID(sourceOrder.getC_BPartner_ID());
+		salesOrder.setRef_Order_ID(0);
 		salesOrder.setProcessed(false);
 		//	
 		copyAccountDimensions(sourceOrder, salesOrder);
@@ -334,8 +377,7 @@ public class OrderUtil {
 				//	Create new Invoice Line
 				MOrderLine targetOrderLine = copyOrderLine(sourcerOrderLine, targetOrder, true, transactionName);
 				targetOrderLine.set_ValueOfColumn("ECA14_Source_RMALine_ID", sourcerOrderLine.getC_OrderLine_ID());
-				//	Save
-				targetOrderLine.saveEx(transactionName);
+				OrderUtil.updateUomAndQuantity(targetOrderLine, targetOrderLine.getC_UOM_ID(), targetOrderLine.getQtyEntered());
     		});
     }
     
@@ -380,7 +422,7 @@ public class OrderUtil {
 		int standardPrecision = priceList.getStandardPrecision();
 
 		BigDecimal creditAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
-		Optional<BigDecimal> maybeCreditAmt = ConvertUtil.getPaymentChageOrCredit(order, true);
+		Optional<BigDecimal> maybeCreditAmt = getPaymentChageOrCredit(order, true);
 		if (maybeCreditAmt.isPresent()) {
 			creditAmt = maybeCreditAmt.get()
 				.setScale(standardPrecision, RoundingMode.HALF_UP);
@@ -396,7 +438,7 @@ public class OrderUtil {
 		int standardPrecision = priceList.getStandardPrecision();
 
 		BigDecimal chargeAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
-		Optional<BigDecimal> maybeChargeAmt = ConvertUtil.getPaymentChageOrCredit(order, false);
+		Optional<BigDecimal> maybeChargeAmt = getPaymentChageOrCredit(order, false);
 		if (maybeChargeAmt.isPresent()) {
 			chargeAmt = maybeChargeAmt.get()
 				.setScale(standardPrecision, RoundingMode.HALF_UP);
@@ -471,7 +513,7 @@ public class OrderUtil {
 			return getConvetedAmount(order, payment, paymentAmount);
 		}).collect(Collectors.reducing(BigDecimal::add));
 
-		List<PO> paymentReferencesList = ConvertUtil.getPaymentReferencesList(order);
+		List<PO> paymentReferencesList = getPaymentReferencesList(order);
 		Optional<BigDecimal> paymentReferenceAmount = paymentReferencesList.stream()
 				.map(paymentReference -> {
 			BigDecimal amount = ((BigDecimal) paymentReference.get_Value("Amount"));

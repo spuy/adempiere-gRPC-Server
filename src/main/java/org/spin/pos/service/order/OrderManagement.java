@@ -53,6 +53,7 @@ import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.pos.service.cash.CashManagement;
 import org.spin.pos.service.cash.CashUtil;
+import org.spin.pos.util.ColumnsAdded;
 
 /**
  * A util class for change values for documents
@@ -168,12 +169,13 @@ public class OrderManagement {
 		}
 		Trx.run(transactionName -> {
 			MOrder sourceOrder = new MOrder(Env.getCtx(), sourceOrderId, transactionName);
-			if(DocumentUtil.isClosed(sourceOrder)
+			if(!DocumentUtil.isClosed(sourceOrder)
 					|| DocumentUtil.isVoided(sourceOrder)
-					|| sourceOrder.isReturnOrder()) {
+					|| !sourceOrder.isReturnOrder()) {
 				throw new AdempiereException("@ActionNotAllowedHere@");
 			}
 			MOrder targetOrder = OrderUtil.copyOrder(pos, sourceOrder, transactionName);
+			setDefaultValuesFromPOS(pos, targetOrder);
 			MBPartner businessPartner = (MBPartner) targetOrder.getC_BPartner();
 			OrderUtil.setCurrentDate(targetOrder);
 			int salesRepId = salesRepresentativeId;
@@ -196,6 +198,31 @@ public class OrderManagement {
 			orderReference.set(targetOrder);
 		});
 		return orderReference.get();
+	}
+	
+	private static void setDefaultValuesFromPOS(MPOS pos, MOrder salesOrder) {
+		salesOrder.setM_PriceList_ID(pos.getM_PriceList_ID());
+		salesOrder.setM_Warehouse_ID(pos.getM_Warehouse_ID());
+		//	Document Type
+		int documentTypeId = pos.getC_DocType_ID();
+		//	Validate
+		if(documentTypeId > 0) {
+			salesOrder.setC_DocTypeTarget_ID(documentTypeId);
+		} else {
+			salesOrder.setC_DocTypeTarget_ID(MOrder.DocSubTypeSO_POS);
+		}
+		//	Delivery Rules
+		if (pos.getDeliveryRule() != null) {
+			salesOrder.setDeliveryRule(pos.getDeliveryRule());
+		}
+		//	Invoice Rule
+		if (pos.getInvoiceRule() != null) {
+			salesOrder.setInvoiceRule(pos.getInvoiceRule());
+		}
+		//	Conversion Type
+		if(pos.get_ValueAsInt(MOrder.COLUMNNAME_C_ConversionType_ID) > 0) {
+			salesOrder.setC_ConversionType_ID(pos.get_ValueAsInt(MOrder.COLUMNNAME_C_ConversionType_ID));
+		}
 	}
 	
 	/**
@@ -264,6 +291,19 @@ public class OrderManagement {
 				.first();
 	}
 	
+	private static void createCreditMemoReference(MOrder salesOrder, MPayment payment, String transactionName) {
+		if(payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) <= 0) {
+			return;
+		}
+		MInvoice creditMemo = new MInvoice(salesOrder.getCtx(), payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID), transactionName);
+		payment.setC_Invoice_ID(-1);
+		payment.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount, payment.getPayAmt());
+		payment.setPayAmt(Env.ZERO);
+		payment.saveEx(transactionName);
+		creditMemo.setC_Payment_ID(payment.getC_Payment_ID());
+		creditMemo.saveEx(transactionName);
+	}
+	
 	/**
 	 * Create Credit Memo from payment
 	 * @param salesOrder
@@ -304,6 +344,9 @@ public class OrderManagement {
 		creditMemo.setC_ConversionType_ID(payment.getC_ConversionType_ID());
 		creditMemo.setC_Order_ID(salesOrder.getC_Order_ID());
 		creditMemo.setC_Payment_ID(payment.getC_Payment_ID());
+		creditMemo.setDateInvoiced(payment.getDateTrx());
+		creditMemo.setDateAcct(payment.getDateAcct());
+		OrderUtil.copyAccountDimensions(salesOrder, creditMemo);
 		creditMemo.saveEx(transactionName);
 		//	Add line
 		MInvoiceLine creditMemoLine = new MInvoiceLine(creditMemo);
@@ -360,7 +403,7 @@ public class OrderManagement {
 	public static void processPayments(MOrder salesOrder, MPOS pos, boolean isOpenRefund, String transactionName) {
 		//	Get invoice if exists
 		int invoiceId = salesOrder.getC_Invoice_ID();
-		AtomicReference<BigDecimal> openAmount = new AtomicReference<BigDecimal>(salesOrder.getGrandTotal());
+		AtomicReference<BigDecimal> openAmount = new AtomicReference<BigDecimal>(OrderUtil.getTotalOpenAmount(salesOrder));
 		AtomicReference<BigDecimal> currentAmount = new AtomicReference<BigDecimal>(salesOrder.getGrandTotal());
 		List<Integer> paymentsIds = new ArrayList<Integer>();
 		//	Complete Payments
@@ -380,7 +423,11 @@ public class OrderManagement {
 				payment.setIsPrepayment(true);
 				payment.setOverUnderAmt(Env.ZERO);
 				if(payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo)) {
-					createCreditMemo(salesOrder, payment, transactionName);
+					if(payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) <= 0) {
+						createCreditMemo(salesOrder, payment, transactionName);
+					} else {
+						createCreditMemoReference(salesOrder, payment, transactionName);
+					}
 				}
 				payment.setDocAction(MPayment.DOCACTION_Complete);
 				CashUtil.setCurrentDate(payment);
@@ -428,23 +475,24 @@ public class OrderManagement {
 			paymentsIds.stream().map(paymentId -> new MPayment(Env.getCtx(), paymentId, transactionName))
 			.filter(payment -> payment.getC_POS_ID() != 0 && payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo))
 			.forEach(payment -> {
-				//	Create new Line
-				if(!isAllocationLineCreated.get()) {
-					BigDecimal discountAmount = Env.ZERO;
-					BigDecimal overUnderAmount = Env.ZERO;
-					BigDecimal writeOffAmount = Env.ZERO;
-					MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, currentAmount.get(), discountAmount, writeOffAmount, overUnderAmount);
-					paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), invoiceId);
-					paymentAllocationLine.saveEx();
-				}
 				BigDecimal multiplier = Env.ONE.negate();
 				MInvoice creditMemo = new Query(payment.getCtx(), MInvoice.Table_Name, "C_Payment_ID = ?", payment.get_TrxName()).setParameters(payment.getC_Payment_ID()).first();
-				BigDecimal paymentAmount = OrderUtil.getConvetedAmount(salesOrder, payment, creditMemo.getGrandTotal());
+				BigDecimal creditMemoAmount = Optional.ofNullable((BigDecimal) payment.get_Value(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount)).orElse(Env.ZERO);
+				if(creditMemoAmount.compareTo(Env.ZERO) == 0) {
+					creditMemoAmount = creditMemo.getGrandTotal();
+				}
+				BigDecimal paymentAmount = OrderUtil.getConvetedAmount(salesOrder, payment, creditMemoAmount);
 				BigDecimal discountAmount = Env.ZERO;
 				BigDecimal overUnderAmount = Env.ZERO;
 				BigDecimal writeOffAmount = Env.ZERO;
 				if (overUnderAmount.signum() < 0 && paymentAmount.signum() > 0) {
 					paymentAmount = paymentAmount.add(overUnderAmount);
+				}
+				//	Create new Line
+				if(!isAllocationLineCreated.get() || payment.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Invoice_Reference_ID) > 0) {
+					MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, paymentAmount, discountAmount, writeOffAmount, overUnderAmount);
+					paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), invoiceId);
+					paymentAllocationLine.saveEx();
 				}
 				MAllocationLine paymentAllocationLine = new MAllocationLine (paymentAllocation, paymentAmount.multiply(multiplier), discountAmount.multiply(multiplier), writeOffAmount.multiply(multiplier), overUnderAmount.multiply(multiplier));
 				paymentAllocationLine.setDocInfo(salesOrder.getC_BPartner_ID(), salesOrder.getC_Order_ID(), creditMemo.getC_Invoice_ID());

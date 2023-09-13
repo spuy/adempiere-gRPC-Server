@@ -18,7 +18,6 @@ package org.spin.base.util;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -120,6 +119,7 @@ import org.spin.grpc.service.TimeControlServiceImplementation;
 import org.spin.util.AttachmentUtil;
 import org.spin.model.MADAttachmentReference;
 import org.spin.pos.service.order.OrderUtil;
+import org.spin.pos.util.ColumnsAdded;
 import org.spin.pos.util.POSConvertUtil;
 import org.spin.store.model.MCPaymentMethod;
 import org.spin.store.util.VueStoreFrontUtil;
@@ -545,43 +545,6 @@ public class ConvertUtil {
 			.setIsNetPrice(priceList.isNetPrice())
 			.setPricePrecision(priceList.getPricePrecision());
 	}
-	
-	/**
-	 * Get Refund references from order
-	 * @param order
-	 * @return
-	 * @return List<PO>
-	 */
-	private static List<PO> getPaymentReferences(MOrder order) {
-		if(MTable.get(Env.getCtx(), "C_POSPaymentReference") == null) {
-			return new ArrayList<PO>();
-		}
-		//	
-		return new Query(order.getCtx(), "C_POSPaymentReference", "C_Order_ID = ?", order.get_TrxName()).setParameters(order.getC_Order_ID()).list();
-	}
-	
-	public static List<PO> getPaymentReferencesList(MOrder order) {
-		return getPaymentReferences(order)
-			.stream()
-			.filter(paymentReference -> {
-				return (!paymentReference.get_ValueAsBoolean("Processed") && !paymentReference.get_ValueAsBoolean("IsPaid")) 
-					|| paymentReference.get_ValueAsBoolean("IsKeepReferenceAfterProcess");
-			})
-			.collect(Collectors.toList());
-	}
-
-	public static Optional<BigDecimal> getPaymentChageOrCredit(MOrder order, boolean isCredit) {
-		return getPaymentReferencesList(order)
-			.stream()
-			.filter(paymentReference -> {
-				return paymentReference.get_ValueAsBoolean("IsReceipt") == isCredit;
-			})
-			.map(paymentReference -> {
-				BigDecimal amount = ((BigDecimal) paymentReference.get_Value("Amount"));
-				return getConvetedAmount(order, paymentReference, amount);
-			})
-			.collect(Collectors.reducing(BigDecimal::add));
-	}
 
 	/**
 	 * Convert Order from entity
@@ -680,6 +643,9 @@ public class ConvertUtil {
 			.setChargeAmount(ValueUtil.getDecimalFromBigDecimal(chargeAmt))
 			.setCreditAmount(ValueUtil.getDecimalFromBigDecimal(creditAmt))
 			.setSourceRmaId(order.get_ValueAsInt("ECA14_Source_RMA_ID"))
+			.setIsRma(order.isReturnOrder())
+			.setIsOrder(!order.isReturnOrder())
+			.setIsBindingOffer(OrderUtil.isBindingOffer(order))
 		;
 	}
 	
@@ -733,7 +699,7 @@ public class ConvertUtil {
 			return getConvetedAmount(order, payment, paymentAmount);
 		}).collect(Collectors.reducing(BigDecimal::add));
 
-		List<PO> paymentReferencesList = getPaymentReferencesList(order);
+		List<PO> paymentReferencesList = OrderUtil.getPaymentReferencesList(order);
 		Optional<BigDecimal> paymentReferenceAmount = paymentReferencesList.stream()
 				.map(paymentReference -> {
 			BigDecimal amount = ((BigDecimal) paymentReference.get_Value("Amount"));
@@ -751,13 +717,13 @@ public class ConvertUtil {
 		int standardPrecision = priceList.getStandardPrecision();
 
 		BigDecimal creditAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
-		Optional<BigDecimal> maybeCreditAmt = getPaymentChageOrCredit(order, true);
+		Optional<BigDecimal> maybeCreditAmt = OrderUtil.getPaymentChageOrCredit(order, true);
 		if (maybeCreditAmt.isPresent()) {
 			creditAmt = maybeCreditAmt.get()
 				.setScale(standardPrecision, RoundingMode.HALF_UP);
 		}
 		BigDecimal chargeAmt = BigDecimal.ZERO.setScale(standardPrecision, RoundingMode.HALF_UP);
-		Optional<BigDecimal> maybeChargeAmt = getPaymentChageOrCredit(order, false);
+		Optional<BigDecimal> maybeChargeAmt = OrderUtil.getPaymentChageOrCredit(order, false);
 		if (maybeChargeAmt.isPresent()) {
 			chargeAmt = maybeChargeAmt.get()
 				.setScale(standardPrecision, RoundingMode.HALF_UP);
@@ -1272,7 +1238,7 @@ public class ConvertUtil {
 				.setUuid(
 					ValueUtil.validateNull(orderLine.getUUID())
 				)
-				.setSourceOrderLineId(orderLine.getRef_OrderLine_ID())
+				.setSourceOrderLineId(orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID))
 				.setLine(orderLine.getLine())
 				.setDescription(ValueUtil.validateNull(orderLine.getDescription()))
 				.setLineDescription(ValueUtil.validateNull(orderLine.getName()))
