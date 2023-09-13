@@ -66,7 +66,7 @@ public class ReturnSalesOrder {
 		}
 		MOrder returnOrder = new Query(Env.getCtx(), I_C_Order.Table_Name, 
 				"DocStatus = 'DR' "
-				+ "AND Ref_Order_ID = ? ", null)
+				+ "AND " + ColumnsAdded.COLUMNNAME_ECA14_Source_Order_ID + " = ? ", null)
 				.setParameters(sourceOrderId)
 				.first();
 		if(returnOrder != null) {
@@ -107,7 +107,7 @@ public class ReturnSalesOrder {
 			}
 			MOrderLine sourcerOrderLine = new MOrderLine(Env.getCtx(), rmaLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 			if(sourcerOrderLine.getC_OrderLine_ID() <= 0) {
-				throw new AdempiereException("@Ref_OrderLine_ID@ @NotFound@");
+				throw new AdempiereException("@" + ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID + "@ @NotFound@");
 			}
 			BigDecimal availableQuantity = RMAUtil.getAvailableQuantityForReturn(sourcerOrderLine.getC_OrderLine_ID(), rmaLineId, sourcerOrderLine.getQtyEntered(), quantity);
 			if(availableQuantity.compareTo(Env.ZERO) >= 0) {
