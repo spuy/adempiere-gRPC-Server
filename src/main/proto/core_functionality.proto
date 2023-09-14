@@ -23,6 +23,8 @@ import "base_data_type.proto";
 package data;
 
 service CoreFunctionality {
+	// system information
+	rpc GetSystemInfo(GetSystemInfoRequest) returns (SystemInfo) {}
 	//	Get Country Information
 	rpc GetCountry(GetCountryRequest) returns (Country) {}
 	//	List Organizations
@@ -41,6 +43,23 @@ service CoreFunctionality {
 	rpc GetConversionRate(GetConversionRateRequest) returns (ConversionRate) {}
 	//	List Product Conversion UOM
 	rpc ListProductConversion(ListProductConversionRequest) returns (ListProductConversionResponse) {}
+}
+
+message GetSystemInfoRequest {
+	// empty request
+}
+
+message SystemInfo {
+	// adempiere
+	string name = 1;
+	string release_no = 2;
+	string version = 3;
+	string last_build_info = 4;
+	string logo_url = 5;
+	// backend
+	string backend_date_version = 6;
+	string backend_main_version = 7;
+	string backend_implementation_version = 8;
 }
 
 // Get Country Request

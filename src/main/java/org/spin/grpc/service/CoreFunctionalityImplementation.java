@@ -42,6 +42,7 @@ import org.compiere.model.MLanguage;
 import org.compiere.model.MLocation;
 import org.compiere.model.MOrg;
 import org.compiere.model.MRole;
+import org.compiere.model.MSystem;
 import org.compiere.model.MUOMConversion;
 import org.compiere.model.MUser;
 import org.compiere.model.MWarehouse;
@@ -53,6 +54,7 @@ import org.compiere.util.Env;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
+import org.spin.base.Version;
 import org.spin.base.db.LimitUtil;
 import org.spin.base.db.WhereClauseUtil;
 import org.spin.base.util.ContextManager;
@@ -68,6 +70,7 @@ import org.spin.backend.grpc.common.CreateBusinessPartnerRequest;
 import org.spin.backend.grpc.common.GetBusinessPartnerRequest;
 import org.spin.backend.grpc.common.GetConversionRateRequest;
 import org.spin.backend.grpc.common.GetCountryRequest;
+import org.spin.backend.grpc.common.GetSystemInfoRequest;
 import org.spin.backend.grpc.common.ListBusinessPartnersRequest;
 import org.spin.backend.grpc.common.ListBusinessPartnersResponse;
 import org.spin.backend.grpc.common.ListLanguagesRequest;
@@ -79,6 +82,7 @@ import org.spin.backend.grpc.common.ListProductConversionResponse;
 import org.spin.backend.grpc.common.ListWarehousesRequest;
 import org.spin.backend.grpc.common.ListWarehousesResponse;
 import org.spin.backend.grpc.common.ProductConversion;
+import org.spin.backend.grpc.common.SystemInfo;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -93,6 +97,80 @@ public class CoreFunctionalityImplementation extends CoreFunctionalityImplBase {
 	private CLogger log = CLogger.getCLogger(CoreFunctionalityImplementation.class);
 	/**	Country */
 	private static CCache<String, MCountry> countryCache = new CCache<String, MCountry>(I_C_Country.Table_Name + "_UUID", 30, 0);	//	no time-out
+
+
+	@Override
+	public void getSystemInfo(GetSystemInfoRequest request, StreamObserver<SystemInfo> responseObserver) {
+		try {
+			SystemInfo.Builder builder = getSystemInfo();
+			responseObserver.onNext(builder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private SystemInfo.Builder getSystemInfo() {
+		SystemInfo.Builder builder = SystemInfo.newBuilder();
+
+		MSystem adempiereInfo = MSystem.get(Env.getCtx());
+		if (adempiereInfo != null) {
+			String name = ValueUtil.validateNull(
+				adempiereInfo.getName()
+			);
+			if (name.trim().equals("?")) {
+				name = "";
+			}
+			builder.setName(name)
+				.setReleaseNo(
+					ValueUtil.validateNull(
+						adempiereInfo.getReleaseNo()
+					)
+				)
+				.setVersion(
+					ValueUtil.validateNull(
+						adempiereInfo.getVersion()
+					)
+				)
+				.setLastBuildInfo(
+					ValueUtil.validateNull(
+						adempiereInfo.getLastBuildInfo()
+					)
+				)
+			;
+		}
+
+		// backend info
+		builder.setBackendDateVersion(
+				ValueUtil.validateNull(
+					Version.DATE_VERSION
+				)
+			)
+			.setBackendMainVersion(
+				ValueUtil.validateNull(
+					Version.MAIN_VERSION
+				)
+			)
+			.setBackendImplementationVersion(
+				ValueUtil.validateNull(
+					Version.IMPLEMENTATION_VERSION
+				)
+			)
+			.setLogoUrl(
+				ValueUtil.validateNull(
+					System.getenv("SYSTEM_LOGO_URL")
+				)
+			)
+		;
+
+		return builder;
+	}
 
 
 	@Override

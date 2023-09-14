@@ -126,6 +126,7 @@ sourceSets {
         }
         resources {
     		srcDirs 'src/main/java'
+			include 'org/spin/base/version.properties'
         	include 'org/adempiere/legacy/apache/ecs/ecs.properties'
     	}
     }
