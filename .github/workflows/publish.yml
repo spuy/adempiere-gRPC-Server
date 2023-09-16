@@ -141,6 +141,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
 
+      - name: Upload Descriptor
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: adempiere-grpc-server.pb/adempiere-grpc-server.pb
+          
       - name: Upload zip
         uses: skx/github-action-publish-binaries@master
         env:
