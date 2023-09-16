@@ -17,6 +17,7 @@ syntax = "proto3";
 option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.security";
 option java_outer_classname = "ADempiereSecurity";
+import "google/api/annotations.proto";
 
 package security;
 
@@ -38,7 +39,11 @@ service Security {
 	// List Roles
 	rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {}
 	// List Available Services
-	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
+	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {
+		// Client example - returns the first shelf:
+  		// curl http://DOMAIN_NAME/v1/services/
+  		option (google.api.http) = { get: "/security/services" };
+	}
 	// Request login from Open ID
 	rpc RunLoginOpenID(LoginOpenIDRequest) returns (Session) {}
 }
