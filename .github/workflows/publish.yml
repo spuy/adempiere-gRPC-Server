@@ -46,6 +46,12 @@ jobs:
           GITHUB_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           GITHUB_DEPLOY_REPOSITORY: ${{ secrets.DEPLOY_REPOSITORY }}
 
+      - name: Upload descriptor file artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: adempiere-grpc-server.pb
+          path: build/descriptors/adempiere-grpc-server.pb
+          
       - name: Upload dist app zip artifact
         uses: actions/upload-artifact@v3
         with:
