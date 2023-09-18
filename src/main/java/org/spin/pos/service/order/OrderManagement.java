@@ -299,6 +299,7 @@ public class OrderManagement {
 		payment.setC_Invoice_ID(-1);
 		payment.set_ValueOfColumn(ColumnsAdded.COLUMNNAME_ECA14_Reference_Amount, payment.getPayAmt());
 		payment.setPayAmt(Env.ZERO);
+		CashUtil.setCurrentDate(payment, true);
 		payment.saveEx(transactionName);
 		creditMemo.setC_Payment_ID(payment.getC_Payment_ID());
 		creditMemo.saveEx(transactionName);
@@ -371,6 +372,7 @@ public class OrderManagement {
 		//	change payment
 		payment.setC_Invoice_ID(-1);
 		payment.setPayAmt(Env.ZERO);
+		CashUtil.setCurrentDate(payment, true);
 		payment.saveEx(transactionName);
 		//	Process credit Memo
 		if (!creditMemo.processIt(MInvoice.DOCACTION_Complete)) {

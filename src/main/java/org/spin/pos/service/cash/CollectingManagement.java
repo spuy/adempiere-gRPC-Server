@@ -96,6 +96,13 @@ public class CollectingManagement {
 			payment.setC_DocType_ID(!request.getIsRefund());
 		}
 		payment.setAD_Org_ID(salesOrder.getAD_Org_ID());
+		if(!Util.isEmpty(request.getPaymentDate())) {
+        	Timestamp date = ValueUtil.getDateFromString(request.getPaymentDate());
+        	if(date != null) {
+        		payment.setDateTrx(date);
+        		payment.setDateAcct(date);
+        	}
+        }
         if(!Util.isEmpty(request.getPaymentAccountDate())) {
         	Timestamp date = ValueUtil.getDateFromString(request.getPaymentAccountDate());
         	if(date != null) {
