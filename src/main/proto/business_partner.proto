@@ -21,13 +21,16 @@ option java_outer_classname = "ADempiereBusinessPartner";
 
 import "base_data_type.proto";
 import "business.proto";
+import "google/api/annotations.proto";
 
 package business_partner;
 
 // The business partner service definition.
 service BusinessPartner {
 	// List Business Partner Info Request
-	rpc ListBusinessPartnerInfo(ListBusinessPartnerInfoRequest) returns (data.ListEntitiesResponse) {}
+	rpc ListBusinessPartnerInfo(ListBusinessPartnerInfoRequest) returns (data.ListEntitiesResponse) {
+		option (google.api.http) = { get: "/business-partner/business-partners" };
+	}
 }
 
 // List Business Partner Info Request

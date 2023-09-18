@@ -24,28 +24,56 @@ package security;
 // The greeting service definition.
 service Security {
 	// Request login from user
-	rpc RunLogin(LoginRequest) returns (Session) {}
+	rpc RunLogin(LoginRequest) returns (Session) {
+		option (google.api.http) = { 
+			post: "/security/login",
+			body: "*"
+		};
+	}
 	// Request a Role from uuid
-	rpc RunLogout(LogoutRequest) returns (Session) {}
+	rpc RunLogout(LogoutRequest) returns (Session) {
+		option (google.api.http) = { post: "/security/logout" };
+	}
 	// Request user roles from SessionInfo
-	rpc GetUserInfo(UserInfoRequest) returns (UserInfo) {}
+	rpc GetUserInfo(UserInfoRequest) returns (UserInfo) {
+		option (google.api.http) = { get: "/security/user-info" };
+	}
 	// Request Menu from Parent UUID
-	rpc GetMenu(MenuRequest) returns (Menu) {}
+	rpc GetMenu(MenuRequest) returns (Menu) {
+		option (google.api.http) = { get: "/security/menu" };
+	}
 	// Request change role
-	rpc RunChangeRole(ChangeRoleRequest) returns (Session) {}
+	rpc RunChangeRole(ChangeRoleRequest) returns (Session) {
+		option (google.api.http) = { 
+			post: "/security/change-role",
+			body: "*"
+		};
+	}
 	// Request session
-	rpc GetSessionInfo(SessionInfoRequest) returns (SessionInfo) {}
-	rpc SetSessionAttribute(SetSessionAttributeRequest) returns (Session) {}
+	rpc GetSessionInfo(SessionInfoRequest) returns (SessionInfo) {
+		option (google.api.http) = { get: "/security/session-info" };
+	}
+	rpc SetSessionAttribute(SetSessionAttributeRequest) returns (Session) {
+		option (google.api.http) = { 
+			post: "/security/session-attribute",
+			body: "*"
+		};
+	}
 	// List Roles
-	rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {}
+	rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
+		option (google.api.http) = { get: "/security/roles" };
+	}
 	// List Available Services
 	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {
-		// Client example - returns the first shelf:
-  		// curl http://DOMAIN_NAME/v1/services/
-  		option (google.api.http) = { get: "/security/services" };
+		option (google.api.http) = { get: "/security/services" };
 	}
 	// Request login from Open ID
-	rpc RunLoginOpenID(LoginOpenIDRequest) returns (Session) {}
+	rpc RunLoginOpenID(LoginOpenIDRequest) returns (Session) {
+		option (google.api.http) = { 
+			post: "/security/login-open-id",
+			body: "*"
+		};
+	}
 }
 
 
