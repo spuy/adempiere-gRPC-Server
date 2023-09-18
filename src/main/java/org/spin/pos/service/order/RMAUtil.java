@@ -16,7 +16,6 @@
 package org.spin.pos.service.order;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Optional;
 
 import org.adempiere.core.domains.models.I_C_InvoiceLine;
@@ -34,7 +33,6 @@ import org.compiere.model.MOrderLine;
 import org.compiere.model.MPOS;
 import org.compiere.model.MPayment;
 import org.compiere.model.MTable;
-import org.compiere.model.MUOM;
 import org.compiere.model.PO;
 import org.compiere.model.Query;
 import org.compiere.process.DocAction;
@@ -247,15 +245,10 @@ public class RMAUtil {
 			.getIDsAsList()
 			.forEach(returnOrderLineId -> {
 				MOrderLine returnOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLineId, transactionName);
-				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 				MInvoiceLine line = new MInvoiceLine (invoice);
 				line.setOrderLine(returnOrderLine);
-				BigDecimal toReturn = sourcerOrderLine.getQtyInvoiced();
-				line.setQtyInvoiced(toReturn);
-				line.setQtyEntered(toReturn);
-				line.setQtyEntered(toReturn
-						.multiply(returnOrderLine.getQtyEntered())
-						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), RoundingMode.HALF_UP));	
+				line.setQtyEntered(returnOrderLine.getQtyEntered());
+				line.setQtyInvoiced(returnOrderLine.getQtyOrdered());
 				line.setLine(returnOrderLine.getLine());
 				line.saveEx();
 		});
@@ -284,14 +277,10 @@ public class RMAUtil {
 			.getIDsAsList()
 			.forEach(returnOrderLineId -> {
 				MOrderLine returnOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLineId, transactionName);
-				MOrderLine sourcerOrderLine = new MOrderLine(returnOrder.getCtx(), returnOrderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID), transactionName);
 				MInOutLine line = new MInOutLine (shipment);
-				BigDecimal toReturn = sourcerOrderLine.getQtyDelivered();
 				line.setOrderLine(returnOrderLine, 0, Env.ZERO);
-				line.setQty(toReturn);
-				line.setQtyEntered(toReturn
-						.multiply(returnOrderLine.getQtyEntered())
-						.divide(returnOrderLine.getQtyOrdered(), MUOM.getPrecision(returnOrder.getCtx(), returnOrderLine.getC_UOM_ID()), RoundingMode.HALF_UP));	
+				line.setQtyEntered(returnOrderLine.getQtyEntered());
+				line.setMovementQty(returnOrderLine.getQtyOrdered());
 				line.setLine(returnOrderLine.getLine());
 				line.saveEx();
 		});
