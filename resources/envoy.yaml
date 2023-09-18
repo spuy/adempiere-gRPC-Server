@@ -26,7 +26,10 @@ static_resources:
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_json_transcoder.v3.GrpcJsonTranscoder
               proto_descriptor: "/data/service_definition.pb"
-              services: ["security.Security"]
+              services:
+                - security.Security
+                - bank_statement_match.BankStatementMatch
+                - business_partner.BusinessPartner
               print_options:
                 add_whitespace: true
                 always_print_primitive_fields: true
