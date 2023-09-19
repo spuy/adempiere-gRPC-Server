@@ -30,6 +30,8 @@ static_resources:
                 - security.Security
                 - bank_statement_match.BankStatementMatch
                 - business_partner.BusinessPartner
+                - data.BusinessData
+                - data.UserInterface
               print_options:
                 add_whitespace: true
                 always_print_primitive_fields: true

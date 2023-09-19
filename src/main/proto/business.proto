@@ -19,91 +19,210 @@ option java_package = "org.spin.backend.grpc.common";
 option java_outer_classname = "ADempiereData";
 
 import "base_data_type.proto";
+import "google/api/annotations.proto";
 
 package data;
 
 // The greeting service definition.
 service BusinessData {
 	// Get a Entity
-	rpc GetEntity(GetEntityRequest) returns (Entity) {}
+	rpc GetEntity(GetEntityRequest) returns (Entity) {
+		option (google.api.http) = { get: "/business-data/entity/{id}" };
+	}
 	// Create Entity Request
-	rpc CreateEntity(CreateEntityRequest) returns (Entity) {}
+	rpc CreateEntity(CreateEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			post: "/business-data/entity",
+			body: "*"
+		};
+	}
 	// Update Entity Request
-	rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {}
+	rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			put: "/business-data/entity",
+			body: "*"
+		};
+	}
 	// Delete Entity Request
-	rpc DeleteEntity(DeleteEntityRequest) returns (Empty) {}
+	rpc DeleteEntity(DeleteEntityRequest) returns (Empty) {
+		option (google.api.http) = { delete: "/business-data/entity/{id}" };
+	}
 	//	List a Entities
-	rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {}
+	rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+		option (google.api.http) = { get: "/business-data/entities" };
+	}
 	//	Request a BusinessProcess / Report
-	rpc RunBusinessProcess(RunBusinessProcessRequest) returns (ProcessLog) {}
+	rpc RunBusinessProcess(RunBusinessProcessRequest) returns (ProcessLog) {
+		option (google.api.http) = {
+			post: "/business-data/run-process",
+			body: "*"
+		};
+	}
 }
 
 //	User Interface
 service UserInterface {
 	// Get a Tab Entity
-	rpc GetTabEntity(GetTabEntityRequest) returns (Entity) {}
+	rpc GetTabEntity(GetTabEntityRequest) returns (Entity) {
+		option (google.api.http) = { get: "/user-interface/entity/{id}" };
+	}
 	// Create Tab Entity
-	rpc CreateTabEntity(CreateTabEntityRequest) returns (Entity) {}
+	rpc CreateTabEntity(CreateTabEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			post: "/user-interface/entity",
+			body: "*"
+		};
+	}
 	// Update Tab Entity
-	rpc UpdateTabEntity(UpdateTabEntityRequest) returns (Entity) {}
+	rpc UpdateTabEntity(UpdateTabEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			put: "/user-interface/entity",
+			body: "*"
+		};
+	}
 	//	List tab Entities
-	rpc ListTabEntities(ListTabEntitiesRequest) returns (ListEntitiesResponse) {}
+	rpc ListTabEntities(ListTabEntitiesRequest) returns (ListEntitiesResponse) {
+		option (google.api.http) = { get: "/user-interface/entities" };
+	}
 	//	Rollback Entity Request
-	rpc RollbackEntity(RollbackEntityRequest) returns (Entity) {}
+	rpc RollbackEntity(RollbackEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			put: "/user-interface/rollback-entity",
+			body: "*"
+		};
+	}
 	// Run a Callout
-	rpc RunCallout(RunCalloutRequest) returns (Callout) {}
+	rpc RunCallout(RunCalloutRequest) returns (Callout) {
+		option (google.api.http) = {
+			post: "/user-interface/run-callout",
+			body: "*"
+		};
+	}
 	//	Request Translations List
-	rpc ListTranslations(ListTranslationsRequest) returns (ListTranslationsResponse) {}
+	rpc ListTranslations(ListTranslationsRequest) returns (ListTranslationsResponse) {
+		option (google.api.http) = { get: "/user-interface/translations" };
+	}
 	// Get Default Value
-	rpc GetDefaultValue(GetDefaultValueRequest) returns (DefaultValue) {}
+	rpc GetDefaultValue(GetDefaultValueRequest) returns (DefaultValue) {
+		option (google.api.http) = { get: "/user-interface/default-value/{id}" };
+	}
 	// Get Lookup Item
-	rpc GetLookupItem(GetLookupItemRequest) returns (LookupItem) {}
+	rpc GetLookupItem(GetLookupItemRequest) returns (LookupItem) {
+		option (google.api.http) = { get: "/user-interface/lookup/{id}" };
+	}
 	// List Lookup Item
-	rpc ListLookupItems(ListLookupItemsRequest) returns (ListLookupItemsResponse) {}
+	rpc ListLookupItems(ListLookupItemsRequest) returns (ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/user-interface/lookups" };
+	}
 	//	Request Browser Data
-	rpc ListBrowserItems(ListBrowserItemsRequest) returns (ListBrowserItemsResponse) {}
+	rpc ListBrowserItems(ListBrowserItemsRequest) returns (ListBrowserItemsResponse) {
+		option (google.api.http) = { get: "/user-interface/browser-items" };
+	}
 	// Update Browser Entity
-	rpc UpdateBrowserEntity(UpdateBrowserEntityRequest) returns (Entity) {}
+	rpc UpdateBrowserEntity(UpdateBrowserEntityRequest) returns (Entity) {
+		option (google.api.http) = {
+			put: "/user-interface/lookup/{id}",
+			body: "*"
+		};
+	}
 	// Exists References on Record
-	rpc ExistsReferences(ExistsReferencesRequest) returns (ExistsReferencesResponse) {}
+	rpc ExistsReferences(ExistsReferencesRequest) returns (ExistsReferencesResponse) {
+		option (google.api.http) = { get: "/user-interface/exists-references" };
+	}
 	// List a References
-	rpc ListReferences(ListReferencesRequest) returns (ListReferencesResponse) {}
+	rpc ListReferences(ListReferencesRequest) returns (ListReferencesResponse) {
+		option (google.api.http) = { get: "/user-interface/references" };
+	}
 	// Get context Info
-	rpc GetContextInfoValue(GetContextInfoValueRequest) returns (ContextInfoValue) {}
+	rpc GetContextInfoValue(GetContextInfoValueRequest) returns (ContextInfoValue) {
+		option (google.api.http) = { get: "/business-data/context-info/{id}" };
+	}
 	// Get Private Access
-	rpc GetPrivateAccess(GetPrivateAccessRequest) returns (PrivateAccess) {}
+	rpc GetPrivateAccess(GetPrivateAccessRequest) returns (PrivateAccess) {
+		option (google.api.http) = { get: "/business-data/private-access/{id}" };
+	}
 	// Create Private Access
-	rpc LockPrivateAccess(LockPrivateAccessRequest) returns (PrivateAccess) {}
+	rpc LockPrivateAccess(LockPrivateAccessRequest) returns (PrivateAccess) {
+		option (google.api.http) = {
+			put: "/user-interface/lock-private-access/{id}",
+			body: "*"
+		};
+	}
 	// Change Private Access
-	rpc UnlockPrivateAccess(UnlockPrivateAccessRequest) returns (PrivateAccess) {}
+	rpc UnlockPrivateAccess(UnlockPrivateAccessRequest) returns (PrivateAccess) {
+		option (google.api.http) = {
+			put: "/user-interface/unlock-private-access/{id}",
+			body: "*"
+		};
+	}
 	// Get Record Access
-	rpc GetRecordAccess(GetRecordAccessRequest) returns (RecordAccess) {}
+	rpc GetRecordAccess(GetRecordAccessRequest) returns (RecordAccess) {
+		option (google.api.http) = { get: "/user-interface/record-access/{id}" };
+	}
 	// Set Record Access
-	rpc SetRecordAccess(SetRecordAccessRequest) returns (RecordAccess) {}
+	rpc SetRecordAccess(SetRecordAccessRequest) returns (RecordAccess) {
+		option (google.api.http) = {
+			post: "/user-interface/record-access",
+			body: "*"
+		};
+	}
 	//	Request Print Format List
-	rpc ListPrintFormats(ListPrintFormatsRequest) returns (ListPrintFormatsResponse) {}
+	rpc ListPrintFormats(ListPrintFormatsRequest) returns (ListPrintFormatsResponse) {
+		option (google.api.http) = { get: "/user-interface/print-formats" };
+	}
 	//	Request Report View List
-	rpc ListReportViews(ListReportViewsRequest) returns (ListReportViewsResponse) {}
+	rpc ListReportViews(ListReportViewsRequest) returns (ListReportViewsResponse) {
+		option (google.api.http) = { get: "/user-interface/report-views" };
+	}
 	//	Request Drill Tables List
-	rpc ListDrillTables(ListDrillTablesRequest) returns (ListDrillTablesResponse) {}
+	rpc ListDrillTables(ListDrillTablesRequest) returns (ListDrillTablesResponse) {
+		option (google.api.http) = { get: "/user-interface/drill-tables" };
+	}
 	//	Request Report Output
-	rpc GetReportOutput(GetReportOutputRequest) returns (ReportOutput) {}
+	rpc GetReportOutput(GetReportOutputRequest) returns (ReportOutput) {
+		option (google.api.http) = { get: "/user-interface/report-output/{process_id}" };
+	}
 	// Add Chat Entry
-	rpc CreateChatEntry(CreateChatEntryRequest) returns (ChatEntry) {}
+	rpc CreateChatEntry(CreateChatEntryRequest) returns (ChatEntry) {
+		option (google.api.http) = {
+			post: "/user-interface/chat-entry",
+			body: "*"
+		};
+	}
 	//	Set Preference from field
-	rpc SetPreference(SetPreferenceRequest) returns (Preference) {}
+	rpc SetPreference(SetPreferenceRequest) returns (Preference) {
+		option (google.api.http) = {
+			post: "/user-interface/preference",
+			body: "*"
+		};
+	}
 	//	Delete Preference from field
-	rpc DeletePreference(DeletePreferenceRequest) returns (Empty) {}
+	rpc DeletePreference(DeletePreferenceRequest) returns (Empty) {
+		option (google.api.http) = { delete: "/user-interface/preference/{id}" };
+	}
 	//	List General Info
-	rpc ListGeneralInfo(ListGeneralInfoRequest) returns (ListEntitiesResponse) {}
+	rpc ListGeneralInfo(ListGeneralInfoRequest) returns (ListEntitiesResponse) {
+		option (google.api.http) = { get: "/user-interface/general-info" };
+	}
 	//	List Tab Sequences
-	rpc ListTabSequences(ListTabSequencesRequest) returns (ListEntitiesResponse) {}
+	rpc ListTabSequences(ListTabSequencesRequest) returns (ListEntitiesResponse) {
+		option (google.api.http) = { get: "/user-interface/tab-sequences" };
+	}
 	//	Save Tab Sequences
-	rpc SaveTabSequences(SaveTabSequencesRequest) returns (ListEntitiesResponse) {}
+	rpc SaveTabSequences(SaveTabSequencesRequest) returns (ListEntitiesResponse) {
+		option (google.api.http) = {
+			post: "/user-interface/tab-sequences",
+			body: "*"
+		};
+	}
 	// List Tree Nodes Request
-	rpc ListTreeNodes(ListTreeNodesRequest) returns (ListTreeNodesResponse) {}
+	rpc ListTreeNodes(ListTreeNodesRequest) returns (ListTreeNodesResponse) {
+		option (google.api.http) = { get: "/user-interface/tree-nodes" };
+	}
 	// List Mail Templates
-	rpc ListMailTemplates(ListMailTemplatesRequest) returns (ListMailTemplatesResponse) {}
+	rpc ListMailTemplates(ListMailTemplatesRequest) returns (ListMailTemplatesResponse) {
+		option (google.api.http) = { get: "/user-interface/mail-templates" };
+	}
 }
 
 //	Role Access Request
