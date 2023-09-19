@@ -23,18 +23,50 @@ import "base_data_type.proto";
 package express_receipt;
 
 service ExpressReceipt {
-	rpc ListBusinessPartners(ListBusinessPartnersRequest) returns (ListBusinessPartnersResponse) {}
-	rpc ListPurchaseOrders(ListPurchaseOrdersRequest) returns (ListPurchaseOrdersResponse) {}
-	rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {}
+	rpc ListBusinessPartners(ListBusinessPartnersRequest) returns (ListBusinessPartnersResponse) {
+		option (google.api.http) = { delete: "/express-receipt/business-partners" };
+	}
+	rpc ListPurchaseOrders(ListPurchaseOrdersRequest) returns (ListPurchaseOrdersResponse) {
+		option (google.api.http) = { delete: "/express-receipt/business-partners" };
+	}
+	rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {
+		option (google.api.http) = { delete: "/express-receipt/products" };
+	}
 	// Receipt
-	rpc CreateReceipt(CreateReceiptRequest) returns (Receipt) {}
-	rpc DeleteReceipt(DeleteReceiptRequest) returns (data.Empty) {}
-	rpc ProcessReceipt(ProcessReceiptRequest) returns (Receipt) {}
+	rpc CreateReceipt(CreateReceiptRequest) returns (Receipt) {
+		option (google.api.http) = {
+			post: "/express-receipt/receipts",
+			body: "*"
+		};
+	}
+	rpc DeleteReceipt(DeleteReceiptRequest) returns (data.Empty) {
+		option (google.api.http) = { delete: "/express-receipt/receipts/{id}" };
+	}
+	rpc ProcessReceipt(ProcessReceiptRequest) returns (Receipt) {
+		option (google.api.http) = {
+			put: "/express-receipt/receipts/{id}/process",
+			body: "*"
+		};
+	}
 	//	Receipt Line
-	rpc CreateReceiptLine(CreateReceiptLineRequest) returns (ReceiptLine) {}
-	rpc DeleteReceiptLine(DeleteReceiptLineRequest) returns (data.Empty) {}
-	rpc UpdateReceiptLine(UpdateReceiptLineRequest) returns (ReceiptLine) {}
-	rpc ListReceiptLines(ListReceiptLinesRequest) returns (ListReceiptLinesResponse) {}
+	rpc CreateReceiptLine(CreateReceiptLineRequest) returns (ReceiptLine) {
+		option (google.api.http) = {
+			post: "/express-receipt/receipts/{receipt_id}/lines",
+			body: "*"
+		};
+	}
+	rpc DeleteReceiptLine(DeleteReceiptLineRequest) returns (data.Empty) {
+		option (google.api.http) = { delete: "/express-receipt/receipts/{receipt_id}/lines/{id}" };
+	}
+	rpc UpdateReceiptLine(UpdateReceiptLineRequest) returns (ReceiptLine) {
+		option (google.api.http) = {
+			put: "/express-receipt/receipts/{receipt_id}/lines",
+			body: "*"
+		};
+	}
+	rpc ListReceiptLines(ListReceiptLinesRequest) returns (ListReceiptLinesResponse) {
+		option (google.api.http) = { delete: "/express-receipt/receipts/{receipt_id}/lines" };
+	}
 }
 
 

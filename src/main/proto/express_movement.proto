@@ -49,21 +49,21 @@ service ExpressMovement {
 	//	Movement Line
 	rpc CreateMovementLine(CreateMovementLineRequest) returns (MovementLine) {
 		option (google.api.http) = {
-			post: "/express-movement/movements/lines",
+			post: "/express-movement/movements/{movement_id}/lines",
 			body: "*"
 		};
 	}
 	rpc DeleteMovementLine(DeleteMovementLineRequest) returns (data.Empty) {
-		option (google.api.http) = { delete: "/express-movement/movement/lines/{id}" };
+		option (google.api.http) = { delete: "/express-movement/movement/{movement_id}/lines/{id}" };
 	}
 	rpc UpdateMovementLine(UpdateMovementLineRequest) returns (MovementLine) {
 		option (google.api.http) = {
-			put: "/express-movement/movement/lines",
+			put: "/express-movement/movement/{movement_id}/lines/{id}",
 			body: "*"
 		};
 	}
 	rpc ListMovementLines(ListMovementLinesRequest) returns (ListMovementLinesResponse) {
-		option (google.api.http) = { delete: "/express-movement/movement/lines" };
+		option (google.api.http) = { delete: "/express-movement/{movement_id}/movements/lines" };
 	}
 }
 

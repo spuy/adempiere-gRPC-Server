@@ -46,6 +46,7 @@ static_resources:
                 - dictionary.Dictionary
                 - enrollment.Register
                 - express_movement.ExpressMovement
+                - express_receipt.ExpressReceipt
               print_options:
                 add_whitespace: true
                 always_print_primitive_fields: true
