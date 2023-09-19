@@ -32,6 +32,10 @@ static_resources:
                 - business_partner.BusinessPartner
                 - data.BusinessData
                 - data.UserInterface
+                - data.CoreFunctionality
+                - data.CoreFunctionality
+                - dashboarding.Dashboarding
+                - dictionary.Dictionary
               print_options:
                 add_whitespace: true
                 always_print_primitive_fields: true

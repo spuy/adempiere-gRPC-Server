@@ -18,30 +18,54 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.dictionary";
 option java_outer_classname = "ADempiereDictionary";
 
+import "google/api/annotations.proto";
+
 package dictionary;
 
 // The greeting service definition.
 service Dictionary {
 	// Request a Window
-	rpc GetWindow(EntityRequest) returns (Window) {}
+	rpc GetWindow(EntityRequest) returns (Window) {
+		option (google.api.http) = { get: "/dictionary/window/{id}" };
+	}
 	// Request a Tab
-	rpc GetTab(EntityRequest) returns (Tab) {}
+	rpc GetTab(EntityRequest) returns (Tab) {
+		option (google.api.http) = { get: "/dictionary/tab/{id}" };
+	}
 	// Request a Field
-	rpc GetField(FieldRequest) returns (Field) {}
+	rpc GetField(FieldRequest) returns (Field) {
+		option (google.api.http) = { get: "/dictionary/field/{id}" };
+	}
 	// Reference Request
-	rpc GetReference(ReferenceRequest) returns (Reference) {}
+	rpc GetReference(ReferenceRequest) returns (Reference) {
+		option (google.api.http) = { get: "/dictionary/reference/{id}" };
+	}
 	// Reference Request
-	rpc GetValidationRule(EntityRequest) returns (ValidationRule) {}
+	rpc GetValidationRule(EntityRequest) returns (ValidationRule) {
+		option (google.api.http) = { get: "/dictionary/validation-rule/{id}" };
+	}
 	// Request Process
-	rpc GetProcess(EntityRequest) returns (Process) {}
+	rpc GetProcess(EntityRequest) returns (Process) {
+		option (google.api.http) = { get: "/dictionary/process/{id}" };
+	}
 	// Request Browser
-	rpc GetBrowser(EntityRequest) returns (Browser) {}
+	rpc GetBrowser(EntityRequest) returns (Browser) {
+		option (google.api.http) = { get: "/dictionary/browser/{id}" };
+	}
 	// Get Form
-	rpc GetForm(EntityRequest) returns (Form) {}
+	rpc GetForm(EntityRequest) returns (Form) {
+		option (google.api.http) = { get: "/dictionary/form/{id}" };
+	}
 	// List Search Info Fields
-	rpc ListSearchInfoFields(ListFieldsRequest) returns (ListFieldsResponse) {}
-	rpc ListIdentifiersFields(ListFieldsRequest) returns (ListFieldsResponse) {}
-	rpc ListTableSearchFields(ListFieldsRequest) returns (ListFieldsResponse) {}
+	rpc ListSearchInfoFields(ListFieldsRequest) returns (ListFieldsResponse) {
+		option (google.api.http) = { get: "/dictionary/search-info-fields" };
+	}
+	rpc ListIdentifiersFields(ListFieldsRequest) returns (ListFieldsResponse) {
+		option (google.api.http) = { get: "/dictionary/identifier-fields" };
+	}
+	rpc ListTableSearchFields(ListFieldsRequest) returns (ListFieldsResponse) {
+		option (google.api.http) = { get: "/dictionary/table-search-fields" };
+	}
 }
 
 // Object request
