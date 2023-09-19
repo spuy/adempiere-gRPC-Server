@@ -40,7 +40,7 @@ service Dashboarding {
 	}
 	//	Get Metrics
 	rpc GetMetrics(GetMetricsRequest) returns (Metrics) {
-		option (google.api.http) = { get: "/dashboarding/metric/{id}" };
+		option (google.api.http) = { get: "/dashboarding/metrics/{id}" };
 	}
 	// NotificationWindowChart
 	rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
@@ -54,7 +54,7 @@ service Dashboarding {
 		option (google.api.http) = { get: "/dashboarding/window-dashboards" };
 	}
 	rpc GetWindowMetrics(GetWindowMetricsRequest) returns (WindowMetrics) {
-		option (google.api.http) = { get: "/dashboarding/window-metric/{id}" };
+		option (google.api.http) = { get: "/dashboarding/window-metrics/{id}" };
 	}
 }
 

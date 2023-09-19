@@ -30,7 +30,7 @@ service CoreFunctionality {
 	}
 	//	Get Country Information
 	rpc GetCountry(GetCountryRequest) returns (Country) {
-		option (google.api.http) = { get: "/core-functionality/country/{id}" };
+		option (google.api.http) = { get: "/core-functionality/countries/{id}" };
 	}
 	//	List Organizations
 	rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {
@@ -46,12 +46,12 @@ service CoreFunctionality {
 	}
 	//	Get Business Partner from search
 	rpc GetBusinessPartner(GetBusinessPartnerRequest) returns (BusinessPartner) {
-		option (google.api.http) = { get: "/core-functionality/business-partner/{id}" };
+		option (google.api.http) = { get: "/core-functionality/business-partners/{id}" };
 	}
 	//	Create Business Partner
 	rpc CreateBusinessPartner(CreateBusinessPartnerRequest) returns (BusinessPartner) {
 		option (google.api.http) = {
-			post: "/core-functionality/business-partner",
+			post: "/core-functionality/business-partners",
 			body: "*"
 		};
 	}
@@ -61,7 +61,7 @@ service CoreFunctionality {
 	}
 	//	Get Currency Rate
 	rpc GetConversionRate(GetConversionRateRequest) returns (ConversionRate) {
-		option (google.api.http) = { get: "/core-functionality/conversion-rate/{id}" };
+		option (google.api.http) = { get: "/core-functionality/conversion-rates/{id}" };
 	}
 	//	List Product Conversion UOM
 	rpc ListProductConversion(ListProductConversionRequest) returns (ListProductConversionResponse) {

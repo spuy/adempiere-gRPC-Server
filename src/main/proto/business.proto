@@ -27,25 +27,25 @@ package data;
 service BusinessData {
 	// Get a Entity
 	rpc GetEntity(GetEntityRequest) returns (Entity) {
-		option (google.api.http) = { get: "/business-data/entity/{id}" };
+		option (google.api.http) = { get: "/business-data/entities/{id}" };
 	}
 	// Create Entity Request
 	rpc CreateEntity(CreateEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			post: "/business-data/entity",
+			post: "/business-data/entities",
 			body: "*"
 		};
 	}
 	// Update Entity Request
 	rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			put: "/business-data/entity",
+			put: "/business-data/entities/{id}",
 			body: "*"
 		};
 	}
 	// Delete Entity Request
 	rpc DeleteEntity(DeleteEntityRequest) returns (Empty) {
-		option (google.api.http) = { delete: "/business-data/entity/{id}" };
+		option (google.api.http) = { delete: "/business-data/entities/{id}" };
 	}
 	//	List a Entities
 	rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
@@ -54,7 +54,7 @@ service BusinessData {
 	//	Request a BusinessProcess / Report
 	rpc RunBusinessProcess(RunBusinessProcessRequest) returns (ProcessLog) {
 		option (google.api.http) = {
-			post: "/business-data/run-process",
+			post: "/business-data/process",
 			body: "*"
 		};
 	}
@@ -64,19 +64,19 @@ service BusinessData {
 service UserInterface {
 	// Get a Tab Entity
 	rpc GetTabEntity(GetTabEntityRequest) returns (Entity) {
-		option (google.api.http) = { get: "/user-interface/entity/{id}" };
+		option (google.api.http) = { get: "/user-interface/entities/{id}" };
 	}
 	// Create Tab Entity
 	rpc CreateTabEntity(CreateTabEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			post: "/user-interface/entity",
+			post: "/user-interface/entities",
 			body: "*"
 		};
 	}
 	// Update Tab Entity
 	rpc UpdateTabEntity(UpdateTabEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			put: "/user-interface/entity",
+			put: "/user-interface/entities/{id}",
 			body: "*"
 		};
 	}
@@ -87,7 +87,7 @@ service UserInterface {
 	//	Rollback Entity Request
 	rpc RollbackEntity(RollbackEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			put: "/user-interface/rollback-entity",
+			put: "/user-interface/entities/{id}/rollback",
 			body: "*"
 		};
 	}
@@ -108,7 +108,7 @@ service UserInterface {
 	}
 	// Get Lookup Item
 	rpc GetLookupItem(GetLookupItemRequest) returns (LookupItem) {
-		option (google.api.http) = { get: "/user-interface/lookup/{id}" };
+		option (google.api.http) = { get: "/user-interface/lookups/{id}" };
 	}
 	// List Lookup Item
 	rpc ListLookupItems(ListLookupItemsRequest) returns (ListLookupItemsResponse) {
@@ -121,13 +121,13 @@ service UserInterface {
 	// Update Browser Entity
 	rpc UpdateBrowserEntity(UpdateBrowserEntityRequest) returns (Entity) {
 		option (google.api.http) = {
-			put: "/user-interface/lookup/{id}",
+			put: "/user-interface/browser-items/{id}",
 			body: "*"
 		};
 	}
 	// Exists References on Record
 	rpc ExistsReferences(ExistsReferencesRequest) returns (ExistsReferencesResponse) {
-		option (google.api.http) = { get: "/user-interface/exists-references" };
+		option (google.api.http) = { get: "/user-interface/references/{record_id}/exists" };
 	}
 	// List a References
 	rpc ListReferences(ListReferencesRequest) returns (ListReferencesResponse) {
@@ -135,23 +135,23 @@ service UserInterface {
 	}
 	// Get context Info
 	rpc GetContextInfoValue(GetContextInfoValueRequest) returns (ContextInfoValue) {
-		option (google.api.http) = { get: "/business-data/context-info/{id}" };
+		option (google.api.http) = { get: "/user-interface/context-info/{id}" };
 	}
 	// Get Private Access
 	rpc GetPrivateAccess(GetPrivateAccessRequest) returns (PrivateAccess) {
-		option (google.api.http) = { get: "/business-data/private-access/{id}" };
+		option (google.api.http) = { get: "/user-interface/private-access/{id}" };
 	}
 	// Create Private Access
 	rpc LockPrivateAccess(LockPrivateAccessRequest) returns (PrivateAccess) {
 		option (google.api.http) = {
-			put: "/user-interface/lock-private-access/{id}",
+			put: "/user-interface/private-access/{id}/lock",
 			body: "*"
 		};
 	}
 	// Change Private Access
 	rpc UnlockPrivateAccess(UnlockPrivateAccessRequest) returns (PrivateAccess) {
 		option (google.api.http) = {
-			put: "/user-interface/unlock-private-access/{id}",
+			put: "/user-interface/private-access/{id}/unlock",
 			body: "*"
 		};
 	}
@@ -162,7 +162,7 @@ service UserInterface {
 	// Set Record Access
 	rpc SetRecordAccess(SetRecordAccessRequest) returns (RecordAccess) {
 		option (google.api.http) = {
-			post: "/user-interface/record-access",
+			put: "/user-interface/record-access/{id}",
 			body: "*"
 		};
 	}

@@ -26,35 +26,35 @@ package dictionary;
 service Dictionary {
 	// Request a Window
 	rpc GetWindow(EntityRequest) returns (Window) {
-		option (google.api.http) = { get: "/dictionary/window/{id}" };
+		option (google.api.http) = { get: "/dictionary/windows/{id}" };
 	}
 	// Request a Tab
 	rpc GetTab(EntityRequest) returns (Tab) {
-		option (google.api.http) = { get: "/dictionary/tab/{id}" };
+		option (google.api.http) = { get: "/dictionary/tabs/{id}" };
 	}
 	// Request a Field
 	rpc GetField(FieldRequest) returns (Field) {
-		option (google.api.http) = { get: "/dictionary/field/{id}" };
+		option (google.api.http) = { get: "/dictionary/fields/{id}" };
 	}
 	// Reference Request
 	rpc GetReference(ReferenceRequest) returns (Reference) {
-		option (google.api.http) = { get: "/dictionary/reference/{id}" };
+		option (google.api.http) = { get: "/dictionary/references/{id}" };
 	}
 	// Reference Request
 	rpc GetValidationRule(EntityRequest) returns (ValidationRule) {
-		option (google.api.http) = { get: "/dictionary/validation-rule/{id}" };
+		option (google.api.http) = { get: "/dictionary/validation-rules/{id}" };
 	}
 	// Request Process
 	rpc GetProcess(EntityRequest) returns (Process) {
-		option (google.api.http) = { get: "/dictionary/process/{id}" };
+		option (google.api.http) = { get: "/dictionary/processes/{id}" };
 	}
 	// Request Browser
 	rpc GetBrowser(EntityRequest) returns (Browser) {
-		option (google.api.http) = { get: "/dictionary/browser/{id}" };
+		option (google.api.http) = { get: "/dictionary/browsers/{id}" };
 	}
 	// Get Form
 	rpc GetForm(EntityRequest) returns (Form) {
-		option (google.api.http) = { get: "/dictionary/form/{id}" };
+		option (google.api.http) = { get: "/dictionary/forms/{id}" };
 	}
 	// List Search Info Fields
 	rpc ListSearchInfoFields(ListFieldsRequest) returns (ListFieldsResponse) {
