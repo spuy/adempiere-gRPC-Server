@@ -2,7 +2,10 @@ static_resources:
   listeners:
   - name: listener1
     address:
-      socket_address: {address: 0.0.0.0, port_value: 5555}
+      socket_address: {
+        address: 0.0.0.0,
+        port_value: 5555
+      }
     filter_chains:
     - filters:
       - name: envoy.filters.network.http_connection_manager
@@ -19,8 +22,13 @@ static_resources:
               # NOTE: by default, matching happens based on the gRPC route, and not on the incoming request path.
               # Reference: https://envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/grpc_json_transcoder_filter#route-configs-for-transcoded-requests
               # https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/grpc_json_transcoder_filter#sample-envoy-configuration
-              - match: {prefix: "/"}
-                route: {cluster: grpc, timeout: 60s}
+              - match: {
+                  prefix: "/"
+                }
+                route: {
+                  cluster: grpc,
+                  timeout: 60s
+                }
           http_filters:
           - name: envoy.filters.http.grpc_json_transcoder
             typed_config:
@@ -30,6 +38,15 @@ static_resources:
                 - security.Security
                 - bank_statement_match.BankStatementMatch
                 - business_partner.BusinessPartner
+                - data.BusinessData
+                - data.UserInterface
+                - data.CoreFunctionality
+                - data.CoreFunctionality
+                - dashboarding.Dashboarding
+                - dictionary.Dictionary
+                - enrollment.Register
+                - express_movement.ExpressMovement
+                - express_receipt.ExpressReceipt
               print_options:
                 add_whitespace: true
                 always_print_primitive_fields: true
