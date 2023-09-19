@@ -19,6 +19,7 @@ option java_package = "org.spin.backend.grpc.form.express_receipt";
 option java_outer_classname = "ADempiereExpressReceipt";
 
 import "base_data_type.proto";
+import "google/api/annotations.proto";
 
 package express_receipt;
 
