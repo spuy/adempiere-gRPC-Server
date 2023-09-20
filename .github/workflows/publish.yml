@@ -27,6 +27,15 @@ jobs:
           java-version: 11
           architecture: x64
 
+      - name: Set Main Version
+        run: echo "MAIN_VERSION=${{ github.event.release.name }}" >> src/main/java/org/spin/base/version.properties
+
+      - name: Set Release Date
+        run: echo "DATE_VERSION=$(date +'%Y-%m-%d')" >> src/main/java/org/spin/base/version.properties
+
+      - name: Set Implementation Version
+        run: echo "IMPLEMENTATION_VERSION=${{ github.event.release.tag_name }}" >> src/main/java/org/spin/base/version.properties
+
       - name: Build with Gradle
         uses: gradle/gradle-build-action@v2
         with:
@@ -37,6 +46,18 @@ jobs:
           GITHUB_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           GITHUB_DEPLOY_REPOSITORY: ${{ secrets.DEPLOY_REPOSITORY }}
 
+      - name: Upload descriptor file artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: adempiere-grpc-server.pb
+          path: build/descriptors/adempiere-grpc-server.pb
+          
+      - name: Upload envoy file artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: envoy.yaml
+          path: resources/envoy.yaml
+          
       - name: Upload dist app zip artifact
         uses: actions/upload-artifact@v3
         with:
@@ -126,6 +147,20 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
 
+      - name: Upload Descriptor
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: adempiere-grpc-server.pb/adempiere-grpc-server.pb
+          
+      - name: Upload Envoy config
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: envoy.yaml/envoy.yaml
+          
       - name: Upload zip
         uses: skx/github-action-publish-binaries@master
         env:

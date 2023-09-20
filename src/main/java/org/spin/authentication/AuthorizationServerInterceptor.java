@@ -32,16 +32,19 @@ public class AuthorizationServerInterceptor implements ServerInterceptor {
 
 	/** Services/Methods allow request without Bearer token validation */
 	private static List<String> ALLOW_REQUESTS_WITHOUT_TOKEN = Arrays.asList(
+		"data.CoreFunctionality/GetSystemInfo",
 		"security.Security/RunLogin",
 		"security.Security/ListServices",
 		"security.Security/RunLoginOpenID"
 	);
+
 	/**	Revoke session	*/
 	private static List<String> REVOKE_TOKEN_SERVICES = Arrays.asList(
 		"security.Security/RunChangeRole",
 		"security.Security/SetSessionAttribute",
 		"security.Security/RunLogout"
 	);
+
 	/**	Threaded key for context management	*/
 	public static final Context.Key<Object> SESSION_CONTEXT = Context.key("session_context");
 

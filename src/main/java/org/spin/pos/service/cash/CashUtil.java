@@ -25,13 +25,22 @@ import org.spin.base.util.RecordUtil;
 public class CashUtil {
 	
 	/**
-	 * Set current date to order
+	 * Default set date for payment
 	 * @param payment
-	 * @return void
 	 */
 	public static void setCurrentDate(MPayment payment) {
+		setCurrentDate(payment, false);
+	}
+	
+	/**
+	 * Set current date to order
+	 * @param payment
+	 * @param force
+	 * @return void
+	 */
+	public static void setCurrentDate(MPayment payment, boolean force) {
 		//	Ignore if the document is processed
-		if(payment.isProcessed() || payment.isProcessing()) {
+		if(payment.isProcessed() || payment.isProcessing() || (payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo) && !force)) {
 			return;
 		}
 		if(!payment.getDateTrx().equals(RecordUtil.getDate())) {

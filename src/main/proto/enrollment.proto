@@ -18,18 +18,40 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.enrollment";
 option java_outer_classname = "Enrollment";
 
+import "google/api/annotations.proto";
+
 package enrollment;
 
 // The greeting service definition.
 service Register {
-  // Request enroll User
-  rpc EnrollUser(EnrollUserRequest) returns (User) {}
-  // 
-  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse) {}
-  // 
-  rpc ResetPasswordFromToken(ResetPasswordTokenRequest) returns (ResetPasswordResponse) {}
-  // 
-  rpc ActivateUser(ActivateUserRequest) returns (ActivateUserResponse) {}
+	// Request enroll User
+	rpc EnrollUser(EnrollUserRequest) returns (User) {
+		option (google.api.http) = {
+			post: "/enrollment/user",
+			body: "*"
+		};
+	}
+	//
+	rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse) {
+		option (google.api.http) = {
+			put: "/enrollment/reset-password",
+			body: "*"
+		};
+	}
+	//
+	rpc ResetPasswordFromToken(ResetPasswordTokenRequest) returns (ResetPasswordResponse) {
+		option (google.api.http) = {
+			put: "/enrollment/reset-password-token",
+			body: "*"
+		};
+	}
+	//
+	rpc ActivateUser(ActivateUserRequest) returns (ActivateUserResponse) {
+		option (google.api.http) = {
+			put: "/enrollment/user",
+			body: "*"
+		};
+	}
 }
 
 // Request a Enroll for a user

@@ -20,25 +20,42 @@ option java_outer_classname = "ADempiereDashboarding";
 
 import "base_data_type.proto";
 import "dictionary.proto";
+import "google/api/annotations.proto";
 
 package dashboarding;
 
 //	All related to Dashboarding
 service Dashboarding {
 	//	Request Dashboards Content Edit
-	rpc ListDashboards(ListDashboardsRequest) returns (ListDashboardsResponse) {}
+	rpc ListDashboards(ListDashboardsRequest) returns (ListDashboardsResponse) {
+		option (google.api.http) = { get: "/dashboarding/dashboards" };
+	}
 	//	Request Favorites
-	rpc ListFavorites(ListFavoritesRequest) returns (ListFavoritesResponse) {}
+	rpc ListFavorites(ListFavoritesRequest) returns (ListFavoritesResponse) {
+		option (google.api.http) = { get: "/dashboarding/favorites" };
+	}
 	//	Request Document Statuses
-	rpc ListPendingDocuments(ListPendingDocumentsRequest) returns (ListPendingDocumentsResponse) {}
+	rpc ListPendingDocuments(ListPendingDocumentsRequest) returns (ListPendingDocumentsResponse) {
+		option (google.api.http) = { get: "/dashboarding/pending-documents" };
+	}
 	//	Get Metrics
-	rpc GetMetrics(GetMetricsRequest) returns (Metrics) {}
+	rpc GetMetrics(GetMetricsRequest) returns (Metrics) {
+		option (google.api.http) = { get: "/dashboarding/metrics/{id}" };
+	}
 	// NotificationWindowChart
-	rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
+	rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+		option (google.api.http) = { get: "/dashboarding/notifications" };
+	}
 	// Custom Window Metrics
-	rpc ExistsWindowDashboards(ExistsWindowDashboardsRequest) returns (ExistsWindowDashboardsResponse) {}
-	rpc ListWindowDashboards(ListWindowDashboardsRequest) returns (ListWindowDashboardsResponse) {}
-	rpc GetWindowMetrics(GetWindowMetricsRequest) returns (WindowMetrics) {}
+	rpc ExistsWindowDashboards(ExistsWindowDashboardsRequest) returns (ExistsWindowDashboardsResponse) {
+		option (google.api.http) = { get: "/dashboarding/exists-window-dashboards" };
+	}
+	rpc ListWindowDashboards(ListWindowDashboardsRequest) returns (ListWindowDashboardsResponse) {
+		option (google.api.http) = { get: "/dashboarding/window-dashboards" };
+	}
+	rpc GetWindowMetrics(GetWindowMetricsRequest) returns (WindowMetrics) {
+		option (google.api.http) = { get: "/dashboarding/window-metrics/{id}" };
+	}
 }
 
 // Dashboard

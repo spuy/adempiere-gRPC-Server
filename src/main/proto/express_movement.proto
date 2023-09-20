@@ -19,21 +19,52 @@ option java_package = "org.spin.backend.grpc.form.express_movement";
 option java_outer_classname = "ADempiereExpressMovement";
 
 import "base_data_type.proto";
+import "google/api/annotations.proto";
 
 package express_movement;
 
 service ExpressMovement {
-	rpc ListWarehouses(ListWarehousesRequest) returns (ListWarehousesResponse) {}
-	rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {}
+	rpc ListWarehouses(ListWarehousesRequest) returns (ListWarehousesResponse) {
+		option (google.api.http) = { delete: "/express-movement/warehouses" };
+	}
+	rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {
+		option (google.api.http) = { delete: "/express-movement/products" };
+	}
 	// Movement
-	rpc CreateMovement(CreateMovementRequest) returns (Movement) {}
-	rpc DeleteMovement(DeleteMovementRequest) returns (data.Empty) {}
-	rpc ProcessMovement(ProcessMovementRequest) returns (Movement) {}
+	rpc CreateMovement(CreateMovementRequest) returns (Movement) {
+		option (google.api.http) = {
+			post: "/express-movement/movements",
+			body: "*"
+		};
+	}
+	rpc DeleteMovement(DeleteMovementRequest) returns (data.Empty) {
+		option (google.api.http) = { delete: "/express-movement/movements/{id}" };
+	}
+	rpc ProcessMovement(ProcessMovementRequest) returns (Movement) {
+		option (google.api.http) = {
+			put: "/express-movement/movements/{id}/process",
+			body: "*"
+		};
+	}
 	//	Movement Line
-	rpc CreateMovementLine(CreateMovementLineRequest) returns (MovementLine) {}
-	rpc DeleteMovementLine(DeleteMovementLineRequest) returns (data.Empty) {}
-	rpc UpdateMovementLine(UpdateMovementLineRequest) returns (MovementLine) {}
-	rpc ListMovementLines(ListMovementLinesRequest) returns (ListMovementLinesResponse) {}
+	rpc CreateMovementLine(CreateMovementLineRequest) returns (MovementLine) {
+		option (google.api.http) = {
+			post: "/express-movement/movements/{movement_id}/lines",
+			body: "*"
+		};
+	}
+	rpc DeleteMovementLine(DeleteMovementLineRequest) returns (data.Empty) {
+		option (google.api.http) = { delete: "/express-movement/movement/{movement_id}/lines/{id}" };
+	}
+	rpc UpdateMovementLine(UpdateMovementLineRequest) returns (MovementLine) {
+		option (google.api.http) = {
+			put: "/express-movement/movement/{movement_id}/lines/{id}",
+			body: "*"
+		};
+	}
+	rpc ListMovementLines(ListMovementLinesRequest) returns (ListMovementLinesResponse) {
+		option (google.api.http) = { delete: "/express-movement/{movement_id}/movements/lines" };
+	}
 }
 
 

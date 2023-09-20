@@ -20,6 +20,7 @@ option java_outer_classname = "ADempiereBankStatementMatch";
 
 import "base_data_type.proto";
 import "business.proto";
+import "google/api/annotations.proto";
 
 package bank_statement_match;
 
@@ -29,20 +30,53 @@ package bank_statement_match;
 // - org.spin.apps.form.WBankStatementMatch
 service BankStatementMatch {
 	// lists criteria
-	rpc GetBankStatement(GetBankStatementRequest) returns (BankStatement) {}
-	rpc ListBankAccounts(ListBankAccountsRequest) returns (data.ListLookupItemsResponse) {}
-	rpc ListBusinessPartners(ListBusinessPartnersRequest) returns (data.ListLookupItemsResponse) {}
-	rpc ListSearchModes(ListSearchModesRequest) returns (data.ListLookupItemsResponse) {}
+	rpc GetBankStatement(GetBankStatementRequest) returns (BankStatement) {
+		option (google.api.http) = { get: "/bank-statement-match/bank-statements/{id}" };
+	}
+	rpc ListBankAccounts(ListBankAccountsRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/accounts" };
+	}
+	rpc ListBusinessPartners(ListBusinessPartnersRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/business-partners" };
+	}
+	rpc ListSearchModes(ListSearchModesRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/search-modes" };
+	}
 	// results
-	rpc ListImportedBankMovements(ListImportedBankMovementsRequest) returns (ListImportedBankMovementsResponse) {}
-	rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse) {}
-	rpc ListMatchingMovements(ListMatchingMovementsRequest) returns (ListMatchingMovementsResponse) {}
-	rpc ListResultMovements(ListResultMovementsRequest) returns (ListResultMovementsResponse) {}
+	rpc ListImportedBankMovements(ListImportedBankMovementsRequest) returns (ListImportedBankMovementsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/imported-movements" };
+	}
+	rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/payments" };
+	}
+	rpc ListMatchingMovements(ListMatchingMovementsRequest) returns (ListMatchingMovementsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/matching-movements" };
+	}
+	rpc ListResultMovements(ListResultMovementsRequest) returns (ListResultMovementsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/movements" };
+	}
 	// process
-	rpc MatchPayments(MatchPaymentsRequest) returns (MatchPaymentsResponse) {}
-	rpc UnmatchPayments(UnmatchPaymentsRequest) returns (UnmatchPaymentsResponse) {}
-	rpc ListBankStatements(ListBankStatementsRequest) returns (ListBankStatementsResponse) {}
-	rpc ProcessMovements(ProcessMovementsRequest) returns (ProcessMovementsResponse) {}
+	rpc MatchPayments(MatchPaymentsRequest) returns (MatchPaymentsResponse) {
+		option (google.api.http) = { 
+			post: "/bank-statement-match/match-payments",
+			body: "*"
+		};
+	}
+	rpc UnmatchPayments(UnmatchPaymentsRequest) returns (UnmatchPaymentsResponse) {
+		option (google.api.http) = { 
+			post: "/bank-statement-match/unmatch-payments",
+			body: "*"
+		};
+	}
+	rpc ListBankStatements(ListBankStatementsRequest) returns (ListBankStatementsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/bank-statements" };
+	}
+	rpc ProcessMovements(ProcessMovementsRequest) returns (ProcessMovementsResponse) {
+		option (google.api.http) = { 
+			post: "/bank-statement-match/process-movements",
+			body: "*"
+		};
+	}
 }
 
 //	Bank Account
