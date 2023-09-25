@@ -29,6 +29,9 @@ import org.compiere.util.Env;
 import org.compiere.util.Language;
 import org.compiere.util.Util;
 
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
+
 /**
  * Class for handle Context
  * @author Yamel Senih, ysenih@erpya.com , http://www.erpya.com
@@ -38,8 +41,16 @@ public class ContextManager {
 	/**	Language */
 	private static CCache<String, String> languageCache = new CCache<String, String>("Language-gRPC-Service", 30, 0);	//	no time-out
 
-	public static Properties setContextWithAttributes(int windowNo, Properties context, Map<String, Object> attributes) {
+	public static Properties setContextWithAttributesFromObjectMap(int windowNo, Properties context, Map<String, Object> attributes) {
 		return setContextWithAttributes(windowNo, context, attributes, true);
+	}
+	
+	public static Properties setContextWithAttributesFromStruct(int windowNo, Properties context, Struct attributes) {
+		return setContextWithAttributesFromValuesMap(windowNo, context, attributes.getFieldsMap());
+	}
+	
+	public static Properties setContextWithAttributesFromValuesMap(int windowNo, Properties context, Map<String, Value> attributes) {
+		return setContextWithAttributes(windowNo, context, ValueUtil.convertValuesMapToObjects(attributes), true);
 	}
 
 	/**
@@ -63,14 +74,6 @@ public class ContextManager {
 		});
 
 		return context;
-	}
-
-	public static Properties setContextWithAttributes(int windowNo, Properties context, java.util.List<org.spin.backend.grpc.common.KeyValue> values) {
-		return setContextWithAttributes(windowNo, context, values, true);
-	}
-	public static Properties setContextWithAttributes(int windowNo, Properties context, java.util.List<org.spin.backend.grpc.common.KeyValue> values, boolean isClearWindow) {
-		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(values);
-		return setContextWithAttributes(windowNo, context, attributes, isClearWindow);
 	}
 
 

@@ -21,74 +21,115 @@ option java_outer_classname = "ADempiereGeneralLedger";
 
 import "base_data_type.proto";
 import "business.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+// Base URL
+// /general-ledger/
 
 package general_ledger;
 
 // The General Ledger service definition.
 service GeneralLedger {
 	// Accounting Combination
-	rpc getAccountingCombination(GetAccountingCombinationRequest) returns (data.Entity) {}
-	rpc ListAccountingCombinations(ListAccountingCombinationsRequest) returns (data.ListEntitiesResponse) {}
-	rpc SaveAccountingCombination(SaveAccountingCombinationRequest) returns (data.Entity) {}
+	rpc getAccountingCombination(GetAccountingCombinationRequest) returns (data.Entity) {
+		option (google.api.http) = { get: "/general-ledger/accounts/combinations" };
+	}
+	rpc ListAccountingCombinations(ListAccountingCombinationsRequest) returns (data.ListEntitiesResponse) {
+		option (google.api.http) = { get: "/general-ledger/accounts/combinations" };
+	}
+	rpc SaveAccountingCombination(SaveAccountingCombinationRequest) returns (data.Entity) {
+		option (google.api.http) = { 
+			post: "/general-ledger/accounts/combinations",
+			body: "*"
+		};
+	}
 	// Accounting Viewer
-	rpc ListAccountingSchemas(ListAccountingSchemasRequest) returns (data.ListLookupItemsResponse) {}
-	rpc ListPostingTypes(ListPostingTypesRequest) returns (data.ListLookupItemsResponse) {}
-	rpc ListAccountingDocuments(ListAccountingDocumentsRequest) returns (ListAccountingDocumentsResponse) {}
-	rpc ListOrganizations(ListOrganizationsRequest) returns (data.ListLookupItemsResponse) {}
-	rpc ListAccountingFacts(ListAccountingFactsRequest) returns (data.ListEntitiesResponse) {}
-	rpc StartRePost(StartRePostRequest) returns (StartRePostResponse) {}
+	rpc ListAccountingSchemas(ListAccountingSchemasRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/general-ledger/accounts/schemas" };
+	}
+	rpc ListPostingTypes(ListPostingTypesRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/general-ledger/accounts/posting-types" };
+	}
+	rpc ListAccountingDocuments(ListAccountingDocumentsRequest) returns (ListAccountingDocumentsResponse) {
+		option (google.api.http) = { get: "/general-ledger/accounts/documents" };
+	}
+	rpc ListOrganizations(ListOrganizationsRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/general-ledger/organizations" };
+	}
+	rpc ListAccountingFacts(ListAccountingFactsRequest) returns (data.ListEntitiesResponse) {
+		option (google.api.http) = { get: "/general-ledger/accounts/facts" };
+	}
+	rpc StartRePost(StartRePostRequest) returns (StartRePostResponse) {
+		option (google.api.http) = { 
+			post: "/general-ledger/re-post",
+			body: "*"
+		};
+	}
 }
 
 // Accounting Combination
 message GetAccountingCombinationRequest {
-	int32 id = 2;
-	string uuid = 3;
-	string value = 4;
+	int32 id = 1;
+	string value = 2;
 }
 
 message ListAccountingCombinationsRequest {
-	int32 page_size = 2;
-	string page_token = 3;
-	// filters
-	string search_value = 4;
-	repeated data.KeyValue context_attributes = 5;
-	data.Criteria filters = 6;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	google.protobuf.Struct context_attributes = 8;
 }
 
 message SaveAccountingCombinationRequest {
-	repeated data.KeyValue context_attributes = 2;
-	string uuid = 3;
+	google.protobuf.Struct context_attributes = 2;
 	int32 id = 4;
-	repeated data.KeyValue attributes = 5;
+	google.protobuf.Struct attributes = 5;
 }
 
 
 // Accounting Schema
 message ListAccountingSchemasRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 // Posting Type
 message ListPostingTypesRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 // Accounting Document
 message ListAccountingDocumentsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 message AccountingDocument {
 	int32 id = 1;
-	string uuid = 2;
-	string name = 3;
-	string table_name = 4;
+	string name = 2;
+	string table_name = 3;
 }
 
 message ListAccountingDocumentsResponse {
@@ -99,38 +140,42 @@ message ListAccountingDocumentsResponse {
 
 // Organization
 message ListOrganizationsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 // Accounting Fact
 message ListAccountingFactsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 	// mandatory filters
-	int32 accounting_schema_id = 4;
+	int32 accounting_schema_id = 8;
 	// optional filter
-	string posting_type = 5;
+	string posting_type = 9;
 	// document filters
-	string table_name = 6;
-	int32 record_id = 7;
-	string record_uuid = 8;
+	string table_name = 10;
+	int32 record_id = 11;
 	//
-	int64 date_from = 9;
-	int64 date_to = 10;
-	int32 organization_id = 11; // OO
-	// accoutiing dimensions
-	data.Criteria filters = 12;
+	google.protobuf.Timestamp date_from = 12;
+	google.protobuf.Timestamp date_to = 13;
+	int32 organization_id = 14;
 }
 
 // Start Re-Post
 message StartRePostRequest {
-	string table_name = 2;
-	int32 record_id = 3;
-	string record_uuid = 4;
-	bool is_force = 5;
+	string table_name = 1;
+	int32 record_id = 2;
+	bool is_force = 3;
 }
 
 message StartRePostResponse {

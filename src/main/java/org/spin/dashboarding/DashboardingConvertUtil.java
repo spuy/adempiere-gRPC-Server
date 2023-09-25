@@ -19,9 +19,7 @@ package org.spin.dashboarding;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.adempiere.apps.graph.GraphColumn;
@@ -47,7 +45,6 @@ import org.compiere.util.Util;
 import org.spin.backend.grpc.dashboarding.ChartData;
 import org.spin.backend.grpc.dashboarding.ColorSchema;
 import org.spin.backend.grpc.dashboarding.Favorite;
-import org.spin.backend.grpc.dashboarding.Filter;
 import org.spin.backend.grpc.dashboarding.WindowDashboard;
 import org.spin.backend.grpc.dashboarding.WindowDashboardParameter;
 import org.spin.backend.grpc.dictionary.Reference;
@@ -88,52 +85,52 @@ public class DashboardingConvertUtil {
 		);
 	}
 
-	/**
-	 * Convert Filter Values from gRPC to ADempiere object values
-	 * @param values
-	 * @return
-	 */
-	public static Map<String, Object> convertFilterValuesToObjects(List<Filter> filtersList) {
-		Map<String, Object> convertedValues = new HashMap<>();
-		if (filtersList == null || filtersList.size() <= 0) {
-			return convertedValues;
-		}
-		for (Filter filter : filtersList) {
-			Object value = null;
-			// to IN or NOT IN clause
-			if (filter.getValuesList() != null && filter.getValuesList().size() > 0) {
-				List<Object> values = new ArrayList<Object>();
-				filter.getValuesList().forEach(valueBuilder -> {
-					Object currentValue = ValueUtil.getObjectFromValue(
-						valueBuilder
-					);
-					values.add(currentValue);
-				});
-				value = values;
-			}
-			else {
-				value = ValueUtil.getObjectFromValue(filter.getValue());
-				// to BETWEEN clause
-				if (filter.hasValueTo()) {
-					Object currentValue = value;
-					List<Object> values = new ArrayList<Object>();
-					values.add(currentValue);
-					values.add(
-						ValueUtil.getObjectFromValue(
-							filter.getValueTo()
-						)
-					);
-					value = values;
-				}
-			}
-			convertedValues.put(
-				filter.getColumnName(),
-				value
-			);
-		}
-		//
-		return convertedValues;
-	}
+//	/**
+//	 * Convert Filter Values from gRPC to ADempiere object values
+//	 * @param values
+//	 * @return
+//	 */
+//	public static Map<String, Object> convertFilterValuesToObjects(List<Filter> filtersList) {
+//		Map<String, Object> convertedValues = new HashMap<>();
+//		if (filtersList == null || filtersList.size() <= 0) {
+//			return convertedValues;
+//		}
+//		for (Filter filter : filtersList) {
+//			Object value = null;
+//			// to IN or NOT IN clause
+//			if (filter.getValuesList() != null && filter.getValuesList().size() > 0) {
+//				List<Object> values = new ArrayList<Object>();
+//				filter.getValuesList().forEach(valueBuilder -> {
+//					Object currentValue = ValueUtil.getObjectFromValue(
+//						valueBuilder
+//					);
+//					values.add(currentValue);
+//				});
+//				value = values;
+//			}
+//			else {
+//				value = ValueUtil.getObjectFromValue(filter.getValue());
+//				// to BETWEEN clause
+//				if (filter.hasValueTo()) {
+//					Object currentValue = value;
+//					List<Object> values = new ArrayList<Object>();
+//					values.add(currentValue);
+//					values.add(
+//						ValueUtil.getObjectFromValue(
+//							filter.getValueTo()
+//						)
+//					);
+//					value = values;
+//				}
+//			}
+//			convertedValues.put(
+//				filter.getColumnName(),
+//				value
+//			);
+//		}
+//		//
+//		return convertedValues;
+//	}
 
 	@SuppressWarnings("unchecked")
 	public static void addCollectionParameters(Object objectColelction, List<Object> parameters) {
@@ -161,7 +158,7 @@ public class DashboardingConvertUtil {
 		String menuName = "";
 		String menuDescription = "";
 		MMenu menu = MMenu.getFromId(context, treeNodeMenu.getNode_ID());
-		builder.setMenuUuid(ValueUtil.validateNull(menu.getUUID()));
+		builder.setMenuId(menu.getAD_Menu_ID());
 		String action = MMenu.ACTION_Window;
 		if (!menu.isCentrallyMaintained()) {
 			menuName = menu.getName();
@@ -180,10 +177,10 @@ public class DashboardingConvertUtil {
 		//	Supported actions
 		if (!Util.isEmpty(menu.getAction(), true)) {
 			action = menu.getAction();
-			String referenceUuid = null;
+			int referenceId = 0;
 			if (menu.getAction().equals(MMenu.ACTION_Form) && menu.getAD_Form_ID() > 0) {
 				MForm form = new MForm(context, menu.getAD_Form_ID(), null);
-				referenceUuid = form.getUUID();
+				referenceId = form.getAD_Form_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = form.getName();
 					menuDescription = form.getDescription();
@@ -200,7 +197,7 @@ public class DashboardingConvertUtil {
 				}
 			} else if (menu.getAction().equals(MMenu.ACTION_Window) && menu.getAD_Window_ID() > 0) {
 				MWindow window = new MWindow(context, menu.getAD_Window_ID(), null);
-				referenceUuid = window.getUUID();
+				referenceId = window.getAD_Window_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = window.getName();
 					menuDescription = window.getDescription();
@@ -218,7 +215,7 @@ public class DashboardingConvertUtil {
 			} else if ((menu.getAction().equals(MMenu.ACTION_Process)
 				|| menu.getAction().equals(MMenu.ACTION_Report)) && menu.getAD_Process_ID() > 0) {
 				MProcess process = MProcess.get(context, menu.getAD_Process_ID());
-				referenceUuid = process.getUUID();
+				referenceId = process.getAD_Process_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = process.getName();
 					menuDescription = process.getDescription();
@@ -235,7 +232,7 @@ public class DashboardingConvertUtil {
 				}
 			} else if (menu.getAction().equals(MMenu.ACTION_SmartBrowse) && menu.getAD_Browse_ID() > 0) {
 				MBrowse smartBrowser = MBrowse.get(context, menu.getAD_Browse_ID());
-				referenceUuid = smartBrowser.getUUID();
+				referenceId = smartBrowser.getAD_Browse_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = smartBrowser.getName();
 					menuDescription = smartBrowser.getDescription();
@@ -251,7 +248,7 @@ public class DashboardingConvertUtil {
 					}
 				}
 			}
-			builder.setReferenceUuid(ValueUtil.validateNull(referenceUuid));
+			builder.setReferenceId(referenceId);
 			builder.setAction(ValueUtil.validateNull(action));
 		}
 		//	Set name and description
@@ -267,9 +264,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
-					colorSchema.getMark1Percent()
-				)
+				ValueUtil.getDecimalFromBigDecimal(new BigDecimal(colorSchema.getMark1Percent()))
 			)
 			.setColor(
 				getColorAsHex(
@@ -286,9 +281,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
-					colorSchema.getMark2Percent()
-				)
+				ValueUtil.getDecimalFromBigDecimal(new BigDecimal(colorSchema.getMark2Percent()))
 			)
 			.setColor(
 				getColorAsHex(
@@ -305,9 +298,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
-					colorSchema.getMark3Percent()
-				)
+				ValueUtil.getDecimalFromBigDecimal(new BigDecimal(colorSchema.getMark3Percent()))
 			)
 			.setColor(
 				getColorAsHex(
@@ -324,9 +315,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
-					colorSchema.getMark4Percent()
-				)
+				ValueUtil.getDecimalFromBigDecimal(new BigDecimal(colorSchema.getMark4Percent()))
 			)
 			.setColor(
 				getColorAsHex(
@@ -396,9 +385,6 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setId(chartParameter.get_ID())
-			.setUuid(
-				ValueUtil.validateNull(chartParameter.get_UUID())
-			)
 			.setName(
 				ValueUtil.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_Name)
@@ -512,9 +498,6 @@ public class DashboardingConvertUtil {
 
 		builder = WindowDashboard.newBuilder()
 			.setId(chartDefinition.getAD_Chart_ID())
-			.setUuid(
-				ValueUtil.validateNull(chartDefinition.getUUID())
-			)
 			.setName(
 				ValueUtil.validateNull(chartDefinition.getName())
 			)

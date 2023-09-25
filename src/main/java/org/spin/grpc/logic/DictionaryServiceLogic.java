@@ -12,7 +12,6 @@ import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MColumn;
 import org.compiere.model.MField;
 import org.compiere.model.MTable;
-import org.compiere.model.Query;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -20,7 +19,7 @@ import org.compiere.util.Util;
 import org.spin.backend.grpc.dictionary.Field;
 import org.spin.backend.grpc.dictionary.ListFieldsRequest;
 import org.spin.backend.grpc.dictionary.ListFieldsResponse;
-import org.spin.grpc.service.DictionaryServiceImplementation;
+import org.spin.grpc.service.Dictionary;
 
 import io.vavr.control.Try;
 
@@ -35,7 +34,7 @@ public class DictionaryServiceLogic {
 
 
 	public static ListFieldsResponse.Builder listSearchInfoFields(ListFieldsRequest request) {
-		if (request.getTableId() <= 0 && Util.isEmpty(request.getTableUuid(), true) && Util.isEmpty(request.getTableName(), true)) {
+		if (request.getTableId() <= 0 && Util.isEmpty(request.getTableName(), true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
 
@@ -44,17 +43,6 @@ public class DictionaryServiceLogic {
 		int tableId = request.getTableId();
 		if (tableId > 0) {
 			table = MTable.get(context, tableId);
-		} else if(!Util.isEmpty(request.getTableUuid(), true)) {
-			table = new Query(
-				context,
-				MTable.Table_Name,
-				MTable.COLUMNNAME_UUID + " = ?",
-				null
-			)
-				.setParameters(request.getTableUuid())
-				.setOnlyActiveRecords(true)
-				.first()
-			;
 		} else if (!Util.isEmpty(request.getTableName(), true)) {
 			table = MTable.get(context, request.getTableName());
 		}
@@ -89,7 +77,7 @@ public class DictionaryServiceLogic {
 				if (column == null || column.getAD_Column_ID() <= 0) {
 					continue;
 				}
-				Field.Builder fieldBuilder = DictionaryServiceImplementation.convertField(context, column);
+				Field.Builder fieldBuilder = Dictionary.convertField(context, column);
 				int sequence = (recordCount + 1) * 10;
 				fieldBuilder.setSequence(sequence);
 				fieldBuilder.setIsDisplayed(true);
@@ -135,7 +123,7 @@ public class DictionaryServiceLogic {
 			
 				Field.Builder fieldBuilder = fieldsList.get(field.getAD_Column_ID());
 				if (fieldBuilder == null) {
-					fieldBuilder = DictionaryServiceImplementation.convertField(context, field, true);
+					fieldBuilder = Dictionary.convertField(context, field, true);
 					// disable on query
 					fieldBuilder.setSequence(0);
 					fieldBuilder.setIsDisplayed(false);

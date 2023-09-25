@@ -47,9 +47,11 @@ import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
 import org.spin.backend.grpc.common.Entity;
 import org.spin.backend.grpc.common.ListEntitiesResponse;
-import org.spin.backend.grpc.common.Value;
 import org.spin.base.db.FromUtil;
 import org.spin.base.db.ParameterUtil;
+
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 
 /**
  * Class for handle records utils values
@@ -84,6 +86,10 @@ public class RecordUtil {
 
 		String tableName = MTable.getTableName(context, tableId);
 		return getEntity(context, tableName, uuid, recordId, transactionName);
+	}
+	
+	public static PO getEntity(Properties context, String tableName, int recordId, String transactionName) {
+		return getEntity(context, tableName, recordId, transactionName);
 	}
 
 	/**
@@ -506,9 +512,6 @@ public class RecordUtil {
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
 						String columnName = metaData.getColumnName (index);
-						if (columnName.toUpperCase().equals("UUID")) {
-							valueObjectBuilder.setUuid(rs.getString(index));
-						}
 						MColumn field = columnsMap.get(columnName.toUpperCase());
 						Value.Builder valueBuilder = Value.newBuilder();
 						//	Display Columns
@@ -517,7 +520,7 @@ public class RecordUtil {
 							if(!Util.isEmpty(value)) {
 								valueBuilder = ValueUtil.getValueFromString(value);
 							}
-							valueObjectBuilder.putValues(columnName, valueBuilder.build());
+							valueObjectBuilder.setValues(Struct.newBuilder().putFields(columnName, valueBuilder.build()).build());
 							continue;
 						}
 						if (field.isKey()) {
@@ -526,8 +529,8 @@ public class RecordUtil {
 						//	From field
 						String fieldColumnName = field.getColumnName();
 						valueBuilder = ValueUtil.getValueFromReference(rs.getObject(index), field.getAD_Reference_ID());
-						if(!valueBuilder.getValueType().equals(Value.ValueType.UNRECOGNIZED)) {
-							valueObjectBuilder.putValues(fieldColumnName, valueBuilder.build());
+						if(!valueBuilder.getNullValue().equals(com.google.protobuf.NullValue.NULL_VALUE)) {
+							valueObjectBuilder.setValues(Struct.newBuilder().putFields(fieldColumnName, valueBuilder.build()).build());
 						}
 					} catch (Exception e) {
 						log.severe(e.getLocalizedMessage());
