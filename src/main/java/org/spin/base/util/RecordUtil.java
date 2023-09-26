@@ -89,7 +89,7 @@ public class RecordUtil {
 	}
 	
 	public static PO getEntity(Properties context, String tableName, int recordId, String transactionName) {
-		return getEntity(context, tableName, recordId, transactionName);
+		return getEntity(context, tableName, null, recordId, transactionName);
 	}
 
 	/**
