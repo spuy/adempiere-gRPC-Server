@@ -1121,6 +1121,7 @@ message AvailablePaymentMethod {
 	Currency reference_currency = 11;
 	bool is_payment_reference = 12;
 	PaymentMethod payment_method = 13;
+	int32 document_type_id = 14;
 }
 
 message PaymentMethod {
@@ -2066,6 +2067,7 @@ message ListCustomerCreditsRequest {
 	string search_value = 7;
 	int32 pos_id = 8;
 	int32 customer_id = 9;
+	int32 document_type_id = 10;
 }
 
 message ListCustomerCreditsResponse {
