@@ -297,6 +297,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	
 		builder
 				.setId(form.getAD_Form_ID())
+				.setUuid(ValueUtil.validateNull(form.getUUID()))
 				.setName(ValueUtil.validateNull(ValueUtil.getTranslation(form, MForm.COLUMNNAME_Name)))
 				.setDescription(ValueUtil.validateNull(ValueUtil.getTranslation(form, MForm.COLUMNNAME_Description)))
 				.setHelp(ValueUtil.validateNull(ValueUtil.getTranslation(form, MForm.COLUMNNAME_Help)))
@@ -346,12 +347,14 @@ public class Dictionary extends DictionaryImplBase {
 		//	
 		builder = Window.newBuilder()
 				.setId(window.getAD_Window_ID())
+				.setUuid(ValueUtil.validateNull(window.getUUID()))
 				.setName(window.getName())
 				.setDescription(ValueUtil.validateNull(window.getDescription()))
 				.setHelp(ValueUtil.validateNull(window.getHelp()))
 				.setWindowType(ValueUtil.validateNull(window.getWindowType()))
 				.setIsSalesTransaction(window.isSOTrx())
-				.setIsActive(window.isActive());
+				.setIsActive(window.isActive())
+				;
 		if(contextInfoBuilder != null) {
 			builder.setContextInfo(contextInfoBuilder.build());
 		}
@@ -496,6 +499,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	create build
 		Tab.Builder builder = Tab.newBuilder()
 				.setId(tab.getAD_Tab_ID())
+				.setUuid(ValueUtil.validateNull(tab.getUUID()))
 				.setName(ValueUtil.validateNull(tab.getName()))
 				.setDescription(ValueUtil.validateNull(tab.getDescription()))
 				.setHelp(ValueUtil.validateNull(tab.getHelp()))
@@ -613,6 +617,7 @@ public class Dictionary extends DictionaryImplBase {
 			}
 			builder = ContextInfo.newBuilder()
 					.setId(contextInfoValue.getAD_ContextInfo_ID())
+					.setUuid(ValueUtil.validateNull(contextInfoValue.getUUID()))
 					.setName(ValueUtil.validateNull(contextInfoValue.getName()))
 					.setDescription(ValueUtil.validateNull(contextInfoValue.getDescription()))
 					.setMessageText(messageText.build())
@@ -633,6 +638,7 @@ public class Dictionary extends DictionaryImplBase {
 		process = ASPUtil.getInstance(context).getProcess(process.getAD_Process_ID());
 		Process.Builder builder = Process.newBuilder()
 				.setId(process.getAD_Process_ID())
+				.setUuid(ValueUtil.validateNull(process.getUUID()))
 				.setValue(ValueUtil.validateNull(process.getValue()))
 				.setName(ValueUtil.validateNull(process.getName()))
 				.setDescription(ValueUtil.validateNull(process.getDescription()))
@@ -724,6 +730,7 @@ public class Dictionary extends DictionaryImplBase {
 		String orderByClause = OrderByUtil.getBrowseOrderBy(browser);
 		Browser.Builder builder = Browser.newBuilder()
 				.setId(browser.getAD_Browse_ID())
+				.setUuid(ValueUtil.validateNull(browser.getUUID()))
 				.setValue(ValueUtil.validateNull(browser.getValue()))
 				.setName(browser.getName())
 				.setDescription(ValueUtil.validateNull(browser.getDescription()))
@@ -792,6 +799,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
 				.setId(processParameter.getAD_Process_Para_ID())
+				.setUuid(ValueUtil.validateNull(processParameter.getUUID()))
 				.setName(ValueUtil.validateNull(processParameter.getName()))
 				.setDescription(ValueUtil.validateNull(processParameter.getDescription()))
 				.setHelp(ValueUtil.validateNull(processParameter.getHelp()))
@@ -917,6 +925,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
 				.setId(browseField.getAD_Browse_Field_ID())
+				.setUuid(ValueUtil.validateNull(browseField.getUUID()))
 				.setName(ValueUtil.validateNull(browseField.getName()))
 				.setDescription(ValueUtil.validateNull(browseField.getDescription()))
 				.setHelp(ValueUtil.validateNull(browseField.getHelp()))
@@ -1183,6 +1192,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
 				.setId(column.getAD_Column_ID())
+				.setUuid(ValueUtil.validateNull(column.getUUID()))
 				.setName(ValueUtil.validateNull(column.getName()))
 				.setDescription(ValueUtil.validateNull(column.getDescription()))
 				.setHelp(ValueUtil.validateNull(column.getHelp()))
@@ -1318,6 +1328,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
 				.setId(element.getAD_Element_ID())
+				.setUuid(ValueUtil.validateNull(element.getUUID()))
 				.setName(ValueUtil.validateNull(ValueUtil.getTranslation(element, M_Element.COLUMNNAME_Name)))
 				.setDescription(ValueUtil.validateNull(ValueUtil.getTranslation(element, M_Element.COLUMNNAME_Description)))
 				.setHelp(ValueUtil.validateNull(ValueUtil.getTranslation(element, M_Element.COLUMNNAME_Help)))
@@ -1377,6 +1388,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
 				.setId(field.getAD_Field_ID())
+				.setUuid(ValueUtil.validateNull(field.getUUID()))
 				.setName(ValueUtil.validateNull(field.getName()))
 				.setDescription(ValueUtil.validateNull(field.getDescription()))
 				.setHelp(ValueUtil.validateNull(field.getHelp()))
@@ -1598,6 +1610,7 @@ public class Dictionary extends DictionaryImplBase {
 			//	Reference
 			builder = FieldDefinition.newBuilder()
 					.setId(fieldDefinition.getAD_FieldDefinition_ID())
+					.setUuid(ValueUtil.validateNull(fieldDefinition.getUUID()))
 					.setValue(ValueUtil.validateNull(fieldDefinition.getValue()))
 					.setName(ValueUtil.validateNull(fieldDefinition.getName()));
 			//	Get conditions
@@ -1606,7 +1619,8 @@ public class Dictionary extends DictionaryImplBase {
 					continue;
 				}
 				FieldCondition.Builder fieldConditionBuilder = FieldCondition.newBuilder()
-						.setId(fieldDefinition.getAD_FieldDefinition_ID())
+						.setId(condition.getAD_FieldCondition_ID())
+						.setUuid(ValueUtil.validateNull(condition.getUUID()))
 						.setCondition(ValueUtil.validateNull(condition.getCondition()))
 						.setStylesheet(ValueUtil.validateNull(condition.getStylesheet()))
 						.setIsActive(fieldDefinition.isActive());
@@ -1639,6 +1653,7 @@ public class Dictionary extends DictionaryImplBase {
 			//	Field Group
 			builder = FieldGroup.newBuilder()
 					.setId(fieldGroup.getAD_FieldGroup_ID())
+					.setUuid(ValueUtil.validateNull(fieldGroup.getUUID()))
 					.setName(ValueUtil.validateNull(name))
 					.setFieldGroupType(ValueUtil.validateNull(fieldGroup.getFieldGroupType()))
 					.setIsActive(fieldGroup.isActive());
@@ -1690,6 +1705,7 @@ public class Dictionary extends DictionaryImplBase {
 		//	
 		return ValidationRule.newBuilder()
 				.setId(validationRule.getAD_Val_Rule_ID())
+				.setUuid(ValueUtil.validateNull(validationRule.getUUID()))
 				.setName(ValueUtil.validateNull(validationRule.getName()))
 				.setDescription(ValueUtil.validateNull(validationRule.getDescription()))
 				.setValidationCode(ValueUtil.validateNull(validationRule.getCode()))

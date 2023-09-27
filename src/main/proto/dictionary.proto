@@ -98,6 +98,7 @@ message ValidationRule {
 	string name = 3;
 	string description = 4;
 	string type = 5;
+	string uuid = 6;
 }
 
 // Window
@@ -112,6 +113,7 @@ message Window {
 	//	External Info
 	ContextInfo context_info = 8;
 	repeated Tab tabs = 9;
+	string uuid = 10;
 }
 
 // Tab
@@ -153,6 +155,7 @@ message Tab {
 	repeated Field fields = 32;
 	FieldGroup field_group = 33;
 	string read_only_logic = 34;
+	string uuid = 35;
 }
 
 // Field
@@ -218,6 +221,7 @@ message Field {
 	// ASP Custom Attributes
 	string is_displayed_as_panel = 56;
 	string is_displayed_as_table = 57;
+	string uuid = 58;
 }
 
 message DependentField {
@@ -225,6 +229,7 @@ message DependentField {
 	string container_name = 2;
 	int32 id = 3;
 	string column_name = 4;
+	string uuid = 5;
 }
 
 // Context Info
@@ -233,8 +238,9 @@ message ContextInfo {
 	string name = 2;
 	string description = 3;
 	MessageText message_text = 4;
-	string sql_statement = 6;
-	bool is_active = 5;
+	string sql_statement = 5;
+	bool is_active = 6;
+	string uuid = 7;
 }
 
 // Message
@@ -245,6 +251,7 @@ message MessageText {
 	string message_text = 4;
 	string message_tip = 5;
 	bool is_active = 6;
+	string uuid = 7;
 }
 
 // Context Info
@@ -253,6 +260,7 @@ message FieldGroup {
 	string name = 2;
 	string field_group_type = 3;
 	bool is_active = 4;
+	string uuid = 5;
 }
 
 // Context Info
@@ -263,6 +271,7 @@ message FieldDefinition {
 	string field_group_type = 4;
 	repeated FieldCondition conditions = 5;
 	bool is_active = 6;
+	string uuid = 7;
 }
 
 // Field Condition
@@ -271,6 +280,7 @@ message FieldCondition {
 	string condition = 2;
 	string stylesheet = 3;
 	bool is_active = 4;
+	string uuid = 5;
 }
 
 // Process
@@ -291,6 +301,7 @@ message Process {
 	int32 browser_id = 13;
 	int32 form_id = 14;
 	int32 workflow_id = 15;
+	string uuid = 16;
 }
 
 // Form
@@ -302,6 +313,7 @@ message Form {
 	int32 access_level = 5;
 	string file_name = 6;
 	bool is_active = 7;
+	string uuid = 8;
 }
 
 // Smart Browser
@@ -326,6 +338,7 @@ message Browser {
 	repeated Field fields = 17;
 	bool is_active = 18;
 	string table_name = 19;
+	string uuid = 20;
 }
 
 // Zoom Window
