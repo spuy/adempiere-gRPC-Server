@@ -1754,14 +1754,22 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				//	Add parameters
 				parameters.add(request.getSearchValue());
 			}
+			if(request.getDocumentTypeId() > 0) {
+				sql.append(" AND i.C_DocType_ID = ?");
+				parameters.add(request.getDocumentTypeId());
+			}
 			sql.append(whereClause);
 			sql.append(" ORDER BY i.DateInvoiced DESC");
 			count = CountUtil.countRecords(sql.toString(), "C_Invoice i", parameters);
 			pstmt = DB.prepareStatement(sql.toString(), null);
-			pstmt.setInt(1, request.getCustomerId());
-			pstmt.setInt(2, pos.getAD_Org_ID());
+			int index = 1;
+			pstmt.setInt(index++, request.getCustomerId());
+			pstmt.setInt(index++, pos.getAD_Org_ID());
 			if(whereClause.length() > 0) {
-				pstmt.setString(3, request.getSearchValue());
+				pstmt.setString(index++, request.getSearchValue());
+			}
+			if(request.getDocumentTypeId() > 0) {
+				pstmt.setInt(index++, request.getDocumentTypeId());
 			}
 			//	Get from Query
 			rs = pstmt.executeQuery();
@@ -3405,6 +3413,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 					.setMaximumRefundAllowed(ValueUtil.getDecimalFromBigDecimal((BigDecimal) availablePaymentMethod.get_Value("MaximumRefundAllowed")))
 					.setMaximumDailyRefundAllowed(ValueUtil.getDecimalFromBigDecimal((BigDecimal) availablePaymentMethod.get_Value("MaximumDailyRefundAllowed")))
 					.setIsPaymentReference(availablePaymentMethod.get_ValueAsBoolean("IsPaymentReference"))
+					.setDocumentTypeId(availablePaymentMethod.get_ValueAsInt("C_DocTypeCreditMemo_ID"))
 				.setPaymentMethod(paymentMethodBuilder)
 			;
 					if(availablePaymentMethod.get_ValueAsInt("RefundReferenceCurrency_ID") > 0) {
@@ -5243,21 +5252,38 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				throw new AdempiereException("@C_Order_ID@ @Processed@");
 			}
 			int precision = MPriceList.getPricePrecision(Env.getCtx(), order.getM_PriceList_ID());
+			BigDecimal quantityToChange = quantity;
 			//	Get if is null
 			if(quantity != null) {
-				BigDecimal quantityToOrder = quantity;
 				if(isAddQuantity) {
 					BigDecimal currentQuantity = orderLine.getQtyEntered();
 					if(currentQuantity == null) {
 						currentQuantity = Env.ZERO;
 					}
-					quantityToOrder = currentQuantity.add(quantity);
+					quantityToChange = currentQuantity.add(quantityToChange);
 				}
-				orderLine.setQty(quantityToOrder);
+				if(orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_RMALine_ID) > 0) {
+//					if(warehouseId != orderLine.get_ValueAsInt("Ref_WarehouseSource_ID")
+//							|| unitOfMeasureId != orderLine.getC_UOM_ID()) {
+//						throw new AdempiereException("@ActionNotAllowedHere@");
+//					}
+					MOrderLine sourceRmaLine = new MOrderLine(Env.getCtx(), orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_RMALine_ID), transactionName);
+					BigDecimal availableQuantity = OrderUtil.getAvailableQuantityForSell(orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_RMALine_ID), orderLineId, sourceRmaLine.getQtyEntered(), quantityToChange);
+					if(availableQuantity.compareTo(Env.ZERO) > 0) {
+						//	Update order quantity
+						quantityToChange = availableQuantity;
+					} else {
+						throw new AdempiereException("@QtyInsufficient@");
+					}
+				}
+				orderLine.setQty(quantityToChange);
 			}
 			//	Calculate discount from final price
 			if(price != null
 					|| discountRate != null) {
+				if(orderLine.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_RMALine_ID) > 0) {
+					throw new AdempiereException("@ActionNotAllowedHere@");
+				}
 				// TODO: Verify with Price Entered/Actual
 				BigDecimal priceToOrder = orderLine.getPriceActual();
 				BigDecimal discountRateToOrder = Env.ZERO;
@@ -5280,7 +5306,7 @@ public class PointOfSalesServiceImplementation extends StoreImplBase {
 				orderLine.set_ValueOfColumn("Ref_WarehouseSource_ID", warehouseId);
 			}
 			//	Validate UOM
-			OrderUtil.updateUomAndQuantity(orderLine, unitOfMeasureId, quantity);
+			OrderUtil.updateUomAndQuantity(orderLine, unitOfMeasureId, quantityToChange);
 			//	Set values
 			orderLine.setTax();
 			orderLine.saveEx(transactionName);

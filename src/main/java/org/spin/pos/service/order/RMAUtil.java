@@ -236,6 +236,9 @@ public class RMAUtil {
      * @param transactionName
      */
     public static void generateCreditMemoFromRMA(MOrder returnOrder, String transactionName) {
+    	if(!OrderUtil.isInvoiced(returnOrder.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_Order_ID), transactionName)) {
+    		return;
+    	}
     	MInvoice invoice = new MInvoice (returnOrder, 0, OrderUtil.getToday());
 		invoice.saveEx();
     	//	Convert Lines
@@ -267,6 +270,9 @@ public class RMAUtil {
      * @param transactionName
      */
     public static void generateReturnFromRMA(MOrder returnOrder, String transactionName) {
+    	if(!OrderUtil.isDelivered(returnOrder.get_ValueAsInt(ColumnsAdded.COLUMNNAME_ECA14_Source_Order_ID), transactionName)) {
+    		return;
+    	}
     	MInOut shipment = new MInOut (returnOrder, 0, OrderUtil.getToday());
 		shipment.setM_Warehouse_ID(returnOrder.getM_Warehouse_ID());	//	sets Org too
 		shipment.saveEx();
@@ -370,12 +376,20 @@ public class RMAUtil {
      */
     public static BigDecimal getAvailableQuantityForReturn(int sourceOrderLineId, BigDecimal sourceQuantity, BigDecimal quantityToReturn) {
     	BigDecimal quantity = getReturnedQuantity(sourceOrderLineId);
-    	return Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO)).subtract(Optional.ofNullable(quantityToReturn).orElse(Env.ZERO));
+    	BigDecimal availableQuantity = Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO));
+    	if(availableQuantity.compareTo(quantityToReturn) <= 0) {
+    		return availableQuantity;
+    	}
+    	return quantityToReturn;
     }
     
     public static BigDecimal getAvailableQuantityForReturn(int sourceOrderLineId, int rmaLineId, BigDecimal sourceQuantity, BigDecimal quantityToReturn) {
     	BigDecimal quantity = getReturnedQuantityExcludeRMA(sourceOrderLineId, rmaLineId);
-    	return Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO)).subtract(Optional.ofNullable(quantityToReturn).orElse(Env.ZERO));
+    	BigDecimal availableQuantity = Optional.ofNullable(sourceQuantity).orElse(Env.ZERO).subtract(Optional.ofNullable(quantity).orElse(Env.ZERO));
+    	if(availableQuantity.compareTo(quantityToReturn) <= 0) {
+    		return availableQuantity;
+    	}
+    	return quantityToReturn;
     }
     
     /**
@@ -384,7 +398,7 @@ public class RMAUtil {
      * @return
      */
     public static BigDecimal getReturnedQuantity(int sourceOrderLineId) {
-    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, "ECA14_Source_OrderLine_ID = ? "
+    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID + " = ? "
     			+ "AND EXISTS(SELECT 1 FROM C_Order o WHERE o.C_Order_ID = C_OrderLine.C_Order_ID)", null)
     			.setParameters(sourceOrderLineId)
     			.aggregate(I_C_OrderLine.COLUMNNAME_QtyEntered, Query.AGGREGATE_SUM);
@@ -392,7 +406,7 @@ public class RMAUtil {
     }
     
     public static BigDecimal getReturnedQuantityExcludeRMA(int sourceOrderLineId, int rmaLineId) {
-    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, "ECA14_Source_OrderLine_ID = ? AND C_OrderLine_ID <> ? "
+    	BigDecimal quantity = new Query(Env.getCtx(), I_C_OrderLine.Table_Name, ColumnsAdded.COLUMNNAME_ECA14_Source_OrderLine_ID + " = ? AND C_OrderLine_ID <> ? "
     			+ "AND EXISTS(SELECT 1 FROM C_Order o WHERE o.C_Order_ID = C_OrderLine.C_Order_ID)", null)
     			.setParameters(sourceOrderLineId, rmaLineId)
     			.aggregate(I_C_OrderLine.COLUMNNAME_QtyEntered, Query.AGGREGATE_SUM);
