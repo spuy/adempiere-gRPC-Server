@@ -24,16 +24,20 @@ import java.util.Properties;
 import org.adempiere.core.domains.models.I_AD_Menu;
 import org.adempiere.core.domains.models.I_AD_Role;
 import org.adempiere.exceptions.AdempiereException;
+import org.adempiere.model.MBrowse;
 import org.compiere.model.MClient;
 import org.compiere.model.MClientInfo;
 import org.compiere.model.MCountry;
 import org.compiere.model.MCurrency;
+import org.compiere.model.MForm;
 import org.compiere.model.MMenu;
+import org.compiere.model.MProcess;
 import org.compiere.model.MRole;
 import org.compiere.model.MSession;
 import org.compiere.model.MTree;
 import org.compiere.model.MTreeNode;
 import org.compiere.model.MUser;
+import org.compiere.model.MWindow;
 import org.compiere.model.Query;
 import org.compiere.util.CCache;
 import org.compiere.util.CLogger;
@@ -42,6 +46,7 @@ import org.compiere.util.Env;
 import org.compiere.util.Login;
 import org.compiere.util.Msg;
 import org.compiere.util.Util;
+import org.compiere.wf.MWorkflow;
 import org.spin.authentication.services.OpenIDUtil;
 import org.spin.backend.grpc.security.ChangeRoleRequest;
 import org.spin.backend.grpc.security.Client;
@@ -1004,31 +1009,51 @@ public class Security extends SecurityImplBase {
 			.setParentId(parentId)
 		;
 		//	Supported actions
-		if(!Util.isEmpty(menu.getAction())) {
+		if(!Util.isEmpty(menu.getAction(), true)) {
 			int referenceId = 0;
+			String referenceUuid = null;
 			if(menu.getAction().equals(MMenu.ACTION_Form)) {
 				if(menu.getAD_Form_ID() > 0) {
 					referenceId = menu.getAD_Form_ID();
+					MForm form = new MForm(context, menu.getAD_Form_ID(), null);
+					referenceId = menu.getAD_Form_ID();
+					referenceUuid = form.getUUID();
 				}
 			} else if(menu.getAction().equals(MMenu.ACTION_Window)) {
 				if(menu.getAD_Window_ID() > 0) {
 					referenceId = menu.getAD_Window_ID();
+					MWindow window = new MWindow(context, menu.getAD_Window_ID(), null);
+					referenceId = menu.getAD_Window_ID();
+					referenceUuid = window.getUUID();
 				}
 			} else if(menu.getAction().equals(MMenu.ACTION_Process)
 				|| menu.getAction().equals(MMenu.ACTION_Report)) {
 				if(menu.getAD_Process_ID() > 0) {
 					referenceId = menu.getAD_Process_ID();
+					MProcess process = MProcess.get(context, menu.getAD_Process_ID());
+					referenceId = menu.getAD_Process_ID();
+					referenceUuid = process.getUUID();
 				}
 			} else if(menu.getAction().equals(MMenu.ACTION_SmartBrowse)) {
 				if(menu.getAD_Browse_ID() > 0) {
 					referenceId = menu.getAD_Browse_ID();
+					MBrowse smartBrowser = MBrowse.get(context, menu.getAD_Browse_ID());
+					referenceId = menu.getAD_Browse_ID();
+					referenceUuid = smartBrowser.getUUID();
 				}
 			} else if(menu.getAction().equals(MMenu.ACTION_WorkFlow)) {
 				if(menu.getAD_Workflow_ID() > 0) {
 					referenceId = menu.getAD_Workflow_ID();
+					MWorkflow workflow = MWorkflow.get(context, menu.getAD_Workflow_ID());
+					referenceId = menu.getAD_Workflow_ID();
+					referenceUuid = workflow.getUUID();
 				}
 			}
-			builder.setReferenceId(referenceId);
+			builder.setReferenceId(referenceId)
+				.setReferenceUuid(
+					ValueManager.validateNull(referenceUuid)
+				)
+			;
 		}
 		return builder;
 	}

@@ -225,6 +225,7 @@ message Menu {
 	// Supported References
 	int32 reference_id = 11;
 	repeated Menu children = 12;
+	string reference_uuid = 13;
 }
 
 //	Open ID
