@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2022 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
  * Contributor(s): Edwin Betancourt EdwinBetanc0urt@outlook.com                     *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -52,7 +52,12 @@ service IssueManagement {
 		option (google.api.http) = { get: "/issue-management/issues/{table_name}/{record_id}/exists" };
 	}
 	rpc ListIssues(ListIssuesRequest) returns (ListIssuesReponse) {
-		option (google.api.http) = { get: "/issue-management/issues/{table_name}/{record_id}" };
+		option (google.api.http) = {
+			get: "/issue-management/issues"
+			additional_bindings: {
+				get: "/issue-management/issues/{table_name}/{record_id}"
+			}
+		};
 	}
 	rpc CreateIssue(CreateIssueRequest) returns (Issue) {
 		option (google.api.http) = { 
