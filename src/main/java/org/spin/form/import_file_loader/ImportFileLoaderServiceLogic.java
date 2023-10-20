@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -66,6 +66,7 @@ import org.spin.base.util.ReferenceUtil;
 import org.spin.grpc.service.BusinessData;
 import org.spin.grpc.service.UserInterface;
 import org.spin.service.grpc.util.ValueManager;
+import org.spin.util.ASPUtil;
 import org.spin.util.AttachmentUtil;
 
 import com.google.protobuf.Struct;
@@ -100,16 +101,11 @@ public class ImportFileLoaderServiceLogic {
 		return importFormat;
 	}
 
-	public static MTable validateAndGetTable(int tableId, String tableName) {
-		if (tableId <= 0 && Util.isEmpty(tableName, true)) {
+	public static MTable validateAndGetTable(String tableName) {
+		if (Util.isEmpty(tableName, true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
 		}
-		MTable table;
-		if (tableId > 0) {
-			table = MTable.get(Env.getCtx(), tableId);
-		} else {
-			table = MTable.get(Env.getCtx(), tableName);
-		}
+		MTable table = MTable.get(Env.getCtx(), tableName);
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
 		}
@@ -188,7 +184,9 @@ public class ImportFileLoaderServiceLogic {
 
 	public static ListLookupItemsResponse.Builder listImportFormats(ListImportFormatsRequest request) {
 		// validate and get table
-		MTable table = validateAndGetTable(request.getTableId(), request.getTableName());
+		MTable table = validateAndGetTable(
+			request.getTableName()
+		);
 
 		MLookupInfo reference = ReferenceUtil.getReferenceLookupInfo(
 			DisplayType.TableDir,
@@ -213,7 +211,9 @@ public class ImportFileLoaderServiceLogic {
 
 	public static ListLookupItemsResponse.Builder listClientImportFormats(ListClientImportFormatsRequest request) {
 		// validate and get table
-		MTable table = validateAndGetTable(request.getTableId(), request.getTableName());
+		MTable table = validateAndGetTable(
+			request.getTableName()
+		);
 
 		MLookupInfo reference = ReferenceUtil.getReferenceLookupInfo(
 			DisplayType.TableDir,
@@ -368,7 +368,9 @@ public class ImportFileLoaderServiceLogic {
 		final char QUOTE = '"';
 		//  check input
 		char delimiter = ' ';
-		if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_CommaSeparated)) {
+		if (formatType == null) {
+			throw new IllegalArgumentException ("ImpFormat.parseFlexFormat - @FillMandatory@ @FormatType@");
+		} else if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_CommaSeparated)) {
 			delimiter = ',';
 		} else if (formatType.equals(X_AD_ImpFormat.FORMATTYPE_TabSeparated)) {
 			delimiter = '\t';
@@ -528,11 +530,13 @@ public class ImportFileLoaderServiceLogic {
 					BigDecimal numberValue = null;
 					if (!Util.isEmpty(entry, true)) {
 						numberValue = new BigDecimal(entry);
-						// if (row.isDivideBy100()) {
-						// 	numberValue = numberValue.divide(BigDecimal.valueOf(100));
-						// }
+						if (row.isDivideBy100()) {
+							numberValue = numberValue.divide(
+								BigDecimal.valueOf(100)
+							);
+						}
 					}
-					valueBuilder = ValueManager.getValueFromDecimal(numberValue);
+					valueBuilder = ValueManager.getValueFromBigDecimal(numberValue);
 				} else {
 					valueBuilder = ValueManager.getValueFromString(entry);
 				}
@@ -554,7 +558,9 @@ public class ImportFileLoaderServiceLogic {
 
 	public static ListLookupItemsResponse.Builder listImportProcesses(ListImportProcessesRequest request) {
 		// validate and get table
-		MTable table = validateAndGetTable(request.getTableId(), request.getTableName());
+		MTable table = validateAndGetTable(
+			request.getTableName()
+		);
 
 		List<Object> filtersLit = new ArrayList<Object>();
 		//	Process associated from table or column
@@ -569,7 +575,7 @@ public class ImportFileLoaderServiceLogic {
 		filtersLit.add(table.getAD_Table_ID());
 		filtersLit.add(table.getAD_Table_ID());
 
-		List<MProcess> processFromColumnsList = new Query(
+		List<Integer> processFromColumnsList = new Query(
 			Env.getCtx(),
 			I_AD_Process.Table_Name,
 			whereClause,
@@ -577,11 +583,16 @@ public class ImportFileLoaderServiceLogic {
 		)
 			.setParameters(filtersLit)
 			.setOnlyActiveRecords(true)
-			.<MProcess>list()
+			.getIDsAsList()
 		;
 
-		ListLookupItemsResponse.Builder builderList = ListLookupItemsResponse.newBuilder();
-		processFromColumnsList.forEach(processDefinition -> {
+		ListLookupItemsResponse.Builder builderList = ListLookupItemsResponse.newBuilder()
+			.setRecordCount(
+				processFromColumnsList.size()
+			)
+		;
+		processFromColumnsList.forEach(processId -> {
+			MProcess processDefinition = ASPUtil.getInstance().getProcess(processId);
 			String displayedValue = processDefinition.getValue() + " - " + processDefinition.getName();
 			if (!Env.isBaseLanguage(Env.getCtx(), "")) {
 				// set translated values
