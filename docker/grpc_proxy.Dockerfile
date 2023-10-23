@@ -42,9 +42,5 @@ COPY docker/adempiere-grpc-server.pb /data/adempiere-grpc-server.pb
 COPY docker/start_grpc_proxy.sh /opt/apps/server/start.sh
 
 
-RUN chmod +x start.sh
-
-USER adempiere
-
 # Start app
 ENTRYPOINT ["sh" , "start.sh"]
