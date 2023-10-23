@@ -1,4 +1,4 @@
-FROM envoyproxy/envoy:v1.27.0
+FROM envoyproxy/envoy:v1.28.0
 
 LABEL maintainer="ySenih@erpya.com; EdwinBetanc0urt@outlook.com" \
 	description="Proxy Transcoding gRPC to JSON via http"
@@ -42,10 +42,7 @@ COPY docker/adempiere-grpc-server.pb /data/adempiere-grpc-server.pb
 COPY docker/start_grpc_proxy.sh /opt/apps/server/start.sh
 
 
-RUN addgroup adempiere && \
-	adduser --disabled-password --gecos "" --ingroup adempiere --no-create-home adempiere && \
-	chown -R adempiere /etc/envoy/ && \
-	chmod +x start.sh
+RUN chmod +x start.sh
 
 USER adempiere
 
