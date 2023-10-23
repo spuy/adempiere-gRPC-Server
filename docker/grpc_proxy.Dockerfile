@@ -1,7 +1,7 @@
 FROM envoyproxy/envoy:v1.27.0
 
 LABEL maintainer="ySenih@erpya.com; EdwinBetanc0urt@outlook.com" \
-	description="Proxy to Transcoding gRPC to JSON via http"
+	description="Proxy Transcoding gRPC to JSON via http"
 
 
 # Init ENV with default values
@@ -30,7 +30,7 @@ ENV \
 		store.WebStore; workflow.Workflow;"
 
 #Expose Ports
-EXPOSE 9901
+# EXPOSE 9901 # admin port
 EXPOSE ${SERVER_PORT}
 
 
@@ -39,7 +39,7 @@ COPY docker/envoy_template.yaml /etc/envoy/envoy_template.yaml
 
 # Proto gRPC descriptor
 COPY docker/adempiere-grpc-server.pb /data/adempiere-grpc-server.pb
-COPY docker/start_envoy.sh /opt/apps/server/start.sh
+COPY docker/start_grpc_proxy.sh /opt/apps/server/start.sh
 
 
 RUN addgroup adempiere && \
