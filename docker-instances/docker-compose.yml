@@ -1,0 +1,25 @@
+version: '3.1'
+
+services:
+
+  redis:
+    image: redis:4-alpine
+
+  proxy:
+    image: solopcloud/adempiere-proxy:alpine-experimental-1.4.2
+    ports:
+      - 9092:8085
+    environment:
+      - REDIS_HOST=redis
+      # Backend Host
+      - AD_DEFAULT_HOST=<backend_ip>
+      # Backend Port
+      - AD_DEFAULT_PORT=50059
+
+  vue-app:
+    image: solopcloud/adempiere-vue:alpine-experimental-1.9.5
+    ports:
+      - 9091:80
+    environment:
+      - API_URL=http://<proxy_ip>:9092
+
