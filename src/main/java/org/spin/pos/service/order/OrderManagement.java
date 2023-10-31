@@ -96,13 +96,13 @@ public class OrderManagement {
 				}
 				salesOrder.set_ValueOfColumn("AssignedSalesRep_ID", null);
 				salesOrder.saveEx();
-				processPayments(salesOrder, pos, isOpenRefund, transactionName);
+//				processPayments(salesOrder, pos, isOpenRefund, transactionName);
 			} else {
 				boolean isOpenToRefund = isRefundOpen;
 				if(getPaymentReferenceAmount(salesOrder, paymentReferences).compareTo(Env.ZERO) != 0) {
 					isOpenToRefund = true;
 				}
-				processPayments(salesOrder, pos, isOpenToRefund, transactionName);
+//				processPayments(salesOrder, pos, isOpenToRefund, transactionName);
 			}
 			//	Process all references
 			processPaymentReferences(salesOrder, pos, paymentReferences, transactionName);
