@@ -3856,7 +3856,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			);
 		}
 	}
-
+	
 	private ListTreeNodesResponse.Builder listTreeNodes(ListTreeNodesRequest request) {
 		if (Util.isEmpty(request.getTableName(), true) && request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");

@@ -176,7 +176,7 @@ public class ConvertUtil {
 			builder.setUserId(chatEntry.getAD_User_ID());
 			builder.setUserName(ValueManager.validateNull(user.getName()));
 		}
-		
+
 		builder.setLogDate(fromMillis(chatEntry.getCreated().getTime()));
 		//	Confidential Type
 		if(!Util.isEmpty(chatEntry.getConfidentialType())) {
@@ -241,7 +241,7 @@ public class ConvertUtil {
 			values.putFields(columnName, builderValue.build());
 		}
 		builder.setValues(values);
-		//	
+		//
 		return builder;
 	}
 	
@@ -595,7 +595,7 @@ public class ConvertUtil {
 			.setOrderReference(ValueManager.validateNull(order.getPOReference()))
 			.setDocumentStatus(
 				ConvertUtil.convertDocumentStatus(
-					ValueManager.validateNull(order.getDocStatus()), 
+					ValueManager.validateNull(order.getDocStatus()),
 					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
 					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))
 				)
@@ -745,8 +745,8 @@ public class ConvertUtil {
 			.setOrderReference(ValueManager.validateNull(order.getPOReference()))
 			.setDocumentStatus(
 				ConvertUtil.convertDocumentStatus(
-					ValueManager.validateNull(order.getDocStatus()), 
-					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)), 
+					ValueManager.validateNull(order.getDocStatus()),
+					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
 					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))
 				)
 			)
@@ -927,7 +927,7 @@ public class ConvertUtil {
 			.setPaymentAccountDate(ValueManager.getTimestampFromDate(payment.getDateAcct()))
 			.setDocumentStatus(
 				ConvertUtil.convertDocumentStatus(ValueManager.validateNull(payment.getDocStatus()),
-					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)), 
+					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
 					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))
 				)
 			)
@@ -1067,8 +1067,8 @@ public class ConvertUtil {
 			.setSalesRepresentative(convertSalesRepresentative(MUser.get(Env.getCtx(), shipment.getSalesRep_ID())))
 			.setDocumentStatus(
 				ConvertUtil.convertDocumentStatus(
-					ValueManager.validateNull(shipment.getDocStatus()), 
-					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)), 
+					ValueManager.validateNull(shipment.getDocStatus()),
+					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
 					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))
 				)
 			)
@@ -1119,7 +1119,7 @@ public class ConvertUtil {
 			totalAmount
 		);
 		BigDecimal totalBaseAmount = totalAmount.subtract(totalDiscountAmount);
-		BigDecimal totalTaxAmount = tax.calculateTax(totalAmount, priceList.isTaxIncluded(), priceList.getStandardPrecision());
+		BigDecimal totalTaxAmount = tax.calculateTax(totalAmount, false, priceList.getStandardPrecision());
 		BigDecimal totalBaseAmountWithTax = totalBaseAmount.add(totalTaxAmount);
 		BigDecimal totalAmountWithTax = totalAmount.add(totalTaxAmount);
 		BigDecimal totalAmountWithTaxConverted = OrderUtil.getConvertedAmountTo(
@@ -1159,6 +1159,9 @@ public class ConvertUtil {
 
 		int standardPrecision = priceList.getStandardPrecision();
 		BigDecimal availableQuantity = MStorage.getQtyAvailable(orderLine.getM_Warehouse_ID(), 0, orderLine.getM_Product_ID(), orderLine.getM_AttributeSetInstance_ID(), null);
+
+		BigDecimal priceActualAmount = orderLine.getPriceActual();
+
 		//	Convert
 		return builder.setId(orderLine.getC_OrderLine_ID())
 			.setOrderId(orderLine.getC_Order_ID())
@@ -1187,6 +1190,8 @@ public class ConvertUtil {
 			.setDiscountAmount(ValueManager.getValueFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setDiscountRate(ValueManager.getValueFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTaxRate(ConvertUtil.convertTaxRate(tax))
+			.setPriceListWithTax(ValueUtil.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+			.setPriceWithTax(ValueUtil.getDecimalFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			//	Totals
 			.setTotalDiscountAmount(ValueManager.getValueFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTotalTaxAmount(ValueManager.getValueFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))

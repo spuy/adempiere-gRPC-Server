@@ -172,7 +172,7 @@ public class GeneralLedger extends GeneralLedgerImplBase {
 		String dynamicWhere = WhereClauseUtil.getWhereClauseFromCriteria(request.getFilters(), this.tableName, params);
 		if (!Util.isEmpty(dynamicWhere, true)) {
 			// includes first AND
-			sqlWithRoleAccess += " AND " + dynamicWhere; 
+			sqlWithRoleAccess += " AND " + dynamicWhere;
 		}
 
 		// add where with search value
