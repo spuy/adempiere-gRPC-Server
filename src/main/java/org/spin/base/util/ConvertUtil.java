@@ -1190,8 +1190,8 @@ public class ConvertUtil {
 			.setDiscountAmount(ValueManager.getValueFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setDiscountRate(ValueManager.getValueFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTaxRate(ConvertUtil.convertTaxRate(tax))
-			.setPriceListWithTax(ValueUtil.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setPriceWithTax(ValueUtil.getDecimalFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setPriceListWithTax(ValueManager.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+			.setPriceWithTax(ValueManager.getDecimalFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			//	Totals
 			.setTotalDiscountAmount(ValueManager.getValueFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTotalTaxAmount(ValueManager.getValueFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
