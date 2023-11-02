@@ -63,7 +63,8 @@ import org.spin.base.db.ParameterUtil;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.SessionManager;
-import org.spin.service.grpc.util.ValueManager;
+import org.spin.service.grpc.util.value.NumberManager;
+import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Empty;
 import com.google.protobuf.Struct;
@@ -646,7 +647,7 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 				rowValues.putFields(LookupUtil.DISPLAY_COLUMN_KEY + "_" + MHRMovement.COLUMNNAME_HR_Movement_ID, movementName.build());
 
 				// ValidFrom
-				Value.Builder validFrom = ValueManager.getValueFromDate(
+				Value.Builder validFrom = ValueManager.getValueFromTimestamp(
 					rs.getTimestamp(MHRMovement.COLUMNNAME_ValidFrom)
 				);
 				rowValues.putFields(MHRMovement.COLUMNNAME_ValidFrom, validFrom.build());
@@ -658,19 +659,19 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 				rowValues.putFields("ColumnType", columnType.build());
 
 				// Qty
-				Value.Builder quantity = ValueManager.getValueFromDecimal(
+				Value quantity = NumberManager.convertFromDecimalToValue(
 					rs.getBigDecimal(MHRMovement.COLUMNNAME_Qty)
 				);
-				rowValues.putFields(MHRMovement.COLUMNNAME_Qty, quantity.build());
+				rowValues.putFields(MHRMovement.COLUMNNAME_Qty, quantity);
 
 				// Amount
-				Value.Builder amount = ValueManager.getValueFromDecimal(
+				Value amount = NumberManager.convertFromDecimalToValue(
 					rs.getBigDecimal(MHRMovement.COLUMNNAME_Amount)
 				);
-				rowValues.putFields(MHRMovement.COLUMNNAME_Amount, amount.build());
+				rowValues.putFields(MHRMovement.COLUMNNAME_Amount, amount);
 
 				// ServiceDate
-				Value.Builder serviceDate = ValueManager.getValueFromDate(
+				Value.Builder serviceDate = ValueManager.getValueFromTimestamp(
 					rs.getTimestamp(MHRMovement.COLUMNNAME_ServiceDate)
 				);
 				rowValues.putFields(MHRMovement.COLUMNNAME_ServiceDate, serviceDate.build());
@@ -956,15 +957,15 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 		// Values
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_Qty,
-			(ValueManager.getValueFromDecimal(
+			(NumberManager.convertFromDecimalToValue(
 				payrollMovement.getQty()
-			)).build()
+			))
 		);
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_Amount,
-			(ValueManager.getValueFromDecimal(
+			(NumberManager.convertFromDecimalToValue(
 				payrollMovement.getAmount()
-			)).build()
+			))
 		);
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_TextMsg,
@@ -974,7 +975,7 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 		);
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_ServiceDate,
-			(ValueManager.getValueFromDate(
+			(ValueManager.getValueFromTimestamp(
 				payrollMovement.getServiceDate()
 			)).build()
 		);
@@ -1005,13 +1006,13 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 		);
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_ValidFrom,
-			(ValueManager.getValueFromDate(
+			(ValueManager.getValueFromTimestamp(
 				payrollMovement.getValidFrom()
 			)).build()
 		);
 		rowValues.putFields(
 			MHRMovement.COLUMNNAME_ValidTo,
-			(ValueManager.getValueFromDate(
+			(ValueManager.getValueFromTimestamp(
 				payrollMovement.getValidTo()
 			)).build()
 		);

@@ -28,7 +28,7 @@ import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Language;
 import org.compiere.util.Util;
-import org.spin.service.grpc.util.ValueManager;
+import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
@@ -41,6 +41,17 @@ public class ContextManager {
 	
 	/**	Language */
 	private static CCache<String, String> languageCache = new CCache<String, String>("Language-gRPC-Service", 30, 0);	//	no time-out
+
+
+	/**
+	 * Is Session context, #Global or $Accouting
+	 * @param contextKey
+	 * @return
+	 */
+	public static boolean isSessionContext(String contextKey) {
+		return contextKey.startsWith("#") || contextKey.startsWith("$");
+	}
+
 
 	public static Properties setContextWithAttributesFromObjectMap(int windowNo, Properties context, Map<String, Object> attributes) {
 		return setContextWithAttributes(windowNo, context, attributes, true);
