@@ -185,7 +185,11 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 					.asRuntimeException());
 		}
 	}
-	
+
+
+	/**
+	 * TODO: Duplicated with Security service
+	 */
 	@Override
 	public void listLanguages(ListLanguagesRequest request, StreamObserver<ListLanguagesResponse> responseObserver) {
 		try {
@@ -194,11 +198,14 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
 					.withDescription(e.getMessage())
 					.augmentDescription(e.getMessage())
 					.withCause(e)
-					.asRuntimeException());
+					.asRuntimeException()
+			);
 		}
 	}
 	
@@ -750,6 +757,7 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 	
 	/**
 	 * Convert languages to gRPC
+	 * TODO: Duplicated with Security service
 	 * @param request
 	 * @return
 	 */
@@ -768,6 +776,9 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 
 
 
+	/**
+	 * TODO: Duplicated with Security service
+	 */
 	@Override
 	public void listOrganizations(ListOrganizationsRequest request,
 			StreamObserver<ListOrganizationsResponse> responseObserver) {
@@ -791,7 +802,7 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 
 	/**
 	 * Convert Organization to list
-	 * TODO: Move or add this service to Security
+	 * TODO: Duplicated with Security service
 	 * @param request
 	 * @return
 	 */
@@ -876,6 +887,9 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 
 
 
+	/**
+	 * TODO: Duplicated with Security service
+	 */
 	@Override
 	public void listWarehouses(ListWarehousesRequest request, StreamObserver<ListWarehousesResponse> responseObserver) {
 		try {
@@ -898,7 +912,7 @@ public class CoreFunctionality extends CoreFunctionalityImplBase {
 
 	/**
 	 * Convert warehouses list
-	 * TODO: Move or add this service to Security
+	 * TODO: Duplicated with Security service
 	 * @param request
 	 * @return
 	 */
