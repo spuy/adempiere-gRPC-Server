@@ -838,92 +838,7 @@ public class ConvertUtil {
 		return Optional.ofNullable(conversionRate).orElse(Env.ZERO);
 	}
 
-	
-	/**
-	 * Convert payment
-	 * @param payment
-	 * @return
-	 */
-	public static Payment.Builder convertPayment(MPayment payment) {
-		Payment.Builder builder = Payment.newBuilder();
-		if(payment == null) {
-			return builder;
-		}
-		//	
-		MRefList reference = MRefList.get(Env.getCtx(), MPayment.DOCSTATUS_AD_REFERENCE_ID, payment.getDocStatus(), payment.get_TrxName());
-		int presicion = MCurrency.getStdPrecision(payment.getCtx(), payment.getC_Currency_ID());
-		BigDecimal paymentAmount = payment.getPayAmt();
-		if(payment.getTenderType().equals(MPayment.TENDERTYPE_CreditMemo)
-				&& paymentAmount.compareTo(Env.ZERO) == 0) {
-			MInvoice creditMemo = new Query(payment.getCtx(), MInvoice.Table_Name, "C_Payment_ID = ?", payment.get_TrxName()).setParameters(payment.getC_Payment_ID()).first();
-			if(creditMemo != null) {
-				paymentAmount = creditMemo.getGrandTotal();
-			}
-		}
-		paymentAmount = paymentAmount.setScale(presicion, RoundingMode.HALF_UP);
 
-		MCPaymentMethod paymentMethod = MCPaymentMethod.getById(Env.getCtx(), payment.get_ValueAsInt("C_PaymentMethod_ID"), null);
-		PaymentMethod.Builder paymentMethodBuilder = convertPaymentMethod(paymentMethod);
-		
-		Currency.Builder currencyBuilder = ConvertCommon.convertCurrency(
-			payment.getC_Currency_ID()
-		);
-		MOrder order = new MOrder(payment.getCtx(), payment.getC_Order_ID(), null);
-		BigDecimal convertedAmount = getConvetedAmount(order, payment, paymentAmount)
-			.setScale(presicion, RoundingMode.HALF_UP);
-		String invoiceNo = null;
-		if(payment.getC_Invoice_ID() > 0) {
-			invoiceNo = payment.getC_Invoice().getDocumentNo();
-		}
-		
-		//	Convert
-		builder
-			.setId(payment.getC_Payment_ID())
-			.setOrderId(payment.getC_Order_ID())
-			.setDocumentNo(ValueManager.validateNull(payment.getDocumentNo()))
-			.setOrderDocumentNo(ValueManager.validateNull(order.getDocumentNo()))
-			.setInvoiceDocumentNo(ValueManager.validateNull(invoiceNo))
-			.setTenderTypeCode(ValueManager.validateNull(payment.getTenderType()))
-			.setReferenceNo(ValueManager.validateNull(Optional.ofNullable(payment.getCheckNo()).orElse(payment.getDocumentNo())))
-			.setDescription(ValueManager.validateNull(payment.getDescription()))
-			.setAmount(ValueManager.getValueFromBigDecimal(paymentAmount))
-			.setConvertedAmount(ValueManager.getValueFromBigDecimal(convertedAmount))
-			.setBankId(payment.getC_Bank_ID())
-			.setCustomer(
-				POSConvertUtil.convertCustomer(
-					(MBPartner) payment.getC_BPartner()
-				)
-			)
-			.setCurrency(currencyBuilder)
-			.setPaymentDate(ValueManager.getTimestampFromDate(payment.getDateTrx()))
-			.setIsRefund(!payment.isReceipt())
-			.setPaymentAccountDate(ValueManager.getTimestampFromDate(payment.getDateAcct()))
-			.setDocumentStatus(
-				ConvertUtil.convertDocumentStatus(ValueManager.validateNull(payment.getDocStatus()),
-					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Name)),
-					ValueManager.validateNull(ValueManager.getTranslation(reference, I_AD_Ref_List.COLUMNNAME_Description))
-				)
-			)
-			.setPaymentMethod(paymentMethodBuilder)
-			.setCharge(convertCharge(payment.getC_Charge_ID()))
-			.setDocumentType(convertDocumentType(MDocType.get(Env.getCtx(), payment.getC_DocType_ID())))
-			.setBankAccount(
-				ConvertCommon.convertBankAccount(
-					payment.getC_BankAccount_ID()
-				)
-			)
-			.setReferenceBankAccount(
-				ConvertCommon.convertBankAccount(
-					payment.get_ValueAsInt("POSReferenceBankAccount_ID")
-				)
-			)
-			.setIsProcessed(payment.isProcessed())
-		;
-		if(payment.getCollectingAgent_ID() > 0) {
-			builder.setCollectingAgent(ConvertUtil.convertSalesRepresentative(MUser.get(payment.getCtx(), payment.getCollectingAgent_ID())));
-		}
-		return builder;
-	}
 	
 	/**
 	 * Get Order conversion rate for payment
@@ -1163,8 +1078,8 @@ public class ConvertUtil {
 			.setDiscountAmount(ValueManager.getValueFromBigDecimal(discountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setDiscountRate(ValueManager.getValueFromBigDecimal(discountRate.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTaxRate(ConvertUtil.convertTaxRate(tax))
-			.setPriceListWithTax(ValueManager.getDecimalFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setPriceWithTax(ValueManager.getDecimalFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setPriceListWithTax(ValueManager.getValueFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
+			.setPriceWithTax(ValueManager.getValueFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			//	Totals
 			.setTotalDiscountAmount(ValueManager.getValueFromBigDecimal(totalDiscountAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
 			.setTotalTaxAmount(ValueManager.getValueFromBigDecimal(totalTaxAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
