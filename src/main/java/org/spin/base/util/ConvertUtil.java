@@ -37,7 +37,6 @@ import org.compiere.model.MChatEntry;
 import org.compiere.model.MClientInfo;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MCountry;
-import org.compiere.model.MCurrency;
 import org.compiere.model.MDocType;
 import org.compiere.model.MInOut;
 import org.compiere.model.MInvoice;
@@ -71,7 +70,6 @@ import org.spin.backend.grpc.common.ChatEntry;
 import org.spin.backend.grpc.common.ChatEntry.ModeratorStatus;
 import org.spin.backend.grpc.common.ConversionRate;
 import org.spin.backend.grpc.common.Country;
-import org.spin.backend.grpc.common.Currency;
 import org.spin.backend.grpc.common.DocumentAction;
 import org.spin.backend.grpc.common.DocumentStatus;
 import org.spin.backend.grpc.common.DocumentType;
@@ -91,8 +89,6 @@ import org.spin.backend.grpc.pos.Key;
 import org.spin.backend.grpc.pos.KeyLayout;
 import org.spin.backend.grpc.pos.Order;
 import org.spin.backend.grpc.pos.OrderLine;
-import org.spin.backend.grpc.pos.Payment;
-import org.spin.backend.grpc.pos.PaymentMethod;
 import org.spin.backend.grpc.pos.RMA;
 import org.spin.backend.grpc.pos.RMALine;
 import org.spin.backend.grpc.pos.Shipment;
@@ -104,7 +100,6 @@ import org.spin.pos.service.order.OrderUtil;
 import org.spin.pos.util.ColumnsAdded;
 import org.spin.pos.util.POSConvertUtil;
 import org.spin.service.grpc.util.ValueManager;
-import org.spin.store.model.MCPaymentMethod;
 import org.spin.util.AttachmentUtil;
 
 import com.google.protobuf.Struct;
@@ -277,19 +272,13 @@ public class ConvertUtil {
 	
 	/**
 	 * Convert Document Type
+	 * @deprecated {@link #ConvertCommon.convertDocumentType}
 	 * @param documentType
 	 * @return
 	 */
 	public static DocumentType.Builder convertDocumentType(MDocType documentType) {
-		if (documentType == null) {
-			return DocumentType.newBuilder();
-		}
-
-		return DocumentType.newBuilder()
-			.setId(documentType.getC_DocType_ID())
-			.setName(ValueManager.validateNull(documentType.getName()))
-			.setDescription(ValueManager.validateNull(documentType.getDescription()))
-			.setPrintName(ValueManager.validateNull(documentType.getPrintName())
+		return ConvertCommon.convertDocumentType(
+			documentType
 		);
 	}
 
@@ -848,23 +837,7 @@ public class ConvertUtil {
 		//	
 		return Optional.ofNullable(conversionRate).orElse(Env.ZERO);
 	}
-	
-	public static PaymentMethod.Builder convertPaymentMethod(MCPaymentMethod paymentMethod) {
-		PaymentMethod.Builder paymentMethodBuilder = PaymentMethod.newBuilder();
-		if(paymentMethod == null) {
-			return paymentMethodBuilder;
-		}
-		paymentMethodBuilder
-			.setId(paymentMethod.getC_PaymentMethod_ID())
-			.setName(ValueManager.validateNull(paymentMethod.getName()))
-			.setValue(ValueManager.validateNull(paymentMethod.getValue()))
-			.setDescription(ValueManager.validateNull(paymentMethod.getDescription()))
-			.setTenderType(ValueManager.validateNull(paymentMethod.getTenderType()))
-			.setIsActive(paymentMethod.isActive()
-		);
 
-		return paymentMethodBuilder;
-	}
 	
 	/**
 	 * Convert payment
