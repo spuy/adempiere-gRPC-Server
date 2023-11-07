@@ -9,11 +9,12 @@ plugins {
 
 group 'com.nikhilm'
 sourceCompatibility = 1.11
-def grpcVersion = '1.55.1'
+def grpcVersion = '1.58.0'
 def baseVersion = '3.9.4'
 def baseGroupId = 'io.github.adempiere'
 def customBaseVersion = ""
 def javaMainClass = "org.spin.server.AllInOneServices"
+
 repositories {
     mavenCentral()
     mavenLocal()
@@ -32,12 +33,15 @@ dependencies {
             '*.jar'
         ]
     )
-	implementation "io.netty:netty-handler:4.1.89.Final"
+	implementation "io.netty:netty-handler:4.1.99.Final"
     implementation "io.grpc:grpc-alts:${grpcVersion}"
-    implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+	runtimeOnly "io.grpc:grpc-netty-shaded:${grpcVersion}"
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
     implementation "io.grpc:grpc-netty:${grpcVersion}"
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+	implementation 'com.google.protobuf:protobuf-java:3.24.3'
+	implementation 'com.google.protobuf:protobuf-java-util:3.24.3'
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.2'
 	implementation 'io.jsonwebtoken:jjwt-impl:0.11.2'
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.2'
@@ -45,6 +49,9 @@ dependencies {
 	implementation 'com.sun.xml.bind:jaxb-impl:3.0.0-M4'
 	implementation 'com.sun.xml.bind:jaxb-core:3.0.0-M4'
 	implementation 'javax.activation:activation:1.1.1'
+
+	implementation "${baseGroupId}:adempiere-grpc-utils:1.2.2"
+
 	//	ADempiere Core
 	implementation "${baseGroupId}:base:${baseVersion}"
 	implementation "${baseGroupId}:point-of-sales:${baseVersion}"
@@ -98,12 +105,13 @@ configurations.all {
 	resolutionStrategy {
 		// used by aws-java-sdk-core (storefront is joda-time-2.10.4)
 		force("joda-time:joda-time:2.8.1")
+		// force("io.github.adempiere:adempiere-grpc-utils:local-1.0.1")
 	}
 }
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.12.0"
+        artifact = "com.google.protobuf:protoc:3.24.3"
     }
     plugins {
         grpc {
@@ -157,6 +165,8 @@ run {
 	doFirst {
 		// Set environment variables
 		environment 'ADEMPIERE_APPS_TYPE', 'wildfly'
+		environment 'JWT_SECRET_KEY', '2C51599F5B1248F945B93E05EFC43B3A15D8EB0707C0F02FD97028786C40976F'
+		environment 'JWT_EXPIRATION_TIME', 86400000
 	}
 	args = [
 		"resources/standalone.yaml"

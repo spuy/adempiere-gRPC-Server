@@ -10,7 +10,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,           *
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                            *
  * For the text or an alternative of this public license, you may reach us           *
- * Copyright (C) 2012-2022 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
+ * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                     *
  *************************************************************************************/
 package org.spin.base.util;
@@ -20,6 +20,9 @@ import org.compiere.model.MRefList;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
 import org.spin.backend.grpc.common.LookupItem;
+import org.spin.service.grpc.util.value.ValueManager;
+
+import com.google.protobuf.Struct;
 
 /**
  * A helper class for Lookups
@@ -55,29 +58,46 @@ public class LookupUtil {
 	 */
 	public static LookupItem.Builder convertObjectFromResult(Object keyValue, String uuidValue, String value, String displayValue) {
 		LookupItem.Builder builder = LookupItem.newBuilder();
+		Struct.Builder values = Struct.newBuilder();
 		if(keyValue == null) {
+			builder.setValues(values);
 			return builder;
 		}
 
 		// Key Column
 		if(keyValue instanceof Integer) {
 			builder.setId((Integer) keyValue);
-			builder.putValues(KEY_COLUMN_KEY, ValueUtil.getValueFromInteger((Integer) keyValue).build());
+			values.putFields(
+				KEY_COLUMN_KEY,
+				ValueManager.getValueFromInteger((Integer) keyValue).build()
+			);
 		} else {
-			builder.putValues(KEY_COLUMN_KEY, ValueUtil.getValueFromString((String) keyValue).build());
+			values.putFields(
+				KEY_COLUMN_KEY,
+				ValueManager.getValueFromString((String) keyValue).build()
+			);
 		}
 		//	Set Value
 		if(!Util.isEmpty(value)) {
-			builder.putValues(VALUE_COLUMN_KEY, ValueUtil.getValueFromString(value).build());
+			values.putFields(
+				VALUE_COLUMN_KEY,
+				ValueManager.getValueFromString(value).build()
+			);
 		}
 		//	Display column
 		if(!Util.isEmpty(displayValue)) {
-			builder.putValues(DISPLAY_COLUMN_KEY, ValueUtil.getValueFromString(displayValue).build());
+			values.putFields(
+				DISPLAY_COLUMN_KEY,
+				ValueManager.getValueFromString(displayValue).build()
+			);
 		}
 		// UUID Value
-		builder.setUuid(ValueUtil.validateNull(uuidValue));
-		builder.putValues(LookupUtil.UUID_COLUMN_KEY, ValueUtil.getValueFromString(uuidValue).build());
+		values.putFields(
+			LookupUtil.UUID_COLUMN_KEY,
+			ValueManager.getValueFromString(uuidValue).build()
+		);
 
+		builder.setValues(values);
 		return builder;
 	}
 
@@ -89,20 +109,27 @@ public class LookupUtil {
 	 */
 	public static LookupItem.Builder convertLookupItemFromReferenceList(MRefList refList) {
 		LookupItem.Builder builder = LookupItem.newBuilder();
+		Struct.Builder values = Struct.newBuilder();
 		if (refList == null || refList.getAD_Ref_List_ID() <= 0) {
+			builder.setValues(values);
 			return builder;
 		}
 
 		builder.setId(refList.getAD_Ref_List_ID())
-			.setUuid(ValueUtil.validateNull(refList.getUUID()))
 			.setTableName(I_AD_Ref_List.Table_Name)
 		;
 
 		// Key Column
-		builder.putValues(LookupUtil.KEY_COLUMN_KEY, ValueUtil.getValueFromString(refList.getValue()).build());
+		values.putFields(
+			KEY_COLUMN_KEY,
+			ValueManager.getValueFromString(refList.getValue()).build()
+		);
 
 		//	Value
-		builder.putValues(LookupUtil.VALUE_COLUMN_KEY, ValueUtil.getValueFromString(refList.getValue()).build());
+		values.putFields(
+			LookupUtil.VALUE_COLUMN_KEY,
+			ValueManager.getValueFromString(refList.getValue()).build()
+		);
 
 		//	Display column
 		String name = refList.getName();
@@ -110,11 +137,18 @@ public class LookupUtil {
 			// set translated values
 			name = refList.get_Translation(I_AD_Ref_List.COLUMNNAME_Name);
 		}
-		builder.putValues(LookupUtil.DISPLAY_COLUMN_KEY, ValueUtil.getValueFromString(name).build());
+		values.putFields(
+			LookupUtil.DISPLAY_COLUMN_KEY,
+			ValueManager.getValueFromString(name).build()
+		);
 
 		// UUID Value
-		builder.putValues(LookupUtil.UUID_COLUMN_KEY, ValueUtil.getValueFromString(refList.getUUID()).build());
+		values.putFields(
+			LookupUtil.UUID_COLUMN_KEY,
+			ValueManager.getValueFromString(refList.getUUID()).build()
+		);
 
+		builder.setValues(values);
 		return builder;
 	}
 

@@ -19,10 +19,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.Optional;
 
-import org.adempiere.core.domains.models.I_C_BP_BankAccount;
-import org.adempiere.core.domains.models.I_C_Bank;
 import org.adempiere.core.domains.models.I_C_ConversionType;
-import org.adempiere.core.domains.models.I_C_Currency;
 import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MBank;
@@ -37,10 +34,11 @@ import org.compiere.util.Util;
 import org.spin.backend.grpc.pos.CreatePaymentRequest;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
 import org.spin.pos.service.order.OrderManagement;
 import org.spin.pos.service.order.OrderUtil;
 import org.spin.pos.util.ColumnsAdded;
+import org.spin.service.grpc.util.value.NumberManager;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * This class manage all related to collecting and payment methods
@@ -68,13 +66,15 @@ public class CollectingManagement {
 		if(pointOfSalesDefinition.getC_BankAccount_ID() <= 0) {
 			throw new AdempiereException("@NoCashBook@");
 		}
-        //	Amount
-        BigDecimal paymentAmount = ValueUtil.getBigDecimalFromDecimal(request.getAmount());
+		//	Amount
+		BigDecimal paymentAmount = NumberManager.getBigDecimalFromString(
+			request.getAmount()
+		);
 		if(paymentAmount == null || paymentAmount.compareTo(Env.ZERO) == 0) {
 			throw new AdempiereException("@PayAmt@ @NotFound@");
 		}
 		//	Order
-		int currencyId = RecordUtil.getIdFromUuid(I_C_Currency.Table_Name, request.getCurrencyUuid(), transactionName);
+		int currencyId = request.getCurrencyId();
 		if(currencyId <= 0) {
 			currencyId = salesOrder.getC_Currency_ID();
 		}
@@ -96,19 +96,19 @@ public class CollectingManagement {
 			payment.setC_DocType_ID(!request.getIsRefund());
 		}
 		payment.setAD_Org_ID(salesOrder.getAD_Org_ID());
-		if(!Util.isEmpty(request.getPaymentDate())) {
-        	Timestamp date = ValueUtil.getDateFromString(request.getPaymentDate());
-        	if(date != null) {
-        		payment.setDateTrx(date);
-        		payment.setDateAcct(date);
-        	}
-        }
-        if(!Util.isEmpty(request.getPaymentAccountDate())) {
-        	Timestamp date = ValueUtil.getDateFromString(request.getPaymentAccountDate());
-        	if(date != null) {
-        		payment.setDateAcct(date);
-        	}
-        }
+		Timestamp date = ValueManager.getDateFromTimestampDate(
+			request.getPaymentDate()
+		);
+    	if(date != null) {
+    		payment.setDateTrx(date);
+    		payment.setDateAcct(date);
+    	}
+		Timestamp dateValue = ValueManager.getDateFromTimestampDate(
+			request.getPaymentAccountDate()
+		);
+    	if(dateValue != null) {
+    		payment.setDateAcct(dateValue);
+    	}
         payment.setTenderType(tenderType);
         payment.setDescription(Optional.ofNullable(request.getDescription()).orElse(salesOrder.getDescription()));
         payment.setC_BPartner_ID (salesOrder.getC_BPartner_ID());
@@ -159,23 +159,16 @@ public class CollectingManagement {
 				break;
 		}
 		//	Payment Method
-		if(!Util.isEmpty(request.getPaymentMethodUuid())) {
-			int paymentMethodId = RecordUtil.getIdFromUuid(I_C_PaymentMethod.Table_Name, request.getPaymentMethodUuid(), transactionName);
-			if(paymentMethodId > 0) {
-				payment.set_ValueOfColumn(I_C_PaymentMethod.COLUMNNAME_C_PaymentMethod_ID, paymentMethodId);
-			}
+		if(request.getPaymentMethodId() > 0) {
+			payment.set_ValueOfColumn(I_C_PaymentMethod.COLUMNNAME_C_PaymentMethod_ID, request.getPaymentMethodId());
 		}
 		//	Set Bank Id
-		if(!Util.isEmpty(request.getBankUuid())) {
-			int bankId = RecordUtil.getIdFromUuid(I_C_Bank.Table_Name, request.getBankUuid(), transactionName);
-			payment.set_ValueOfColumn(MBank.COLUMNNAME_C_Bank_ID, bankId);
+		if(request.getBankId() > 0) {
+			payment.set_ValueOfColumn(MBank.COLUMNNAME_C_Bank_ID, request.getBankId());
 		}
 		//	Customer Bank Account
-		if(!Util.isEmpty(request.getCustomerBankAccountUuid())) {
-			int customerBankAccountId = RecordUtil.getIdFromUuid(I_C_BP_BankAccount.Table_Name, request.getCustomerBankAccountUuid(), transactionName);
-			if(customerBankAccountId > 0) {
-				payment.setC_BP_BankAccount_ID(customerBankAccountId);
-			}
+		if(request.getCustomerBankAccountId() > 0) {
+			payment.setC_BP_BankAccount_ID(request.getCustomerBankAccountId());
 		}
 		//	Validate reference
 		if(!Util.isEmpty(request.getReferenceNo())) {

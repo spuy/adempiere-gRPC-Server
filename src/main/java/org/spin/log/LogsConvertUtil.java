@@ -55,13 +55,16 @@ import org.spin.backend.grpc.common.ProcesInstanceParameter;
 import org.spin.backend.grpc.common.ProcessInfoLog;
 import org.spin.backend.grpc.common.ProcessLog;
 import org.spin.backend.grpc.common.ReportOutput;
-import org.spin.backend.grpc.common.Value;
 import org.spin.backend.grpc.logs.ChangeLog;
 import org.spin.backend.grpc.logs.EntityEventType;
 import org.spin.backend.grpc.logs.EntityLog;
 import org.spin.backend.grpc.logs.ListEntityLogsResponse;
-import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
+import org.spin.service.grpc.util.value.ValueManager;
+
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
+
+import static com.google.protobuf.util.Timestamps.fromMillis;
 
 /**
  * This class was created for add all convert methods for Logs service
@@ -97,31 +100,48 @@ public class LogsConvertUtil {
 	 */
 	public static EntityLog.Builder convertRecordLogHeader(MChangeLog recordLog) {
 		MTable table = MTable.get(recordLog.getCtx(), recordLog.getAD_Table_ID());
-		MUser user = MUser.get(recordLog.getCtx(), recordLog.getCreatedBy());
 		EntityLog.Builder builder = EntityLog.newBuilder();
-		builder.setLogId(recordLog.getAD_ChangeLog_ID());
-		builder.setId(recordLog.getRecord_ID());
-		builder.setUuid(ValueUtil.validateNull(RecordUtil.getUuidFromId(table.getTableName(), recordLog.getRecord_ID())));
-		builder.setTableName(ValueUtil.validateNull(table.getTableName()));
+		builder.setLogId(recordLog.getAD_ChangeLog_ID())
+			.setId(recordLog.getRecord_ID())
+			.setTableName(
+				ValueManager.validateNull(table.getTableName())
+			)
+		;
 		
 		String displayedName = table.get_Translation(I_AD_Table.COLUMNNAME_Name);
 		if (table.getAD_Window_ID() > 0) {
 			MWindow window = MWindow.get(Env.getCtx(), table.getAD_Window_ID());
 			displayedName = window.get_Translation(I_AD_Window.COLUMNNAME_Name);
 			builder.setWindowId(window.getAD_Window_ID());
-			builder.setWindowUuid(
-				ValueUtil.validateNull(window.getUUID())
-			);
 		}
 		builder.setDisplayedName(
-			ValueUtil.validateNull(displayedName)
+			ValueManager.validateNull(displayedName)
 		);
 
-		builder.setSessionUuid(ValueUtil.validateNull(recordLog.getAD_Session().getUUID()));
-		builder.setUserUuid(ValueUtil.validateNull(user.getUUID()));
-		builder.setUserName(ValueUtil.validateNull(user.getName()));
-		builder.setTransactionName(ValueUtil.validateNull(recordLog.getTrxName()));
-		builder.setLogDate(recordLog.getCreated().getTime());
+		// created by
+		MUser user = MUser.get(recordLog.getCtx(), recordLog.getCreatedBy());
+		builder.setCreatedBy(user.getAD_User_ID())
+			.setCreatedByName(
+				ValueManager.validateNull(user.getName())
+			)
+		;
+
+		// updated by
+		user = MUser.get(recordLog.getCtx(), recordLog.getUpdatedBy());
+		builder.setUpdatedBy(user.getAD_User_ID())
+			.setUpdatedByName(
+				ValueManager.validateNull(user.getName())
+			)
+		;
+
+		builder.setSessionId(recordLog.getAD_Session_ID())
+			.setTransactionName(
+				ValueManager.validateNull(recordLog.getTrxName())
+			)
+			.setLogDate(
+				ValueManager.getTimestampFromDate(recordLog.getCreated())
+			)
+		;
 		if(recordLog.getEventChangeLog().endsWith(MChangeLog.EVENTCHANGELOG_Insert)) {
 			builder.setEventType(EntityEventType.INSERT);
 		} else if(recordLog.getEventChangeLog().endsWith(MChangeLog.EVENTCHANGELOG_Update)) {
@@ -163,7 +183,9 @@ public class LogsConvertUtil {
 	public static ChangeLog.Builder convertChangeLog(MChangeLog recordLog) {
 		ChangeLog.Builder builder = ChangeLog.newBuilder();
 		MColumn column = MColumn.get(recordLog.getCtx(), recordLog.getAD_Column_ID());
-		builder.setColumnName(ValueUtil.validateNull(column.getColumnName()));
+		builder.setColumnName(
+			ValueManager.validateNull(column.getColumnName())
+		);
 		String displayColumnName = column.getName();
 		if(column.getColumnName().equals("ProcessedOn")) {
 			M_Element element = M_Element.get(recordLog.getCtx(), "LastRun");
@@ -182,19 +204,31 @@ public class LogsConvertUtil {
 				}
 			}
 		}
-		builder.setDisplayColumnName(ValueUtil.validateNull(displayColumnName));
-		builder.setDescription(ValueUtil.validateNull(recordLog.getDescription()));
+		builder.setDisplayColumnName(
+				ValueManager.validateNull(displayColumnName)
+			)
+			.setDescription(
+				ValueManager.validateNull(recordLog.getDescription())
+			)
+		;
 		String oldValue = recordLog.getOldValue();
 		String newValue = recordLog.getNewValue();
 		//	Set Old Value
-		builder.setOldValue(ValueUtil.validateNull(oldValue));
-		builder.setNewValue(ValueUtil.validateNull(newValue));
+		builder.setOldValue(
+				ValueManager.validateNull(oldValue)
+			)
+			.setNewValue(
+				ValueManager.validateNull(newValue)
+			)
+		;
 		//	Set Display Values
-		if (oldValue != null && oldValue.equals(MChangeLog.NULL))
+		if (oldValue != null && oldValue.equals(MChangeLog.NULL)) {
 			oldValue = null;
+		}
 		String displayOldValue = oldValue;
-		if (newValue != null && newValue.equals(MChangeLog.NULL))
+		if (newValue != null && newValue.equals(MChangeLog.NULL)) {
 			newValue = null;
+		}
 		String displayNewValue = newValue;
 		//
 		try {
@@ -295,8 +329,13 @@ public class LogsConvertUtil {
 			log.log(Level.WARNING, oldValue + "->" + newValue, e);
 		}
 		//	Set display values
-		builder.setOldDisplayValue(ValueUtil.validateNull(displayOldValue));
-		builder.setNewDisplayValue(ValueUtil.validateNull(displayNewValue));
+		builder.setOldDisplayValue(
+				ValueManager.validateNull(displayOldValue)
+			)
+			.setNewDisplayValue(
+				ValueManager.validateNull(displayNewValue)
+			)
+		;
 		return builder;
 	}
 
@@ -312,26 +351,38 @@ public class LogsConvertUtil {
 			return builder;
 		}
 
-		builder.setInstanceUuid(ValueUtil.validateNull(instance.getUUID()));
+		builder.setInstanceId(instance.getAD_PInstance_ID());
 		builder.setIsError(!instance.isOK());
 		builder.setIsProcessing(instance.isProcessing());
-		builder.setLastRun(instance.getUpdated().getTime());
+		
+		builder.setLastRun(fromMillis(instance.getUpdated().getTime()));
 		String summary = instance.getErrorMsg();
 		if(!Util.isEmpty(summary, true)) {
 			summary = Msg.parseTranslation(Env.getCtx(), summary);
 		}
 		//	for report
 		MProcess process = MProcess.get(Env.getCtx(), instance.getAD_Process_ID());
-		builder.setUuid(ValueUtil.validateNull(process.getUUID()));
-		builder.setName(ValueUtil.validateNull(process.getName()));
-		builder.setDescription(ValueUtil.validateNull(process.getDescription()));
+		builder.setId(instance.getAD_Process_ID())
+			.setName(
+				ValueManager.validateNull(process.getName()))
+			.setDescription(
+				ValueManager.validateNull(process.getDescription())
+			)
+		;
 		if(process.isReport()) {
 			ReportOutput.Builder outputBuilder = ReportOutput.newBuilder();
-			outputBuilder.setReportType(ValueUtil.validateNull(instance.getReportType()));
-			outputBuilder.setName(ValueUtil.validateNull(instance.getName()));
+			outputBuilder.setReportType(
+					ValueManager.validateNull(instance.getReportType())
+				)
+				.setName(
+					ValueManager.validateNull(instance.getName())
+				)
+			;
 			builder.setOutput(outputBuilder.build());
 		}
-		builder.setSummary(ValueUtil.validateNull(summary));
+		builder.setSummary(
+			ValueManager.validateNull(summary)
+		);
 		List<X_AD_PInstance_Log> logList = new Query(
 			Env.getCtx(), I_AD_PInstance_Log.Table_Name,
 			I_AD_PInstance.COLUMNNAME_AD_PInstance_ID + " = ?",
@@ -347,10 +398,13 @@ public class LogsConvertUtil {
 			if(!Util.isEmpty(message, true)) {
 				message = Msg.parseTranslation(Env.getCtx(), message);
 			}
-			logBuilder.setLog(ValueUtil.validateNull((message)));
+			logBuilder.setLog(
+				ValueManager.validateNull((message))
+			);
 			builder.addLogs(logBuilder.build());
 		}
 		//	
+		Struct.Builder parametersMap = Struct.newBuilder();
 		for(MPInstancePara parameter : instance.getParameters()) {
 			Value.Builder parameterBuilder = Value.newBuilder();
 			Value.Builder parameterToBuilder = Value.newBuilder();
@@ -368,11 +422,15 @@ public class LogsConvertUtil {
 				//	Validate
 				if(number != null && !number.equals(Env.ZERO)) {
 					hasFromParameter = true;
-					parameterBuilder = ValueUtil.getValueFromInteger(number.intValue());
+					parameterBuilder = ValueManager.getValueFromInteger(
+						number.intValue()
+					);
 				}
 				if(numberTo != null && !numberTo.equals(Env.ZERO)) {
 					hasToParameter = true;
-					parameterBuilder = ValueUtil.getValueFromInteger(numberTo.intValue());
+					parameterBuilder = ValueManager.getValueFromInteger(
+						numberTo.intValue()
+					);
 				}
 			} else if(DisplayType.isNumeric(displayType)) {
 				BigDecimal number = parameter.getP_Number();
@@ -380,11 +438,11 @@ public class LogsConvertUtil {
 				//	Validate
 				if(number != null && !number.equals(Env.ZERO)) {
 					hasFromParameter = true;
-					parameterBuilder = ValueUtil.getValueFromDecimal(number);
+					parameterBuilder = ValueManager.getValueFromBigDecimal(number);
 				}
 				if(numberTo != null && !numberTo.equals(Env.ZERO)) {
 					hasToParameter = true;
-					parameterBuilder = ValueUtil.getValueFromDecimal(numberTo);
+					parameterBuilder = ValueManager.getValueFromBigDecimal(numberTo);
 				}
 			} else if(DisplayType.isDate(displayType)) {
 				Timestamp date = parameter.getP_Date();
@@ -392,17 +450,17 @@ public class LogsConvertUtil {
 				//	Validate
 				if(date != null) {
 					hasFromParameter = true;
-					parameterBuilder = ValueUtil.getValueFromDate(date);
+					parameterBuilder = ValueManager.getValueFromTimestamp(date);
 				}
 				if(dateTo != null) {
 					hasToParameter = true;
-					parameterBuilder = ValueUtil.getValueFromDate(dateTo);
+					parameterBuilder = ValueManager.getValueFromTimestamp(dateTo);
 				}
 			} else if(DisplayType.YesNo == displayType) {
 				String value = parameter.getP_String();
 				if(!Util.isEmpty(value, true)) {
 					hasFromParameter = true;
-					parameterBuilder = ValueUtil.getValueFromBoolean(value);
+					parameterBuilder = ValueManager.getValueFromStringBoolean(value);
 				}
 			} else {
 				String value = parameter.getP_String();
@@ -410,20 +468,20 @@ public class LogsConvertUtil {
 				//	Validate
 				if(!Util.isEmpty(value)) {
 					hasFromParameter = true;
-					parameterBuilder = ValueUtil.getValueFromString(value);
+					parameterBuilder = ValueManager.getValueFromString(value);
 				}
 				if(!Util.isEmpty(valueTo)) {
 					hasToParameter = true;
-					parameterBuilder = ValueUtil.getValueFromString(valueTo);
+					parameterBuilder = ValueManager.getValueFromString(valueTo);
 				}
 			}
 			//	For parameter
 			if(hasFromParameter) {
-				builder.putParameters(parameterName, parameterBuilder.build());
+				parametersMap.putFields(parameterName, parameterBuilder.build());
 			}
 			//	For to parameter
 			if(hasToParameter) {
-				builder.putParameters(parameterName + "_To", parameterToBuilder.build());
+				parametersMap.putFields(parameterName + "_To", parameterToBuilder.build());
 			}
 
 			ProcesInstanceParameter.Builder instanceParaBuilder = convertProcessInstance(
@@ -431,6 +489,7 @@ public class LogsConvertUtil {
 			);
 			builder.addProcessIntanceParameters(instanceParaBuilder);
 		}
+		builder.setParameters(parametersMap);
 		return builder;
 	}
 
@@ -442,7 +501,7 @@ public class LogsConvertUtil {
 		}
 
 		builder.setColumnName(
-			ValueUtil.validateNull(
+			ValueManager.validateNull(
 				instancePara.getParameterName()
 			)
 		);
@@ -458,11 +517,8 @@ public class LogsConvertUtil {
 		}
 		if (processPara != null) {
 			builder.setId(processPara.getAD_Process_Para_ID())
-				.setUuid(
-					ValueUtil.validateNull(processPara.getUUID())
-				)
 				.setName(
-					ValueUtil.validateNull(
+					ValueManager.validateNull(
 						processPara.get_Translation(I_AD_Process_Para.COLUMNNAME_Name)
 					)
 				)
@@ -484,11 +540,11 @@ public class LogsConvertUtil {
 			//	Validate
 			if(number != null && !number.equals(Env.ZERO)) {
 				hasFromParameter = true;
-				parameterBuilder = ValueUtil.getValueFromInteger(number.intValue());
+				parameterBuilder = ValueManager.getValueFromInteger(number.intValue());
 			}
 			if(numberTo != null && !numberTo.equals(Env.ZERO)) {
 				hasToParameter = true;
-				parameterBuilder = ValueUtil.getValueFromInteger(numberTo.intValue());
+				parameterBuilder = ValueManager.getValueFromInteger(numberTo.intValue());
 			}
 		} else if(DisplayType.isNumeric(displayType)) {
 			BigDecimal number = instancePara.getP_Number();
@@ -496,11 +552,11 @@ public class LogsConvertUtil {
 			//	Validate
 			if(number != null && !number.equals(Env.ZERO)) {
 				hasFromParameter = true;
-				parameterBuilder = ValueUtil.getValueFromDecimal(number);
+				parameterBuilder = ValueManager.getValueFromBigDecimal(number);
 			}
 			if(numberTo != null && !numberTo.equals(Env.ZERO)) {
 				hasToParameter = true;
-				parameterBuilder = ValueUtil.getValueFromDecimal(numberTo);
+				parameterBuilder = ValueManager.getValueFromBigDecimal(numberTo);
 			}
 		} else if(DisplayType.isDate(displayType)) {
 			Timestamp date = instancePara.getP_Date();
@@ -508,17 +564,17 @@ public class LogsConvertUtil {
 			//	Validate
 			if(date != null) {
 				hasFromParameter = true;
-				parameterBuilder = ValueUtil.getValueFromDate(date);
+				parameterBuilder = ValueManager.getValueFromTimestamp(date);
 			}
 			if(dateTo != null) {
 				hasToParameter = true;
-				parameterBuilder = ValueUtil.getValueFromDate(dateTo);
+				parameterBuilder = ValueManager.getValueFromTimestamp(dateTo);
 			}
 		} else if(DisplayType.YesNo == displayType) {
 			String value = instancePara.getP_String();
 			if(!Util.isEmpty(value, true)) {
 				hasFromParameter = true;
-				parameterBuilder = ValueUtil.getValueFromBoolean(value);
+				parameterBuilder = ValueManager.getValueFromStringBoolean(value);
 			}
 		} else {
 			String value = instancePara.getP_String();
@@ -526,17 +582,17 @@ public class LogsConvertUtil {
 			//	Validate
 			if(!Util.isEmpty(value)) {
 				hasFromParameter = true;
-				parameterBuilder = ValueUtil.getValueFromString(value);
+				parameterBuilder = ValueManager.getValueFromString(value);
 			}
 			if(!Util.isEmpty(valueTo)) {
 				hasToParameter = true;
-				parameterBuilder = ValueUtil.getValueFromString(valueTo);
+				parameterBuilder = ValueManager.getValueFromString(valueTo);
 			}
 		}
 
 		//	For parameter
 		if(hasFromParameter) {
-			builder.setValue(parameterBuilder);
+			builder.setValue(parameterBuilder.build());
 		}
 		//	For to parameter
 		if(hasToParameter) {

@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt EdwinBetanc0urt@outlook.com                     *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -18,9 +18,13 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.form.bank_statement_match";
 option java_outer_classname = "ADempiereBankStatementMatch";
 
-import "base_data_type.proto";
-import "business.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+import "base_data_type.proto";
+
+// Base URL
+// /bank-statement-match/
 
 package bank_statement_match;
 
@@ -32,6 +36,9 @@ service BankStatementMatch {
 	// lists criteria
 	rpc GetBankStatement(GetBankStatementRequest) returns (BankStatement) {
 		option (google.api.http) = { get: "/bank-statement-match/bank-statements/{id}" };
+	}
+	rpc ListBankStatements(ListBankStatementsRequest) returns (ListBankStatementsResponse) {
+		option (google.api.http) = { get: "/bank-statement-match/bank-statements" };
 	}
 	rpc ListBankAccounts(ListBankAccountsRequest) returns (data.ListLookupItemsResponse) {
 		option (google.api.http) = { get: "/bank-statement-match/accounts" };
@@ -68,9 +75,6 @@ service BankStatementMatch {
 			body: "*"
 		};
 	}
-	rpc ListBankStatements(ListBankStatementsRequest) returns (ListBankStatementsResponse) {
-		option (google.api.http) = { get: "/bank-statement-match/bank-statements" };
-	}
 	rpc ProcessMovements(ProcessMovementsRequest) returns (ProcessMovementsResponse) {
 		option (google.api.http) = { 
 			post: "/bank-statement-match/process-movements",
@@ -79,45 +83,53 @@ service BankStatementMatch {
 	}
 }
 
+// Bank
+message Bank {
+	int32 id = 1;
+	string name = 2;
+	string routing_no = 3;
+	string swift_code = 4;
+}
+
 //	Bank Account
 message BankAccount {
 	int32 id = 1;
-	string uuid = 2;
+	string name = 2;
 	string account_no = 3;
-	string account_name = 4;
-	string bank_name = 5;
+	string account_no_mask = 4;
+	Bank bank = 5;
 	Currency currency = 6;
-	data.Decimal current_balance = 7;
+	string current_balance = 7;
 }
 
 // Bank Statement
 message BankStatement {
 	int32 id = 1;
-	string uuid = 2;
-	BankAccount bank_account = 3;
-	string document_no = 4;
-	string name = 5;
-	int64 statement_date = 6;
-	string description = 7;
-	bool is_manual = 8;
-	string document_status = 9;
-	bool is_processed = 10;
-	data.Decimal beginning_balance = 11;
-	data.Decimal statement_difference = 12;
-	data.Decimal ending_balance = 13;
+	BankAccount bank_account = 2;
+	string document_no = 3;
+	string name = 4;
+	google.protobuf.Timestamp statement_date = 5;
+	string description = 6;
+	bool is_manual = 7;
+	string document_status = 8;
+	bool is_processed = 9;
+	string beginning_balance = 10;
+	string statement_difference = 11;
+	string ending_balance = 12;
 }
 
 message GetBankStatementRequest {
 	int32 id = 1;
-	string uuid = 2;
 }
 
 message ListBankStatementsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int32 bank_account_id = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 message ListBankStatementsResponse {
@@ -129,26 +141,33 @@ message ListBankStatementsResponse {
 
 // Bank Account
 message ListBankAccountsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 
 // Business Partner
 message BusinessPartner {
-	string uuid = 1;
-	int32 id = 2;
-	string value = 3;
-	string tax_id = 4;
-	string name = 5;
-	string description = 6;
+	int32 id = 1;
+	string value = 2;
+	string tax_id = 3;
+	string name = 4;
+	string description = 5;
 }
 
 message ListBusinessPartnersRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 message ListBusinessPartnersResponse {
@@ -159,26 +178,28 @@ message ListBusinessPartnersResponse {
 
 
 message ListSearchModesRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	string search_value = 3;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
 }
 
 
 // Payment
 message Currency {
 	int32 id = 1;
-	string uuid = 2;
-	string iso_code = 3;
-	string description = 4;
+	string iso_code = 2;
+	string description = 3;
 }
 
 message TenderType {
 	int32 id = 1;
-	string uuid = 2;
-	string value = 3;
-	string name = 4;
-	string description = 5;
+	string value = 2;
+	string name = 3;
+	string description = 4;
 }
 
 enum MatchMode {
@@ -188,31 +209,33 @@ enum MatchMode {
 
 // Imported Bank Movements
 message ListImportedBankMovementsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int32 bank_statement_id = 4;
-	int32 bank_account_id = 5;
-	data.Decimal payment_amount_from = 6;
-	data.Decimal payment_amount_to = 7;
-	int64 transaction_date_from = 8;
-	int64 transaction_date_to = 9;
-	MatchMode match_mode = 10;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 bank_statement_id = 8;
+	int32 bank_account_id = 9;
+	string payment_amount_from = 10;
+	string payment_amount_to = 11;
+	google.protobuf.Timestamp transaction_date_from = 12;
+	google.protobuf.Timestamp transaction_date_to = 13;
+	MatchMode match_mode = 14;
 }
 
 message ImportedBankMovement {
 	int32 id = 1;
-	string uuid = 2;
-	int64 transaction_date = 3;
-	bool is_receipt = 4;
-	string reference_no = 5;
-	BusinessPartner business_partner = 6;
-	Currency currency = 7;
-	data.Decimal amount = 8;
-	string memo = 9;
-	int32 payment_id = 10;
-	int32 bank_statement_line_id = 11;
+	google.protobuf.Timestamp transaction_date = 2;
+	bool is_receipt = 3;
+	string reference_no = 4;
+	BusinessPartner business_partner = 5;
+	Currency currency = 6;
+	string amount = 7;
+	string memo = 8;
+	int32 payment_id = 9;
+	int32 bank_statement_line_id = 10;
 }
 
 message ListImportedBankMovementsResponse {
@@ -223,31 +246,33 @@ message ListImportedBankMovementsResponse {
 
 // Payments Movements
 message ListPaymentsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int32 bank_statement_id = 4;
-	int32 bank_account_id = 5;
-	int32 business_partner_id = 6;
-	data.Decimal payment_amount_from = 7;
-	data.Decimal payment_amount_to = 8;
-	int64 transaction_date_from = 9;
-	int64 transaction_date_to = 10;
-	MatchMode match_mode = 11;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 bank_statement_id = 8;
+	int32 bank_account_id = 9;
+	int32 business_partner_id = 10;
+	string payment_amount_from = 11;
+	string payment_amount_to = 12;
+	google.protobuf.Timestamp transaction_date_from = 13;
+	google.protobuf.Timestamp transaction_date_to = 14;
+	MatchMode match_mode = 15;
 }
 
 message Payment {
 	int32 id = 1;
-	string uuid = 2;
-	int64 transaction_date = 3;
-	bool is_receipt = 4;
-	string document_no = 5;
-	BusinessPartner business_partner = 6;
-	TenderType tender_type = 7;
-	Currency currency = 8;
-	data.Decimal amount = 9;
-	string description = 10;
+	google.protobuf.Timestamp transaction_date = 2;
+	bool is_receipt = 3;
+	string document_no = 4;
+	BusinessPartner business_partner = 5;
+	TenderType tender_type = 6;
+	Currency currency = 7;
+	string amount = 8;
+	string description = 9;
 }
 
 message ListPaymentsResponse {
@@ -259,37 +284,39 @@ message ListPaymentsResponse {
 
 // Matched Bank/Payment Movements
 message ListMatchingMovementsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int32 bank_statement_id = 4;
-	int32 bank_account_id = 5;
-	int32 business_partner_id = 6;
-	data.Decimal payment_amount_from = 7;
-	data.Decimal payment_amount_to = 8;
-	int64 transaction_date_from = 9;
-	int64 transaction_date_to = 10;
-	MatchMode match_mode = 11;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 bank_statement_id = 8;
+	int32 bank_account_id = 9;
+	int32 business_partner_id = 10;
+	string payment_amount_from = 11;
+	string payment_amount_to = 12;
+	google.protobuf.Timestamp transaction_date_from = 13;
+	google.protobuf.Timestamp transaction_date_to = 14;
+	MatchMode match_mode = 15;
 }
 
 message MatchingMovement {
 	int32 id = 1;
-	string uuid = 2;
-	int64 transaction_date = 3;
-	bool is_receipt = 4;
-	string document_no = 5;
-	BusinessPartner business_partner = 6;
-	TenderType tender_type = 7;
-	Currency currency = 8;
-	data.Decimal amount = 9;
-	string description = 10;
-	string reference_no = 11;
-	string memo = 12;
-	int32 payment_id = 13;
-	bool is_automatic = 14;
-	data.Decimal payment_amount = 15;
-	int64 payment_date = 16;
+	google.protobuf.Timestamp transaction_date = 2;
+	bool is_receipt = 3;
+	string document_no = 4;
+	BusinessPartner business_partner = 5;
+	TenderType tender_type = 6;
+	Currency currency = 7;
+	string amount = 8;
+	string description = 9;
+	string reference_no = 10;
+	string memo = 11;
+	int32 payment_id = 12;
+	bool is_automatic = 13;
+	string payment_amount = 14;
+	google.protobuf.Timestamp payment_date = 15;
 }
 
 message ListMatchingMovementsResponse {
@@ -302,34 +329,36 @@ message ListMatchingMovementsResponse {
 // Result Movement
 message ResultMovement {
 	int32 id = 1;
-	string uuid = 2;
-	int64 transaction_date = 3;
-	bool is_receipt = 4;
-	string document_no = 5;
-	BusinessPartner business_partner = 6;
-	TenderType tender_type = 7;
-	Currency currency = 8;
-	data.Decimal amount = 9;
-	string description = 10;
-	string reference_no = 11;
-	string memo = 12;
-	int32 payment_id = 13;
-	bool is_automatic = 14;
-	data.Decimal payment_amount = 15;
-	int64 payment_date = 16;
+	google.protobuf.Timestamp transaction_date = 2;
+	bool is_receipt = 3;
+	string document_no = 4;
+	BusinessPartner business_partner = 5;
+	TenderType tender_type = 6;
+	Currency currency = 7;
+	string amount = 8;
+	string description = 9;
+	string reference_no = 10;
+	string memo = 11;
+	int32 payment_id = 12;
+	bool is_automatic = 13;
+	string payment_amount = 14;
+	google.protobuf.Timestamp payment_date = 15;
 }
 
 message ListResultMovementsRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int32 bank_statement_id = 4;
-	int32 bank_account_id = 5;
-	data.Decimal payment_amount_from = 7;
-	data.Decimal payment_amount_to = 8;
-	int64 transaction_date_from = 9;
-	int64 transaction_date_to = 10;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 bank_statement_id = 8;
+	int32 bank_account_id = 9;
+	string payment_amount_from = 10;
+	string payment_amount_to = 11;
+	google.protobuf.Timestamp transaction_date_from = 12;
+	google.protobuf.Timestamp transaction_date_to = 13;
 }
 
 message ListResultMovementsResponse {
@@ -364,10 +393,10 @@ message UnmatchPaymentsResponse {
 message ProcessMovementsRequest {
 	int32 bank_statement_id = 1;
 	int32 bank_account_id = 2;
-	data.Decimal payment_amount_from = 5;
-	data.Decimal payment_amount_to = 6;
-	int64 transaction_date_from = 7;
-	int64 transaction_date_to = 8;
+	string payment_amount_from = 5;
+	string payment_amount_to = 6;
+	google.protobuf.Timestamp transaction_date_from = 7;
+	google.protobuf.Timestamp transaction_date_to = 8;
 }
 
 message ProcessMovementsResponse {

@@ -10,18 +10,15 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,           *
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.                            *
  * For the text or an alternative of this public license, you may reach us           *
- * Copyright (C) 2012-2023 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
+ * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, S.A. All Rights Reserved. *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                     *
  *************************************************************************************/
 
 package org.spin.dashboarding;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.adempiere.apps.graph.GraphColumn;
@@ -47,13 +44,13 @@ import org.compiere.util.Util;
 import org.spin.backend.grpc.dashboarding.ChartData;
 import org.spin.backend.grpc.dashboarding.ColorSchema;
 import org.spin.backend.grpc.dashboarding.Favorite;
-import org.spin.backend.grpc.dashboarding.Filter;
 import org.spin.backend.grpc.dashboarding.WindowDashboard;
 import org.spin.backend.grpc.dashboarding.WindowDashboardParameter;
 import org.spin.backend.grpc.dictionary.Reference;
-import org.spin.base.dictionary.DictionaryConvertUtil;
 import org.spin.base.util.ReferenceUtil;
-import org.spin.base.util.ValueUtil;
+import org.spin.dictionary.convert.DictionaryConvertUtil;
+import org.spin.service.grpc.util.value.NumberManager;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * This class was created for add all convert methods for POS form
@@ -83,57 +80,57 @@ public class DashboardingConvertUtil {
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
 		}
-		return ValueUtil.validateNull(
+		return ValueManager.validateNull(
 			String.format("#%06X", (0xFFFFFF & color))
 		);
 	}
 
-	/**
-	 * Convert Filter Values from gRPC to ADempiere object values
-	 * @param values
-	 * @return
-	 */
-	public static Map<String, Object> convertFilterValuesToObjects(List<Filter> filtersList) {
-		Map<String, Object> convertedValues = new HashMap<>();
-		if (filtersList == null || filtersList.size() <= 0) {
-			return convertedValues;
-		}
-		for (Filter filter : filtersList) {
-			Object value = null;
-			// to IN or NOT IN clause
-			if (filter.getValuesList() != null && filter.getValuesList().size() > 0) {
-				List<Object> values = new ArrayList<Object>();
-				filter.getValuesList().forEach(valueBuilder -> {
-					Object currentValue = ValueUtil.getObjectFromValue(
-						valueBuilder
-					);
-					values.add(currentValue);
-				});
-				value = values;
-			}
-			else {
-				value = ValueUtil.getObjectFromValue(filter.getValue());
-				// to BETWEEN clause
-				if (filter.hasValueTo()) {
-					Object currentValue = value;
-					List<Object> values = new ArrayList<Object>();
-					values.add(currentValue);
-					values.add(
-						ValueUtil.getObjectFromValue(
-							filter.getValueTo()
-						)
-					);
-					value = values;
-				}
-			}
-			convertedValues.put(
-				filter.getColumnName(),
-				value
-			);
-		}
-		//
-		return convertedValues;
-	}
+//	/**
+//	 * Convert Filter Values from gRPC to ADempiere object values
+//	 * @param values
+//	 * @return
+//	 */
+//	public static Map<String, Object> convertFilterValuesToObjects(List<Filter> filtersList) {
+//		Map<String, Object> convertedValues = new HashMap<>();
+//		if (filtersList == null || filtersList.size() <= 0) {
+//			return convertedValues;
+//		}
+//		for (Filter filter : filtersList) {
+//			Object value = null;
+//			// to IN or NOT IN clause
+//			if (filter.getValuesList() != null && filter.getValuesList().size() > 0) {
+//				List<Object> values = new ArrayList<Object>();
+//				filter.getValuesList().forEach(valueBuilder -> {
+//					Object currentValue = ValueManager.getObjectFromValue(
+//						valueBuilder
+//					);
+//					values.add(currentValue);
+//				});
+//				value = values;
+//			}
+//			else {
+//				value = ValueManager.getObjectFromValue(filter.getValue());
+//				// to BETWEEN clause
+//				if (filter.hasValueTo()) {
+//					Object currentValue = value;
+//					List<Object> values = new ArrayList<Object>();
+//					values.add(currentValue);
+//					values.add(
+//						ValueManager.getObjectFromValue(
+//							filter.getValueTo()
+//						)
+//					);
+//					value = values;
+//				}
+//			}
+//			convertedValues.put(
+//				filter.getColumnName(),
+//				value
+//			);
+//		}
+//		//
+//		return convertedValues;
+//	}
 
 	@SuppressWarnings("unchecked")
 	public static void addCollectionParameters(Object objectColelction, List<Object> parameters) {
@@ -161,7 +158,7 @@ public class DashboardingConvertUtil {
 		String menuName = "";
 		String menuDescription = "";
 		MMenu menu = MMenu.getFromId(context, treeNodeMenu.getNode_ID());
-		builder.setMenuUuid(ValueUtil.validateNull(menu.getUUID()));
+		builder.setMenuId(menu.getAD_Menu_ID());
 		String action = MMenu.ACTION_Window;
 		if (!menu.isCentrallyMaintained()) {
 			menuName = menu.getName();
@@ -180,10 +177,10 @@ public class DashboardingConvertUtil {
 		//	Supported actions
 		if (!Util.isEmpty(menu.getAction(), true)) {
 			action = menu.getAction();
-			String referenceUuid = null;
+			int referenceId = 0;
 			if (menu.getAction().equals(MMenu.ACTION_Form) && menu.getAD_Form_ID() > 0) {
 				MForm form = new MForm(context, menu.getAD_Form_ID(), null);
-				referenceUuid = form.getUUID();
+				referenceId = form.getAD_Form_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = form.getName();
 					menuDescription = form.getDescription();
@@ -200,7 +197,7 @@ public class DashboardingConvertUtil {
 				}
 			} else if (menu.getAction().equals(MMenu.ACTION_Window) && menu.getAD_Window_ID() > 0) {
 				MWindow window = new MWindow(context, menu.getAD_Window_ID(), null);
-				referenceUuid = window.getUUID();
+				referenceId = window.getAD_Window_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = window.getName();
 					menuDescription = window.getDescription();
@@ -218,7 +215,7 @@ public class DashboardingConvertUtil {
 			} else if ((menu.getAction().equals(MMenu.ACTION_Process)
 				|| menu.getAction().equals(MMenu.ACTION_Report)) && menu.getAD_Process_ID() > 0) {
 				MProcess process = MProcess.get(context, menu.getAD_Process_ID());
-				referenceUuid = process.getUUID();
+				referenceId = process.getAD_Process_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = process.getName();
 					menuDescription = process.getDescription();
@@ -235,7 +232,7 @@ public class DashboardingConvertUtil {
 				}
 			} else if (menu.getAction().equals(MMenu.ACTION_SmartBrowse) && menu.getAD_Browse_ID() > 0) {
 				MBrowse smartBrowser = MBrowse.get(context, menu.getAD_Browse_ID());
-				referenceUuid = smartBrowser.getUUID();
+				referenceId = smartBrowser.getAD_Browse_ID();
 				if (menu.isCentrallyMaintained()) {
 					menuName = smartBrowser.getName();
 					menuDescription = smartBrowser.getDescription();
@@ -251,12 +248,12 @@ public class DashboardingConvertUtil {
 					}
 				}
 			}
-			builder.setReferenceUuid(ValueUtil.validateNull(referenceUuid));
-			builder.setAction(ValueUtil.validateNull(action));
+			builder.setReferenceId(referenceId);
+			builder.setAction(ValueManager.validateNull(action));
 		}
 		//	Set name and description
-		builder.setMenuName(ValueUtil.validateNull(menuName));
-		builder.setMenuDescription(ValueUtil.validateNull(menuDescription));
+		builder.setMenuName(ValueManager.validateNull(menuName));
+		builder.setMenuDescription(ValueManager.validateNull(menuDescription));
 		return builder;
 	}
 
@@ -267,7 +264,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
+				String.valueOf(
 					colorSchema.getMark1Percent()
 				)
 			)
@@ -286,7 +283,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
+				String.valueOf(
 					colorSchema.getMark2Percent()
 				)
 			)
@@ -305,7 +302,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
+				String.valueOf(
 					colorSchema.getMark3Percent()
 				)
 			)
@@ -324,7 +321,7 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setPercent(
-				ValueUtil.getDecimalFromInt(
+				String.valueOf(
 					colorSchema.getMark4Percent()
 				)
 			)
@@ -375,13 +372,15 @@ public class DashboardingConvertUtil {
 		}
 		
 		builder.setName(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					grapColumn.getLabel()
 				)
 			)
 			.setValue(
-				ValueUtil.getDecimalFromBigDecimal(
-					new BigDecimal(grapColumn.getValue())
+				NumberManager.getBigDecimalToString(
+					NumberManager.getBigDecimalFromDouble(
+						grapColumn.getValue()
+					)
 				)
 			)
 		;
@@ -396,21 +395,18 @@ public class DashboardingConvertUtil {
 			return builder;
 		}
 		builder.setId(chartParameter.get_ID())
-			.setUuid(
-				ValueUtil.validateNull(chartParameter.get_UUID())
-			)
 			.setName(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_Name)
 				)
 			)
 			.setDescription(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_Description)
 				)
 			)
 			.setHelp(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_Help)
 				)
 			)
@@ -418,12 +414,12 @@ public class DashboardingConvertUtil {
 				chartParameter.get_ValueAsInt(I_AD_Process_Para.COLUMNNAME_SeqNo)
 			)
 			.setColumnName(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_ColumnName)
 				)
 			)
 			.setColumnSql(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString("ColumnSQL")
 				)
 			)
@@ -440,7 +436,7 @@ public class DashboardingConvertUtil {
 				chartParameter.get_ValueAsBoolean(I_AD_Process_Para.COLUMNNAME_IsRange)
 			)
 			.setDefaultValue(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_DefaultValue)
 				)
 			)
@@ -448,27 +444,27 @@ public class DashboardingConvertUtil {
 				chartParameter.get_ValueAsInt(I_AD_Process_Para.COLUMNNAME_AD_Reference_ID)
 			)
 			.setVFormat(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_VFormat)
 				)
 			)
 			.setValueMax(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_ValueMax)
 				)
 			)
 			.setValueMin(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_ValueMin)
 				)
 			)
 			.setDisplayLogic(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_DisplayLogic)
 				)
 			)
 			.setReadOnlyLogic(
-				ValueUtil.validateNull(
+				ValueManager.validateNull(
 					chartParameter.get_ValueAsString(I_AD_Process_Para.COLUMNNAME_ReadOnlyLogic)
 				)
 			)
@@ -512,18 +508,15 @@ public class DashboardingConvertUtil {
 
 		builder = WindowDashboard.newBuilder()
 			.setId(chartDefinition.getAD_Chart_ID())
-			.setUuid(
-				ValueUtil.validateNull(chartDefinition.getUUID())
-			)
 			.setName(
-				ValueUtil.validateNull(chartDefinition.getName())
+				ValueManager.validateNull(chartDefinition.getName())
 			)
 			.setDescription(
-				ValueUtil.validateNull(chartDefinition.getDescription())
+				ValueManager.validateNull(chartDefinition.getDescription())
 			)
 			.setDashboardType("chart")
 			.setChartType(
-				ValueUtil.validateNull(chartDefinition.getChartType())
+				ValueManager.validateNull(chartDefinition.getChartType())
 			)
 			.setIsCollapsible(true)
 			.setIsOpenByDefault(true)
@@ -545,7 +538,7 @@ public class DashboardingConvertUtil {
 			.setOnlyActiveRecords(true)
 			.<PO>list()
 			.forEach(windowChartParameter -> {
-				String contextColumn = ValueUtil.validateNull(
+				String contextColumn = ValueManager.validateNull(
 					windowChartParameter.get_ValueAsString(I_AD_Column.COLUMNNAME_ColumnName)
 				);
 				contextColumnsList.add(contextColumn);

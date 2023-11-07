@@ -14,6 +14,7 @@ server:
        - express_shipment
        - file_management
        - general_ledger
+       - location_address
        - log
        - import_file_loader
        - in_out
@@ -29,17 +30,18 @@ server:
        - pos
        - product
        - record_management
+       - report_management
        - security
        - store
        - time_control
        - time_record
-       - ui
        - user_customization
+       - user_interface
        - workflow
     log_level: WARNING
-    secret_key: 58270DD5D28E9945DD24907ADD498276EBEF01C1385618362054B2E65E582230
+    jwt_secret_key: 2C51599F5B1248F945B93E05EFC43B3A15D8EB0707C0F02FD97028786C40976F
     # Default 24 hours
-    expiration: 86400000
+    jwt_expiration_time: 86400000
 database:
     host: localhost
     port: 5432

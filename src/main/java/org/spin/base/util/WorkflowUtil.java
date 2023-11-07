@@ -52,6 +52,7 @@ import org.spin.backend.grpc.wf.WorkflowProcess;
 import org.spin.backend.grpc.wf.WorkflowState;
 import org.spin.backend.grpc.wf.WorkflowTransition;
 import org.spin.backend.grpc.wf.ZoomWindow;
+import org.spin.service.grpc.util.value.ValueManager;
 import org.spin.util.ASPUtil;
 
 /**
@@ -68,9 +69,9 @@ public class WorkflowUtil {
 	public static WorkflowProcess.Builder convertWorkflowProcess(MWFProcess workflowProcess) {
 		MTable table = MTable.get(workflowProcess.getCtx(), workflowProcess.getAD_Table_ID());
 		WorkflowProcess.Builder builder = WorkflowProcess.newBuilder();
-		builder.setProcessUuid(ValueUtil.validateNull(workflowProcess.getUUID()));
+		builder.setProcessId(workflowProcess.getAD_WF_Process_ID());
 		MWorkflow workflow = MWorkflow.get(workflowProcess.getCtx(), workflowProcess.getAD_Workflow_ID());
-		builder.setWorkflowUuid(ValueUtil.validateNull(workflow.getUUID()));
+		builder.setWorkflowId(workflowProcess.getAD_Workflow_ID());
 		String workflowName = workflow.getName();
 		if(!Env.isBaseLanguage(workflowProcess.getCtx(), "")) {
 			String translation = workflow.get_Translation(MWorkflow.COLUMNNAME_Name);
@@ -82,21 +83,19 @@ public class WorkflowUtil {
 		if(workflowProcess.getAD_WF_Responsible_ID() > 0) {
 			MWFResponsible responsible = MWFResponsible.get(workflowProcess.getCtx(), workflowProcess.getAD_WF_Responsible_ID());
 			builder.setResponsibleId(responsible.getAD_WF_Responsible_ID());
-			builder.setResponsibleUuid(ValueUtil.validateNull(responsible.getUUID()));
-			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
+			builder.setResponsibleName(ValueManager.validateNull(responsible.getName()));
 		}
 		if(workflowProcess.getAD_User_ID() != 0) {
 			MUser user = MUser.get(workflowProcess.getCtx(), workflowProcess.getAD_User_ID());
-			builder.setUserUuid(ValueUtil.validateNull(user.getUUID()));
-			builder.setUserName(ValueUtil.validateNull(user.getName()));
+			builder.setUserId(user.getAD_User_ID());
+			builder.setUserName(ValueManager.validateNull(user.getName()));
 		}
-		builder.setWorkflowName(ValueUtil.validateNull(workflowName));
+		builder.setWorkflowName(ValueManager.validateNull(workflowName));
 		builder.setId(workflowProcess.getRecord_ID());
-		builder.setUuid(ValueUtil.validateNull(RecordUtil.getUuidFromId(table.getTableName(), workflowProcess.getRecord_ID())));
-		builder.setTableName(ValueUtil.validateNull(table.getTableName()));
-		builder.setTextMessage(ValueUtil.validateNull(Msg.parseTranslation(workflowProcess.getCtx(), workflowProcess.getTextMsg())));
+		builder.setTableName(ValueManager.validateNull(table.getTableName()));
+		builder.setTextMessage(ValueManager.validateNull(Msg.parseTranslation(workflowProcess.getCtx(), workflowProcess.getTextMsg())));
 		builder.setProcessed(workflowProcess.isProcessed());
-		builder.setLogDate(workflowProcess.getCreated().getTime());
+		builder.setLogDate(ValueManager.getTimestampFromDate(workflowProcess.getCreated()));
 		//	State
 		if(!Util.isEmpty(workflowProcess.getWFState())) {
 			if(workflowProcess.getWFState().equals(MWFProcess.WFSTATE_Running)) {
@@ -135,8 +134,7 @@ public class WorkflowUtil {
 		MTable table = MTable.get(workflow.getCtx(), workflow.getAD_Table_ID());
 		WorkflowDefinition.Builder builder = WorkflowDefinition.newBuilder();
 		builder.setId(workflow.getAD_Workflow_ID());
-		builder.setUuid(ValueUtil.validateNull(workflow.getUUID()));
-		builder.setValue(ValueUtil.validateNull(workflow.getValue()));
+		builder.setValue(ValueManager.validateNull(workflow.getValue()));
 		String name = workflow.getName();
 		String description = workflow.getDescription();
 		String help = workflow.getHelp();
@@ -154,22 +152,21 @@ public class WorkflowUtil {
 				help = translation;
 			}
 		}
-		builder.setName(ValueUtil.validateNull(name));
-		builder.setDescription(ValueUtil.validateNull(description));
-		builder.setHelp(ValueUtil.validateNull(help));
+		builder.setName(ValueManager.validateNull(name));
+		builder.setDescription(ValueManager.validateNull(description));
+		builder.setHelp(ValueManager.validateNull(help));
 		
 		if(workflow.getAD_WF_Responsible_ID() > 0) {
 			MWFResponsible responsible = MWFResponsible.get(workflow.getCtx(), workflow.getAD_WF_Responsible_ID());
 			builder.setResponsibleId(responsible.getAD_WF_Responsible_ID());
-			builder.setResponsibleUuid(ValueUtil.validateNull(responsible.getUUID()));
-			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
+			builder.setResponsibleName(ValueManager.validateNull(responsible.getName()));
 		}
 		builder.setPriority(workflow.getPriority());
-		builder.setTableName(ValueUtil.validateNull(table.getTableName()));
+		builder.setTableName(ValueManager.validateNull(table.getTableName()));
 		builder.setIsDefault(workflow.isDefault());
 		builder.setIsValid(workflow.isValid());
 		if(workflow.getValidFrom() != null) {
-			builder.setValidFrom(workflow.getValidFrom().getTime());
+			builder.setValidFrom(ValueManager.getTimestampFromDate(workflow.getValidFrom()));
 		}
 		//	Duration Unit
 		if(!Util.isEmpty(workflow.getDurationUnit())) {
@@ -223,8 +220,7 @@ public class WorkflowUtil {
 		WorkflowNode.Builder builder = WorkflowNode.newBuilder();
 
 		builder.setId(node.getAD_WF_Node_ID());
-		builder.setUuid(ValueUtil.validateNull(node.getUUID()));
-		builder.setValue(ValueUtil.validateNull(node.getValue()));
+		builder.setValue(ValueManager.validateNull(node.getValue()));
 		String name = node.getName();
 		String description = node.getDescription();
 		String help = node.getHelp();
@@ -242,15 +238,14 @@ public class WorkflowUtil {
 				help = translation;
 			}
 		}
-		builder.setName(ValueUtil.validateNull(name));
-		builder.setDescription(ValueUtil.validateNull(description));
-		builder.setHelp(ValueUtil.validateNull(help));
+		builder.setName(ValueManager.validateNull(name));
+		builder.setDescription(ValueManager.validateNull(description));
+		builder.setHelp(ValueManager.validateNull(help));
 		
 		if(node.getAD_WF_Responsible_ID() > 0) {
 			MWFResponsible responsible = MWFResponsible.get(node.getCtx(), node.getAD_WF_Responsible_ID());
 			builder.setResponsibleId(responsible.getAD_WF_Responsible_ID());
-			builder.setResponsibleUuid(ValueUtil.validateNull(responsible.getUUID()));
-			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
+			builder.setResponsibleName(ValueManager.validateNull(responsible.getName()));
 		}
 		builder.setPriority(node.getPriority());
 
@@ -325,12 +320,10 @@ public class WorkflowUtil {
 
 		MWFNode nodeNext = MWFNode.get(transition.getCtx(), transition.getAD_WF_Next_ID());
 		builder.setNodeNextId(nodeNext.getAD_WF_Node_ID());
-		builder.setNodeNextUuid(ValueUtil.validateNull(nodeNext.getUUID()));
-		builder.setNodeNextName(ValueUtil.validateNull(nodeNext.getName()));
+		builder.setNodeNextName(ValueManager.validateNull(nodeNext.getName()));
 
 		builder.setId(transition.getAD_WF_NodeNext_ID());
-		builder.setUuid(ValueUtil.validateNull(transition.getUUID()));
-		builder.setDescription(ValueUtil.validateNull(transition.getDescription()));
+		builder.setDescription(ValueManager.validateNull(transition.getDescription()));
 		builder.setSequence(transition.getSeqNo());
 		builder.setIsStdUserWorkflow(transition.isStdUserWorkflow());
 
@@ -358,11 +351,10 @@ public class WorkflowUtil {
 	public static WorkflowCondition.Builder convertWorkflowCondition(MWFNextCondition condition) {
 		WorkflowCondition.Builder builder = WorkflowCondition.newBuilder();
 		builder.setId(condition.getAD_WF_NextCondition_ID());
-		builder.setUuid(ValueUtil.validateNull(condition.getUUID()));
 		builder.setSequence(condition.getSeqNo());
 		MColumn column = MColumn.get(condition.getCtx(), condition.getAD_Column_ID());
-		builder.setColumnName(ValueUtil.validateNull(column.getColumnName()));
-		builder.setValue(ValueUtil.validateNull(condition.getValue()));
+		builder.setColumnName(ValueManager.validateNull(column.getColumnName()));
+		builder.setValue(ValueManager.validateNull(condition.getValue()));
 		//	Condition Type
 		if(!Util.isEmpty(condition.getAndOr())) {
 			if(condition.getAndOr().equals(MWFNextCondition.ANDOR_And)) {
@@ -405,7 +397,7 @@ public class WorkflowUtil {
 		MTable table = MTable.get(workflowEventAudit.getCtx(), workflowEventAudit.getAD_Table_ID());
 		WorkflowEvent.Builder builder = WorkflowEvent.newBuilder();
 		MWFNode node = MWFNode.get(workflowEventAudit.getCtx(), workflowEventAudit.getAD_WF_Node_ID());
-		builder.setNodeUuid(ValueUtil.validateNull(node.getUUID()));
+		builder.setNodeId(node.getAD_WF_Node_ID());
 		String nodeName = node.getName();
 		if(!Env.isBaseLanguage(workflowEventAudit.getCtx(), "")) {
 			String translation = node.get_Translation(MWFNode.COLUMNNAME_Name);
@@ -413,23 +405,21 @@ public class WorkflowUtil {
 				nodeName = translation;
 			}
 		}
-		builder.setNodeName(ValueUtil.validateNull(nodeName));
+		builder.setNodeName(ValueManager.validateNull(nodeName));
 		if(workflowEventAudit.getAD_WF_Responsible_ID() > 0) {
 			MWFResponsible responsible = MWFResponsible.get(workflowEventAudit.getCtx(), workflowEventAudit.getAD_WF_Responsible_ID());
 			builder.setResponsibleId(responsible.getAD_WF_Responsible_ID());
-			builder.setResponsibleUuid(ValueUtil.validateNull(responsible.getUUID()));
-			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
+			builder.setResponsibleName(ValueManager.validateNull(responsible.getName()));
 		}
 		if(workflowEventAudit.getAD_User_ID() != 0) {
 			MUser user = MUser.get(workflowEventAudit.getCtx(), workflowEventAudit.getAD_User_ID());
-			builder.setUserUuid(ValueUtil.validateNull(user.getUUID()));
-			builder.setUserName(ValueUtil.validateNull(user.getName()));
+			builder.setUserId(user.getAD_User_ID());
+			builder.setUserName(ValueManager.validateNull(user.getName()));
 		}
 		builder.setId(workflowEventAudit.getRecord_ID());
-		builder.setUuid(ValueUtil.validateNull(RecordUtil.getUuidFromId(table.getTableName(), workflowEventAudit.getRecord_ID())));
-		builder.setTableName(ValueUtil.validateNull(table.getTableName()));
-		builder.setTextMessage(ValueUtil.validateNull(Msg.parseTranslation(workflowEventAudit.getCtx(), workflowEventAudit.getTextMsg())));
-		builder.setLogDate(workflowEventAudit.getCreated().getTime());
+		builder.setTableName(ValueManager.validateNull(table.getTableName()));
+		builder.setTextMessage(ValueManager.validateNull(Msg.parseTranslation(workflowEventAudit.getCtx(), workflowEventAudit.getTextMsg())));
+		builder.setLogDate(ValueManager.getTimestampFromDate(workflowEventAudit.getCreated()));
 		if(workflowEventAudit.getElapsedTimeMS() != null) {
 			builder.setTimeElapsed(workflowEventAudit.getElapsedTimeMS().longValue());
 		}
@@ -450,9 +440,9 @@ public class WorkflowUtil {
 			}
 		}
 		//	
-		builder.setAttributeName(ValueUtil.validateNull(workflowEventAudit.getAttributeName()));
-		builder.setOldValue(ValueUtil.validateNull(workflowEventAudit.getOldValue()));
-		builder.setNewValue(ValueUtil.validateNull(workflowEventAudit.getNewValue()));
+		builder.setAttributeName(ValueManager.validateNull(workflowEventAudit.getAttributeName()));
+		builder.setOldValue(ValueManager.validateNull(workflowEventAudit.getOldValue()));
+		builder.setNewValue(ValueManager.validateNull(workflowEventAudit.getNewValue()));
   		return builder;
 	}
 	
@@ -474,21 +464,18 @@ public class WorkflowUtil {
 		if(workflowActivity.getAD_WF_Responsible_ID() > 0) {
 			MWFResponsible responsible = MWFResponsible.get(workflowActivity.getCtx(), workflowActivity.getAD_WF_Responsible_ID());
 			builder.setResponsibleId(responsible.getAD_WF_Responsible_ID());
-			builder.setResponsibleUuid(ValueUtil.validateNull(responsible.getUUID()));
-			builder.setResponsibleName(ValueUtil.validateNull(responsible.getName()));
+			builder.setResponsibleName(ValueManager.validateNull(responsible.getName()));
 		}
 		if(workflowActivity.getAD_User_ID() != 0) {
 			MUser user = MUser.get(workflowActivity.getCtx(), workflowActivity.getAD_User_ID());
-			builder.setUserUuid(ValueUtil.validateNull(user.getUUID()));
-			builder.setUserName(ValueUtil.validateNull(user.getName()));
+			builder.setUserId(user.getAD_User_ID());
+			builder.setUserName(ValueManager.validateNull(user.getName()));
 		}
 		builder.setId(workflowActivity.getAD_WF_Activity_ID());
-		builder.setUuid(ValueUtil.validateNull(workflowActivity.getUUID()));
 		
 		// record values
 		builder.setRecordId(workflowActivity.getRecord_ID());
-		builder.setRecordUuid(ValueUtil.validateNull(RecordUtil.getUuidFromId(table.getTableName(), workflowActivity.getRecord_ID())));
-		builder.setTableName(ValueUtil.validateNull(table.getTableName()));
+		builder.setTableName(ValueManager.validateNull(table.getTableName()));
 
 		if (table.getAD_Window_ID() > 0) {
 			ZoomWindow.Builder builderZoom = convertZoomWindow(table.getAD_Window_ID());
@@ -500,11 +487,11 @@ public class WorkflowUtil {
 			builder.addZoomWindows(builderZoom);
 		}
 
-		builder.setTextMessage(ValueUtil.validateNull(Msg.parseTranslation(workflowActivity.getCtx(), workflowActivity.getTextMsg())));
+		builder.setTextMessage(ValueManager.validateNull(Msg.parseTranslation(workflowActivity.getCtx(), workflowActivity.getTextMsg())));
 		builder.setProcessed(workflowActivity.isProcessed());
-		builder.setCreated(workflowActivity.getCreated().getTime());
+		builder.setCreated(ValueManager.getTimestampFromDate(workflowActivity.getCreated()));
 		if(workflowActivity.getDateLastAlert() != null) {
-			builder.setLastAlert(workflowActivity.getDateLastAlert().getTime());
+			builder.setLastAlert(ValueManager.getTimestampFromDate(workflowActivity.getDateLastAlert()));
 		}
 		//	
   		return builder;
@@ -531,9 +518,8 @@ public class WorkflowUtil {
 		//	Return
 		return ZoomWindow.newBuilder()
 			.setId(window.getAD_Window_ID())
-			.setUuid(ValueUtil.validateNull(window.getUUID()))
-			.setName(ValueUtil.validateNull(name))
-			.setDescription(ValueUtil.validateNull(description))
+			.setName(ValueManager.validateNull(name))
+			.setDescription(ValueManager.validateNull(description))
 			.setIsSalesTransaction(window.isSOTrx())
 		;
 	}

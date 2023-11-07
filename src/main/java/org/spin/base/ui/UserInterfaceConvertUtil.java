@@ -21,8 +21,8 @@ import org.adempiere.core.domains.models.X_AD_Tree;
 import org.compiere.model.MRefList;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
-import org.spin.backend.grpc.common.TreeType;
-import org.spin.base.util.ValueUtil;
+import org.spin.backend.grpc.user_interface.TreeType;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * This class was created for add all convert methods for User Interface service
@@ -60,13 +60,12 @@ public class UserInterfaceConvertUtil {
 		}
 
 		builder.setId(treeType.getAD_Ref_List_ID())
-			.setUuid(ValueUtil.validateNull(treeType.getUUID()))
-			.setValue(ValueUtil.validateNull(treeType.getValue()))
+			.setValue(ValueManager.validateNull(treeType.getValue()))
 			.setName(
-				ValueUtil.validateNull(name)
+				ValueManager.validateNull(name)
 			)
 			.setDescription(
-				ValueUtil.validateNull(description)
+				ValueManager.validateNull(description)
 			)
 		;
 

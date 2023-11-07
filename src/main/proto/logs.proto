@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2022 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt EdwinBetanc0urt@outlook.com                     *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -19,9 +19,15 @@ option java_multiple_files = true;
 option java_package = "org.spin.backend.grpc.logs";
 option java_outer_classname = "ADempiereLogs";
 
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
 import "base_data_type.proto";
-import "business.proto";
+import "user_interface.proto";
 import "workflow.proto";
+
+// Base URL
+// /logs/
 
 package logs;
 
@@ -29,32 +35,67 @@ package logs;
 //	Logger services
 service Logs {
 	//	Request BusinessProcess Activity from current session
-	rpc ListProcessLogs(ListProcessLogsRequest) returns (ListProcessLogsResponse) {}
+	rpc ListProcessLogs(ListProcessLogsRequest) returns (ListProcessLogsResponse) {
+		option (google.api.http) = {
+			get: "/logs/process"
+			additional_bindings: {
+				get: "/logs/process/{id}"
+			}
+			additional_bindings: {
+				get: "/logs/process/instance/{instance_id}"
+			}
+			additional_bindings: {
+				get: "/logs/process/{table_name}/{record_id}"
+			}
+			additional_bindings: {
+				get: "/logs/process/user/{user_id}"
+			}
+		};
+	}
 	//	Request Record Log List
-	rpc ListEntityLogs(ListEntityLogsRequest) returns (ListEntityLogsResponse) {}
+	rpc ListEntityLogs(ListEntityLogsRequest) returns (ListEntityLogsResponse) {
+		option (google.api.http) = { get: "/logs/entities/{table_name}/{id}" };
+	}
 	//	Request Record Chat List
-	rpc ListEntityChats(ListEntityChatsRequest) returns (ListEntityChatsResponse) {}
+	rpc ListEntityChats(ListEntityChatsRequest) returns (ListEntityChatsResponse) {
+		option (google.api.http) = { get: "/logs/chat-entities/{table_name}/{id}" };
+	}
 	//	Exists Chat Entries
-	rpc ExistsChatEntries(ExistsChatEntriesRequest) returns (ExistsChatEntriesResponse) {}
+	rpc ExistsChatEntries(ExistsChatEntriesRequest) returns (ExistsChatEntriesResponse) {
+		option (google.api.http) = { get: "/logs/chat-entries/{table_name}/{record_id}/exists" };
+	}
 	//	Request Chat Entries List
-	rpc ListChatEntries(ListChatEntriesRequest) returns (ListChatEntriesResponse) {}
+	rpc ListChatEntries(ListChatEntriesRequest) returns (ListChatEntriesResponse) {
+		option (google.api.http) = { get: "/logs/chat-entries/{id}" };
+	}
 	//	List workflow processes
-	rpc ListWorkflowLogs(ListWorkflowLogsRequest) returns (ListWorkflowLogsResponse) {}
+	rpc ListWorkflowLogs(ListWorkflowLogsRequest) returns (ListWorkflowLogsResponse) {
+		option (google.api.http) = { get: "/logs/workflows/{table_name}/{id}" };
+	}
 	//	Request Recent Items
-	rpc ListRecentItems(ListRecentItemsRequest) returns (ListRecentItemsResponse) {}
+	rpc ListRecentItems(ListRecentItemsRequest) returns (ListRecentItemsResponse) {
+		option (google.api.http) = { get: "/logs/recent-items" };
+	}
 	// Request List User Activities
-	rpc ListUserActivites(ListUserActivitesRequest) returns (ListUserActivitesResponse) {}
+	rpc ListUserActivites(ListUserActivitesRequest) returns (ListUserActivitesResponse) {
+		option (google.api.http) = { get: "/logs/user-activities" };
+	}
 }
 
 // BusinessProcess Activity Request
 message ListProcessLogsRequest {
-	string user_uuid = 2;
-	string instance_uuid = 3;
-	string table_name = 4;
-	int32 id = 5;
-	string uuid = 6;
-	int32 page_size = 7;
-	string page_token = 8;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 id = 8;
+	int32 user_id = 9;
+	int32 instance_id = 10;
+	string table_name = 11;
+	int32 record_id = 12;
 }
 
 // BusinessProcess Response List
@@ -66,22 +107,26 @@ message ListProcessLogsResponse {
 
 // Record Log Request
 message ListEntityLogsRequest {
-	string table_name = 2;
-	int32 id = 3;
-	string uuid = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
 	int32 page_size = 5;
 	string page_token = 6;
+	string search_value = 7;
+	string table_name = 8;
+	int32 id = 9;
 }
 
 // Record Log
 message ChangeLog {
-	string column_name = 4;
-	string display_column_name = 5;
-	string old_value = 10;
-	string old_display_value = 11;
-	string new_value = 12;
-	string new_display_value = 13;
-	string description = 14;
+	string column_name = 1;
+	string display_column_name = 2;
+	string old_value = 3;
+	string old_display_value = 4;
+	string new_value = 5;
+	string new_display_value = 6;
+	string description = 7;
 }
 
 enum EntityEventType {
@@ -93,19 +138,18 @@ enum EntityEventType {
 message EntityLog {
 	int32 log_id = 1;
 	int32 id = 2;
-	string uuid = 3;
-	string displayed_name = 4;
-	int32 window_id = 5;
-	string window_uuid = 6;
-	string table_name = 7;
-	string session_uuid = 8;
-	int32 user_id = 9;
-	string user_uuid = 10;
-	string user_name = 11;
-	string transaction_name = 12;
-	EntityEventType event_type = 13;
-	int64 log_date = 14;
-	repeated ChangeLog change_logs = 15;
+	string displayed_name = 3;
+	int32 window_id = 4;
+	string table_name = 5;
+	int32 session_id = 6;
+	int32 created_by = 7;
+	string created_by_name = 8;
+	int32 updated_by = 9;
+	string updated_by_name = 10;
+	string transaction_name = 11;
+	EntityEventType event_type = 12;
+	google.protobuf.Timestamp log_date = 13;
+	repeated ChangeLog change_logs = 14;
 }
 
 message ListEntityLogsResponse {
@@ -116,9 +160,8 @@ message ListEntityLogsResponse {
 
 // Exists References Request
 message ExistsChatEntriesRequest {
-	string table_name = 2;
-	int32 record_id = 4;
-	string record_uuid = 5;
+	string table_name = 1;
+	int32 record_id = 2;
 }
 
 // Entity Chats Count
@@ -128,11 +171,15 @@ message ExistsChatEntriesResponse {
 
 // Record Chat Request
 message ListEntityChatsRequest {
-	string table_name = 2;
-	int32 id = 3;
-	string uuid = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
 	int32 page_size = 5;
 	string page_token = 6;
+	string search_value = 7;
+	string table_name = 8;
+	int32 id = 9;
 }
 
 //	Record Chats List
@@ -144,12 +191,11 @@ message ListEntityChatsResponse {
 
 // Record Chat
 message EntityChat {
-	string chat_uuid = 1;
+	int32 chat_id = 1;
 	int32 id = 2;
-	string uuid = 3;
-	string table_name = 4;
-	string chat_type_uuid = 5;
-	string description = 6;
+	string table_name = 3;
+	int32 chat_type_id = 4;
+	string description = 5;
 	enum ConfidentialType {
 		PUBLIC = 0;
 		PARTER = 1;
@@ -160,36 +206,41 @@ message EntityChat {
 		BEFORE_PUBLISHING = 1;
 		AFTER_PUBLISHING = 2;
 	}
-	ConfidentialType confidential_type = 7;
-	ModerationType moderation_type = 8;
-	int64 log_date = 9;
-	int32 user_id = 10;
-	string user_uuid = 11;
-	string user_name = 12;
+	ConfidentialType confidential_type = 6;
+	ModerationType moderation_type = 7;
+	google.protobuf.Timestamp log_date = 8;
+	int32 user_id = 9;
+	string user_name = 10;
 }
 
 // Record Chat Entry Request
 message ListChatEntriesRequest {
-	string uuid = 2;
-	int32 id = 3;
-	int32 page_size = 4;
-	string page_token = 5;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	int32 id = 8;
 }
 
 //	Record Chats List
 message ListChatEntriesResponse {
 	int64 record_count = 1;
-	repeated data.ChatEntry chat_entries = 2;
+	repeated user_interface.ChatEntry chat_entries = 2;
 	string next_page_token = 3;
 }
 
 // Recent Items Request
 message ListRecentItemsRequest {
-	string user_uuid = 2;
-	string role_uuid = 3;
-	bool current_session = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
 	int32 page_size = 5;
 	string page_token = 6;
+	string search_value = 7;
 }
 
 //	Recent Items List
@@ -201,28 +252,31 @@ message ListRecentItemsResponse {
 
 // Recent Item
 message RecentItem {
-	string menu_uuid = 1;
+	int32 menu_id = 1;
 	string menu_name = 2;
 	string menu_description = 3;
-	string window_uuid = 4;
-	string tab_uuid = 5;
+	int32 window_id = 4;
+	int32 tab_id = 5;
 	int32 table_id = 6;
 	string table_name = 7;
 	int32 id = 8;
-	string uuid = 9;
-	string display_name = 10;
-	int64 updated = 11;
-	string reference_uuid = 12;
-	string action = 13;
+	string display_name = 9;
+	google.protobuf.Timestamp updated = 10;
+	int32 reference_id = 11;
+	string action = 12;
 }
 
 // Workflow Activities Request
 message ListWorkflowLogsRequest {
-	string table_name = 2;
-	int32 id = 3;
-	string uuid = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
 	int32 page_size = 5;
 	string page_token = 6;
+	string search_value = 7;
+	string table_name = 8;
+	int32 id = 9;
 }
 
 //	Workflow Activities List
@@ -234,11 +288,14 @@ message ListWorkflowLogsResponse {
 
 //	User Activity
 message ListUserActivitesRequest {
-	int32 page_size = 1;
-	string page_token = 2;
-	// filters
-	string search_value = 3;
-	int64 date = 4;
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	google.protobuf.Timestamp date = 8;
 }
 
 enum UserActivityType {
@@ -248,7 +305,6 @@ enum UserActivityType {
 
 message UserActivity {
 	UserActivityType user_activity_type = 1;
-	// int64 date = 2;
 	EntityLog entity_log = 2;
 	data.ProcessLog process_log = 3;
 }

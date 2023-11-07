@@ -33,10 +33,10 @@ import org.spin.backend.grpc.pos.ListBankAccountsResponse;
 import org.spin.backend.grpc.pos.ListBanksRequest;
 import org.spin.backend.grpc.pos.ListBanksResponse;
 import org.spin.base.db.LimitUtil;
-import org.spin.base.util.ConvertUtil;
-import org.spin.base.util.SessionManager;
-import org.spin.base.util.ValueUtil;
+import org.spin.base.util.convert.ConvertCommon;
 import org.spin.pos.util.POSConvertUtil;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * A util class for change values for documents
@@ -85,7 +85,7 @@ public class BankManagement {
 		ListBanksResponse.Builder builderList = ListBanksResponse.newBuilder()
 			.setRecordCount(recordCount)
 			.setNextPageToken(
-				ValueUtil.validateNull(nexPageToken)
+				ValueManager.validateNull(nexPageToken)
 			)
 		;
 
@@ -135,7 +135,7 @@ public class BankManagement {
 
 		//	Get List
 		query.getIDsAsList().forEach(bankAccountId -> {
-			BankAccount.Builder bankAccountBuilder = ConvertUtil.convertBankAccount(bankAccountId);
+			BankAccount.Builder bankAccountBuilder = ConvertCommon.convertBankAccount(bankAccountId);
 			builderList.addRecords(bankAccountBuilder);
 		});
 		return builderList;

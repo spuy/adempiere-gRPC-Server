@@ -15,6 +15,8 @@
  *************************************************************************************/
 package org.spin.base.util;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -47,9 +49,12 @@ import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
 import org.spin.backend.grpc.common.Entity;
 import org.spin.backend.grpc.common.ListEntitiesResponse;
-import org.spin.backend.grpc.common.Value;
 import org.spin.base.db.FromUtil;
 import org.spin.base.db.ParameterUtil;
+import org.spin.service.grpc.util.value.ValueManager;
+
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 
 /**
  * Class for handle records utils values
@@ -84,6 +89,10 @@ public class RecordUtil {
 
 		String tableName = MTable.getTableName(context, tableId);
 		return getEntity(context, tableName, uuid, recordId, transactionName);
+	}
+	
+	public static PO getEntity(Properties context, String tableName, int recordId, String transactionName) {
+		return getEntity(context, tableName, null, recordId, transactionName);
 	}
 
 	/**
@@ -177,6 +186,20 @@ public class RecordUtil {
 			return false;
 		}
 
+		return true;
+	}
+
+
+	/**
+	 * Evaluate if is valid identifier
+	 * @param id
+	 * @param accesLevel
+	 * @return
+	 */
+	public static boolean validateRecordId(int id, String accesLevel) {
+		if (!isValidId(id, accesLevel)) {
+			throw new AdempiereException("@FillMandatory@ @Record_ID@ / @UUID@");
+		}
 		return true;
 	}
 
@@ -294,14 +317,17 @@ public class RecordUtil {
 	 * @param parameters
 	 * @return
 	 */
-	public static String addSearchValueAndGet(String sql, String table_name, String table_alias, String searchValue, boolean isTranslated, List<Object> parameters) {
-		if(Util.isEmpty(searchValue, true)) {
+	public static String addSearchValueAndGet(String sql, String table_name, String table_alias, String search_value, boolean isTranslated, List<Object> parameters) {
+		if(Util.isEmpty(search_value, true)) {
 			return sql;
 		}
 		MTable table = MTable.get(Env.getCtx(), table_name);
 		if(table == null || table.getAD_Table_ID() <= 0) {
 			return sql;
 		}
+
+		// URL decode to change characteres
+		String searchValue = URLDecoder.decode(search_value, StandardCharsets.UTF_8);
 
 		String lang = Env.getAD_Language(Env.getCtx());
 		// search on trl table
@@ -312,8 +338,12 @@ public class RecordUtil {
 		StringBuffer where = new StringBuffer();
 		List<MColumn> selectionColums = table.getColumnsAsList().stream()
 			.filter(column -> {
-				return (column.isIdentifier() || column.isSelectionColumn())
-					&& Util.isEmpty(column.getColumnSQL(), true) && DisplayType.isText(column.getAD_Reference_ID());
+				return (column.isIdentifier() || column.isSelectionColumn()
+					|| column.getColumnName().equals("Name")
+					|| column.getColumnName().equals("Value")
+					|| column.getColumnName().equals("DocumentNo"))
+					&& Util.isEmpty(column.getColumnSQL(), true)
+					&& DisplayType.isText(column.getAD_Reference_ID());
 			})
 			.collect(Collectors.toList());
 
@@ -500,41 +530,49 @@ public class RecordUtil {
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
-				Entity.Builder valueObjectBuilder = Entity.newBuilder();
-				valueObjectBuilder.setTableName(table.getTableName());
+				Entity.Builder entityBuilder = Entity.newBuilder()
+					.setTableName(table.getTableName())
+				;
+				Struct.Builder values = Struct.newBuilder();
 				ResultSetMetaData metaData = rs.getMetaData();
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
 						String columnName = metaData.getColumnName (index);
-						if (columnName.toUpperCase().equals("UUID")) {
-							valueObjectBuilder.setUuid(rs.getString(index));
-						}
 						MColumn field = columnsMap.get(columnName.toUpperCase());
 						Value.Builder valueBuilder = Value.newBuilder();
 						//	Display Columns
 						if(field == null) {
 							String value = rs.getString(index);
 							if(!Util.isEmpty(value)) {
-								valueBuilder = ValueUtil.getValueFromString(value);
+								valueBuilder = ValueManager.getValueFromString(value);
 							}
-							valueObjectBuilder.putValues(columnName, valueBuilder.build());
+							values.putFields(
+								columnName,
+								valueBuilder.build()
+							);
 							continue;
 						}
 						if (field.isKey()) {
-							valueObjectBuilder.setId(rs.getInt(index));
+							entityBuilder.setId(rs.getInt(index));
 						}
 						//	From field
 						String fieldColumnName = field.getColumnName();
-						valueBuilder = ValueUtil.getValueFromReference(rs.getObject(index), field.getAD_Reference_ID());
-						if(!valueBuilder.getValueType().equals(Value.ValueType.UNRECOGNIZED)) {
-							valueObjectBuilder.putValues(fieldColumnName, valueBuilder.build());
-						}
+						Object value = rs.getObject(index);
+						valueBuilder = ValueManager.getValueFromReference(
+							value,
+							field.getAD_Reference_ID()
+						);
+						values.putFields(
+							fieldColumnName,
+							valueBuilder.build()
+						);
 					} catch (Exception e) {
 						log.severe(e.getLocalizedMessage());
 					}
 				}
 				//	
-				builder.addRecords(valueObjectBuilder.build());
+				entityBuilder.setValues(values);
+				builder.addRecords(entityBuilder.build());
 				recordCount++;
 			}
 		} catch (Exception e) {
@@ -544,9 +582,7 @@ public class RecordUtil {
 			DB.close(rs, pstmt);
 		}
 		//	Set record counts
-		if (builder.getRecordCount() <= 0) {
-			builder.setRecordCount(recordCount);
-		}
+		builder.setRecordCount(recordCount);
 		//	Return
 		return builder;
 	}

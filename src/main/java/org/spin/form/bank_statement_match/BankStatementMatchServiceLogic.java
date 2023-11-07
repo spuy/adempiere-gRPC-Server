@@ -40,7 +40,6 @@ import org.compiere.model.Query;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
-import org.compiere.util.Util;
 import org.spin.backend.grpc.common.ListLookupItemsResponse;
 import org.spin.backend.grpc.common.LookupItem;
 import org.spin.backend.grpc.form.bank_statement_match.BankStatement;
@@ -73,9 +72,12 @@ import org.spin.base.db.LimitUtil;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
-import org.spin.base.util.SessionManager;
-import org.spin.base.util.ValueUtil;
-import org.spin.grpc.service.UserInterfaceServiceImplementation;
+import org.spin.grpc.service.UserInterface;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
+import org.spin.service.grpc.util.value.ValueManager;
+
+import com.google.protobuf.Struct;
 
 
 /**
@@ -85,14 +87,10 @@ import org.spin.grpc.service.UserInterfaceServiceImplementation;
 public abstract class BankStatementMatchServiceLogic {
 
 	public static BankStatement.Builder getBankStatement(GetBankStatementRequest request) {
-		if (request.getId() < 0 && Util.isEmpty(request.getUuid(), true)) {
-			throw new AdempiereException("@FillMandatory@ @C_BankStatement_ID@/@UUID@");
+		if (request.getId() < 0) {
+			throw new AdempiereException("@FillMandatory@ @C_BankStatement_ID@");
 		}
 		int recordId = request.getId();
-		if (recordId <= 0) {
-			recordId = RecordUtil.getIdFromUuid(I_C_BankStatement.Table_Name, request.getUuid(), null);
-		}
-		
 		MBankStatement bankStatement = new MBankStatement(Env.getCtx(), recordId, null);
 		if (bankStatement == null || bankStatement.getC_BankStatement_ID() <= 0) {
 			throw new AdempiereException("@C_BankStatement_ID@ @NotFound@");
@@ -106,35 +104,49 @@ public abstract class BankStatementMatchServiceLogic {
 	public static ListLookupItemsResponse.Builder listSearchModes(ListSearchModesRequest request) {
 		ListLookupItemsResponse.Builder builderList = ListLookupItemsResponse.newBuilder();
 
-		LookupItem.Builder lookupMatched = LookupItem.newBuilder()
-			.putValues(
+		// unmatched
+		Struct.Builder valuesUnMatched = Struct.newBuilder()
+			.putFields(
 				LookupUtil.VALUE_COLUMN_KEY,
-				ValueUtil.getValueFromInt(
+				ValueManager.getValueFromInt(
 					MatchMode.MODE_NOT_MATCHED_VALUE
 				).build()
 			)
-			.putValues(
+			.putFields(
 				LookupUtil.DISPLAY_COLUMN_KEY,
-				ValueUtil.getValueFromString(
+				ValueManager.getValueFromString(
 					Msg.translate(Env.getCtx(), "NotMatched")
-				).build())
+				).build()
+			)
 		;
-		builderList.addRecords(lookupMatched);
-
 		LookupItem.Builder lookupUnMatched = LookupItem.newBuilder()
-			.putValues(
+			.setValues(
+				valuesUnMatched
+			)
+		;
+		builderList.addRecords(lookupUnMatched);
+
+		// matched
+		Struct.Builder valuesMatched = Struct.newBuilder()
+			.putFields(
 				LookupUtil.VALUE_COLUMN_KEY,
-				ValueUtil.getValueFromInt(
+				ValueManager.getValueFromInt(
 					MatchMode.MODE_MATCHED_VALUE
 				).build()
 			)
-			.putValues(
+			.putFields(
 				LookupUtil.DISPLAY_COLUMN_KEY,
-				ValueUtil.getValueFromString(
+				ValueManager.getValueFromString(
 					Msg.translate(Env.getCtx(), "Matched")
-				).build())
+				).build()
+			)
 		;
-		builderList.addRecords(lookupUnMatched);
+		LookupItem.Builder lookupMatched = LookupItem.newBuilder()
+			.setValues(
+				valuesMatched
+			)
+		;
+		builderList.addRecords(lookupMatched);
 
 		return builderList;
 	}
@@ -152,7 +164,7 @@ public abstract class BankStatementMatchServiceLogic {
 			null, null
 		);
 
-		ListLookupItemsResponse.Builder builderList = UserInterfaceServiceImplementation.listLookupItems(
+		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
 			reference,
 			null,
 			request.getPageSize(),
@@ -176,7 +188,7 @@ public abstract class BankStatementMatchServiceLogic {
 			null, null
 		);
 
-		ListLookupItemsResponse.Builder builderList = UserInterfaceServiceImplementation.listLookupItems(
+		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
 			reference,
 			null,
 			request.getPageSize(),
@@ -195,17 +207,17 @@ public abstract class BankStatementMatchServiceLogic {
 
 		boolean isMatchedMode = request.getMatchMode() == MatchMode.MODE_MATCHED;
 		//	Date Trx
-		Timestamp dateFrom = ValueUtil.getTimestampFromLong(
+		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateFrom()
 		);
-		Timestamp dateTo = ValueUtil.getTimestampFromLong(
+		Timestamp dateTo = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateTo()
 		);
 		//	Amount
-		BigDecimal paymentAmountFrom = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountFrom = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountFrom()
 		);
-		BigDecimal paymentAmountTo = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountTo = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountTo()
 		);
 
@@ -233,7 +245,7 @@ public abstract class BankStatementMatchServiceLogic {
 		ListPaymentsResponse.Builder builderList = ListPaymentsResponse.newBuilder()
 			.setRecordCount(count)
 			.setNextPageToken(
-				ValueUtil.validateNull(nexPageToken)
+				ValueManager.validateNull(nexPageToken)
 			)
 		;
 
@@ -267,17 +279,17 @@ public abstract class BankStatementMatchServiceLogic {
 		boolean isMatchedMode = request.getMatchMode() == MatchMode.MODE_MATCHED;
 
 		//	Date Trx
-		Timestamp dateFrom = ValueUtil.getTimestampFromLong(
+		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateFrom()
 		);
-		Timestamp dateTo = ValueUtil.getTimestampFromLong(
+		Timestamp dateTo = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateTo()
 		);
 		//	Amount
-		BigDecimal paymentAmountFrom = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountFrom = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountFrom()
 		);
-		BigDecimal paymentAmountTo = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountTo = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountTo()
 		);
 
@@ -326,18 +338,18 @@ public abstract class BankStatementMatchServiceLogic {
 		boolean isMatchedMode = request.getMatchMode() == MatchMode.MODE_MATCHED;
 
 		//	Date Trx
-		Timestamp dateFrom = ValueUtil.getTimestampFromLong(
+		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateFrom()
 		);
-		Timestamp dateTo = ValueUtil.getTimestampFromLong(
+		Timestamp dateTo = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateTo()
 		);
 
 		//	Amount
-		BigDecimal paymentAmountFrom = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountFrom = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountFrom()
 		);
-		BigDecimal paymentAmountTo = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountTo = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountTo()
 		);
 
@@ -458,7 +470,7 @@ public abstract class BankStatementMatchServiceLogic {
 		ListBankStatementsResponse.Builder builderList = ListBankStatementsResponse.newBuilder()
 			.setRecordCount(recordCount)
 			.setNextPageToken(
-				ValueUtil.validateNull(nexPageToken)
+				ValueManager.validateNull(nexPageToken)
 			)
 		;
 
@@ -483,17 +495,17 @@ public abstract class BankStatementMatchServiceLogic {
 
 		//	For parameters
 		//	Date Trx
-		Timestamp dateFrom = ValueUtil.getTimestampFromLong(
+		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateFrom()
 		);
-		Timestamp dateTo = ValueUtil.getTimestampFromLong(
+		Timestamp dateTo = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateTo()
 		);
 		//	Amount
-		BigDecimal paymentAmountFrom = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountFrom = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountFrom()
 		);
-		BigDecimal paymentAmountTo = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountTo = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountTo()
 		);
 
@@ -601,18 +613,18 @@ public abstract class BankStatementMatchServiceLogic {
 
 		//	For parameters
 		//	Date Trx
-		Timestamp dateFrom = ValueUtil.getTimestampFromLong(
+		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateFrom()
 		);
-		Timestamp dateTo = ValueUtil.getTimestampFromLong(
+		Timestamp dateTo = ValueManager.getDateFromTimestampDate(
 			request.getTransactionDateTo()
 		);
 
 		//	Amount
-		BigDecimal paymentAmountFrom = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountFrom = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountFrom()
 		);
-		BigDecimal paymentAmountTo = ValueUtil.getBigDecimalFromDecimal(
+		BigDecimal paymentAmountTo = NumberManager.getBigDecimalFromString(
 			request.getPaymentAmountTo()
 		);
 

@@ -28,6 +28,10 @@ import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Language;
 import org.compiere.util.Util;
+import org.spin.service.grpc.util.value.ValueManager;
+
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 
 /**
  * Class for handle Context
@@ -38,8 +42,36 @@ public class ContextManager {
 	/**	Language */
 	private static CCache<String, String> languageCache = new CCache<String, String>("Language-gRPC-Service", 30, 0);	//	no time-out
 
-	public static Properties setContextWithAttributes(int windowNo, Properties context, Map<String, Object> attributes) {
+
+	/**
+	 * Is Session context, #Global or $Accouting
+	 * @param contextKey
+	 * @return
+	 */
+	public static boolean isSessionContext(String contextKey) {
+		return contextKey.startsWith("#") || contextKey.startsWith("$");
+	}
+
+
+	public static Properties setContextWithAttributesFromObjectMap(int windowNo, Properties context, Map<String, Object> attributes) {
 		return setContextWithAttributes(windowNo, context, attributes, true);
+	}
+	
+	public static Properties setContextWithAttributesFromStruct(int windowNo, Properties context, Struct attributes) {
+		return setContextWithAttributesFromValuesMap(windowNo, context, attributes.getFieldsMap());
+	}
+	
+	public static Properties setContextWithAttributesFromValuesMap(int windowNo, Properties context, Map<String, Value> attributes) {
+		return setContextWithAttributes(windowNo, context, ValueManager.convertValuesMapToObjects(attributes), true);
+	}
+
+	public static Properties setContextWithAttributesFromString(int windowNo, Properties context, String jsonValues) {
+		return setContextWithAttributesFromString(windowNo, context, jsonValues, true);
+	}
+
+	public static Properties setContextWithAttributesFromString(int windowNo, Properties context, String jsonValues, boolean isClearWindow) {
+		Map<String, Object> attributes = ValueManager.convertJsonStringToMap(jsonValues);
+		return setContextWithAttributes(windowNo, context, attributes, isClearWindow);
 	}
 
 	/**
@@ -63,14 +95,6 @@ public class ContextManager {
 		});
 
 		return context;
-	}
-
-	public static Properties setContextWithAttributes(int windowNo, Properties context, java.util.List<org.spin.backend.grpc.common.KeyValue> values) {
-		return setContextWithAttributes(windowNo, context, values, true);
-	}
-	public static Properties setContextWithAttributes(int windowNo, Properties context, java.util.List<org.spin.backend.grpc.common.KeyValue> values, boolean isClearWindow) {
-		Map<String, Object> attributes = ValueUtil.convertValuesToObjects(values);
-		return setContextWithAttributes(windowNo, context, attributes, isClearWindow);
 	}
 
 

@@ -14,6 +14,8 @@
  ************************************************************************************/
 package org.spin.base.workflow;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.adempiere.core.domains.models.I_AD_Process;
@@ -22,6 +24,7 @@ import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MColumn;
 import org.compiere.model.MPInstance;
 import org.compiere.model.MProcess;
+import org.compiere.model.MRole;
 import org.compiere.model.MTable;
 import org.compiere.model.PO;
 import org.compiere.process.DocAction;
@@ -33,7 +36,7 @@ import org.compiere.util.Util;
 import org.compiere.wf.MWorkflow;
 import org.spin.backend.grpc.common.ProcessLog;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.ValueUtil;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * @author Edwin Betancourt, EdwinBetanc0urt@outlook.com, https://github.com/EdwinBetanc0urt
@@ -62,8 +65,39 @@ public class WorkflowUtil {
 	}
 
 
+	/**
+	 * Check document action access
+	 * Based on `org.compiere.model.MRole.checkActionAccess` method
+	 */
+	public static boolean checkDocumentActionAccess(int documentTypeId, String documentAction) {
+		if (documentTypeId <= 0) {
+			return false;
+		}
+		if (Util.isEmpty(documentAction, true)) {
+			return false;
+		}
+		Properties context = Env.getCtx();
+		MRole role = MRole.get(context, Env.getAD_Role_ID(context));
 
-	public static ProcessLog.Builder startWorkflow(String tableName, int recordId, String recordUuid, String documentAction) {
+		final List<Object> params = new ArrayList<Object>();
+		params.add(Env.getAD_Client_ID(context));
+		params.add(documentTypeId);
+		params.add(documentAction);
+
+		final String sql = "SELECT 1" // DISTINCT rl.Value
+			+ " FROM AD_Document_Action_Access a"
+			+ " INNER JOIN AD_Ref_List rl ON (rl.AD_Reference_ID=135 AND rl.AD_Ref_List_ID=a.AD_Ref_List_ID)"
+			+ " WHERE a.IsActive='Y' AND a.AD_Client_ID=? AND a.C_DocType_ID=?" // #1,2
+			+ " AND rl.Value = ?"
+			+ " AND " + role.getIncludedRolesWhereClause("a.AD_Role_ID", params)
+		;
+		int withAccess = DB.getSQLValue(null, sql, params);
+		return withAccess == 1;
+	}
+
+
+
+	public static ProcessLog.Builder startWorkflow(String tableName, int recordId, String documentAction) {
 		Properties context = Env.getCtx();
 		if (Util.isEmpty(tableName, true)) {
 			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
@@ -74,7 +108,7 @@ public class WorkflowUtil {
 		}
 		ProcessLog.Builder response = ProcessLog.newBuilder()
 			.setResultTableName(
-				ValueUtil.validateNull(tableName)
+				ValueManager.validateNull(tableName)
 			)
 		;
 		try {
@@ -82,17 +116,29 @@ public class WorkflowUtil {
 				throw new AdempiereException("@NotValid@ @AD_Table_ID@ @IsDocument@@");
 			}
 
-			if (recordId <= 0 && Util.isEmpty(recordUuid, true)) {
-				throw new AdempiereException("@Record_ID@ / @UUID@ @NotFound@");
+			if (recordId <= 0) {
+				throw new AdempiereException("@Record_ID@ @NotFound@");
 			}
 
-			PO entity = RecordUtil.getEntity(context, table.getTableName(), recordUuid, recordId, null);
+			PO entity = RecordUtil.getEntity(context, table.getTableName(), recordId, null);
 			if (entity == null || entity.get_ID() <= 0) {
 				throw new AdempiereException("@Error@ @PO@ @NotFound@");
 			}
 			//	Validate as document
 			if (!DocAction.class.isAssignableFrom(entity.getClass())) {
 				throw new AdempiereException("@Invalid@ @Document@");
+			}
+
+			Integer doctypeId = (Integer) entity.get_Value("C_DocType_ID");
+			if(doctypeId == null || doctypeId.intValue() <= 0){
+				doctypeId = (Integer) entity.get_Value("C_DocTypeTarget_ID");
+			}
+			boolean isWithAccess = checkDocumentActionAccess(
+				doctypeId,
+				documentAction
+			);
+			if (!isWithAccess) {
+				throw new AdempiereException("@AccessCannotProcess@");
 			}
 
 			entity.set_ValueOfColumn(I_C_Order.COLUMNNAME_DocAction, documentAction);
@@ -139,7 +185,7 @@ public class WorkflowUtil {
 					}
 					String summary = processInfo.getSummary();
 					response.setSummary(
-						ValueUtil.validateNull(summary)
+						ValueManager.validateNull(summary)
 					);
 					response.setIsError(processInfo.isError());
 				}
@@ -152,7 +198,7 @@ public class WorkflowUtil {
 				summary = e.getLocalizedMessage();
 			}
 			response.setSummary(
-				ValueUtil.validateNull(summary)
+				ValueManager.validateNull(summary)
 			);
 			response.setIsError(true);
 		}
