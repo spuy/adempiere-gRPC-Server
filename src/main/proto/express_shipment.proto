@@ -39,7 +39,7 @@ service ExpressShipment {
 	}
 	// Shipment
 	rpc CreateShipment(CreateShipmentRequest) returns (Shipment) {
-		option (google.api.http) = { 
+		option (google.api.http) = {
 			post: "/express-shipment/shipments",
 			body: "*"
 		};
@@ -49,14 +49,14 @@ service ExpressShipment {
 	}
 	rpc ProcessShipment(ProcessShipmentRequest) returns (Shipment) {
 		option (google.api.http) = { 
-			put: "/express-shipment/shipments/{id}/process",
+			post: "/express-shipment/shipments/{id}/process",
 			body: "*"
 		};
 	}
 	//	Shipment Line
 	rpc CreateShipmentLine(CreateShipmentLineRequest) returns (ShipmentLine) {
 		option (google.api.http) = { 
-			post: "/express-shipment/shipments/{id}/lines",
+			post: "/express-shipment/shipments/{shipment_id}/lines",
 			body: "*"
 		};
 	}
@@ -65,12 +65,12 @@ service ExpressShipment {
 	}
 	rpc UpdateShipmentLine(UpdateShipmentLineRequest) returns (ShipmentLine) {
 		option (google.api.http) = { 
-			put: "/express-shipment/shipments/{shipment_id}/lines/{id}",
+			patch: "/express-shipment/shipments/{shipment_id}/lines/{id}",
 			body: "*"
 		};
 	}
 	rpc ListShipmentLines(ListShipmentLinesRequest) returns (ListShipmentLinesResponse) {
-		option (google.api.http) = { get: "/express-shipment/shipments" };
+		option (google.api.http) = { get: "/express-shipment/shipments/{shipment_id}/lines" };
 	}
 }
 
@@ -215,7 +215,7 @@ message ListShipmentLinesResponse {
 }
 
 message DeleteShipmentLineRequest {
-	int32 shipment_id = 1;	
+	int32 shipment_id = 1;
 	int32 id = 2;
 }
 
