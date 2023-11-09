@@ -172,6 +172,7 @@ import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ReferenceUtil;
 import org.spin.model.MADContextInfo;
 import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 import org.spin.util.ASPUtil;
 
@@ -2081,7 +2082,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		if(defaultValue.trim().startsWith("@SQL=")) {
 			defaultValue = defaultValue.replace("@SQL=", "");
 			defaultValue = Env.parseContext(context, windowNo, defaultValue, false);
-			defaultValueAsObject = convertDefaultValue(defaultValue);
+			defaultValueAsObject = getDefaultValueFromSQL(defaultValue);
 		} else {
 			defaultValueAsObject = Env.parseContext(context, windowNo, defaultValue, false);
 		}
@@ -2092,17 +2093,9 @@ public class UserInterface extends UserInterfaceImplBase {
 
 		//	Convert value from type
 		if (DisplayType.isID(referenceId) || referenceId == DisplayType.Integer) {
-			try {
-				defaultValueAsObject = Integer.parseInt(String.valueOf(defaultValueAsObject));
-			} catch (Exception e) {
-				// log.warning(e.getLocalizedMessage());
-			}
+			defaultValueAsObject = NumberManager.getIntegerFromObject(defaultValueAsObject);
 		} else if (DisplayType.isNumeric(referenceId)) {
-			try {
-				defaultValueAsObject = new BigDecimal(String.valueOf(defaultValueAsObject));
-			} catch (Exception e) {
-				// log.warning(e.getLocalizedMessage());
-			}
+			defaultValueAsObject = NumberManager.getIntegerFromObject(defaultValueAsObject);
 		}
 		if (ReferenceUtil.validateReference(referenceId) || DisplayType.Button == referenceId) {
 			if(referenceId == DisplayType.List || columnName.equals("DocAction")) {
@@ -2123,7 +2116,7 @@ public class UserInterface extends UserInterfaceImplBase {
 					log.fine(Msg.parseTranslation(context, "@AD_Ref_List_ID@ @NotFound@") + ": " + defaultValueList);
 					return builder;
 				}
-				builder = convertDefaultValueFromResult(
+				builder = convertDefaultValue(
 					referenceList.getValue(),
 					referenceList.getUUID(),
 					referenceList.getValue(),
@@ -2153,12 +2146,13 @@ public class UserInterface extends UserInterfaceImplBase {
 				if(lookupInfo == null || Util.isEmpty(lookupInfo.QueryDirect, true)) {
 					return builder;
 				}
-				String sql = MRole.getDefault(context, false).addAccessSQL(
-					lookupInfo.QueryDirect,
-					lookupInfo.TableName,
-					MRole.SQL_FULLYQUALIFIED,
-					MRole.SQL_RO
-				);
+				final String sql = lookupInfo.QueryDirect;
+				// final String sql = MRole.getDefault(context, false).addAccessSQL(
+				// 	lookupInfo.QueryDirect,
+				// 	lookupInfo.TableName,
+				// 	MRole.SQL_FULLYQUALIFIED,
+				// 	MRole.SQL_RO
+				// );
 				PreparedStatement pstmt = null;
 				ResultSet rs = null;
 				try {
@@ -2190,7 +2184,12 @@ public class UserInterface extends UserInterfaceImplBase {
 							uuid = rs.getString(uuidIndex);
 						}
 						//	
-						builder = convertDefaultValueFromResult(keyValue, uuid, rs.getString(2), rs.getString(3));
+						builder = convertDefaultValue(
+							keyValue,
+							uuid,
+							rs.getString(2),
+							rs.getString(3)
+						);
 					}
 				} catch (Exception e) {
 					log.severe(e.getLocalizedMessage());
@@ -2214,11 +2213,11 @@ public class UserInterface extends UserInterfaceImplBase {
 	}
 	
 	/**
-	 * Convert Default Value from query
+	 * Get Default Value from sql direct query
 	 * @param sql
 	 * @return
 	 */
-	private Object convertDefaultValue(String sql) {
+	private Object getDefaultValueFromSQL(String sql) {
 		Object defaultValue = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -2232,11 +2231,70 @@ public class UserInterface extends UserInterfaceImplBase {
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 		} finally {
 			DB.close(rs, pstmt);
+			rs = null;
+			pstmt = null;
 		}
 		//	Return values
 		return defaultValue;
+	}
+
+	/**
+	 * Convert Values from result
+	 * @param keyValue
+	 * @param uuidValue
+	 * @param value
+	 * @param displayValue
+	 * @return
+	 */
+	private DefaultValue.Builder convertDefaultValue(Object keyValue, String uuidValue, String value, String displayValue) {
+		DefaultValue.Builder builder = DefaultValue.newBuilder();
+		Struct.Builder values = Struct.newBuilder();
+		if(keyValue == null) {
+			builder.setValues(values);
+			return builder;
+		}
+
+		// Key Column
+		if(keyValue instanceof Integer) {
+			Integer integerValue = NumberManager.getIntegerFromObject(
+				keyValue
+			);
+			builder.setId(integerValue);
+			values.putFields(
+				LookupUtil.KEY_COLUMN_KEY,
+				ValueManager.getValueFromInteger(integerValue).build()
+			);
+		} else {
+			values.putFields(
+				LookupUtil.KEY_COLUMN_KEY,
+				ValueManager.getValueFromString((String) keyValue).build()
+			);
+		}
+		//	Set Value
+		if(!Util.isEmpty(value)) {
+			values.putFields(
+				LookupUtil.VALUE_COLUMN_KEY,
+				ValueManager.getValueFromString(value).build()
+			);
+		}
+		//	Display column
+		if(!Util.isEmpty(displayValue)) {
+			values.putFields(
+				LookupUtil.DISPLAY_COLUMN_KEY,
+				ValueManager.getValueFromString(displayValue).build()
+			);
+		}
+		// UUID Value
+		values.putFields(
+			LookupUtil.UUID_COLUMN_KEY,
+			ValueManager.getValueFromString(uuidValue).build()
+		);
+
+		builder.setValues(values);
+		return builder;
 	}
 
 
@@ -3032,60 +3090,8 @@ public class UserInterface extends UserInterfaceImplBase {
 		}   //  for each callout
 		return "";
 	}	//	processCallout
-	
-	
-	/**
-	 * Convert Values from result
-	 * @param keyValue
-	 * @param uuidValue
-	 * @param value
-	 * @param displayValue
-	 * @return
-	 */
-	private DefaultValue.Builder convertDefaultValueFromResult(Object keyValue, String uuidValue, String value, String displayValue) {
-		DefaultValue.Builder builder = DefaultValue.newBuilder();
-		Struct.Builder values = Struct.newBuilder();
-		if(keyValue == null) {
-			builder.setValues(values);
-			return builder;
-		}
 
-		// Key Column
-		if(keyValue instanceof Integer) {
-			builder.setId((Integer) keyValue);
-			values.putFields(
-				LookupUtil.KEY_COLUMN_KEY,
-				ValueManager.getValueFromInteger((Integer) keyValue).build()
-			);
-		} else {
-			values.putFields(
-				LookupUtil.KEY_COLUMN_KEY,
-				ValueManager.getValueFromString((String) keyValue).build()
-			);
-		}
-		//	Set Value
-		if(!Util.isEmpty(value)) {
-			values.putFields(
-				LookupUtil.VALUE_COLUMN_KEY,
-				ValueManager.getValueFromString(value).build()
-			);
-		}
-		//	Display column
-		if(!Util.isEmpty(displayValue)) {
-			values.putFields(
-				LookupUtil.DISPLAY_COLUMN_KEY,
-				ValueManager.getValueFromString(displayValue).build()
-			);
-		}
-		// UUID Value
-		values.putFields(
-			LookupUtil.UUID_COLUMN_KEY,
-			ValueManager.getValueFromString(uuidValue).build()
-		);
 
-		builder.setValues(values);
-		return builder;
-	}
 
 	@Override
 	public void listTabSequences(ListTabSequencesRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
