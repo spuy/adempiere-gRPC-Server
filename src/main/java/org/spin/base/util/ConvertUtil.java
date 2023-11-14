@@ -1288,8 +1288,22 @@ public class ConvertUtil {
 				)
 			)
 			.setTaxRate(ConvertUtil.convertTaxRate(tax))
-			.setPriceListWithTax(ValueManager.getValueFromBigDecimal(priceListWithTaxAmount.setScale(priceList.getStandardPrecision(), BigDecimal.ROUND_HALF_UP)))
-			.setPriceWithTax(ValueManager.getValueFromBigDecimal(priceActualAmount.setScale(priceList.getStandardPrecision(), RoundingMode.HALF_UP)))
+			.setPriceListWithTax(
+				NumberManager.getBigDecimalToString(
+					priceListWithTaxAmount.setScale(
+						priceList.getStandardPrecision(),
+						BigDecimal.ROUND_HALF_UP
+					)
+				)
+			)
+			.setPriceWithTax(
+				NumberManager.getBigDecimalToString(
+					priceActualAmount.setScale(
+						priceList.getStandardPrecision(),
+						RoundingMode.HALF_UP
+					)
+				)
+			)
 			//	Totals
 			.setTotalDiscountAmount(
 				NumberManager.getBigDecimalToString(
