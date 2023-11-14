@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -12,11 +12,13 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.grpc.service;
+package org.spin.grpc.service.form;
 
 import org.adempiere.exceptions.AdempiereException;
 
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,12 +34,12 @@ import org.adempiere.core.domains.models.I_M_InOutLine;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.X_M_InOut;
 import org.compiere.model.MBPartner;
+import org.compiere.model.MDocType;
 import org.compiere.model.MInOut;
 import org.compiere.model.MInOutLine;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MProduct;
-import org.compiere.model.MRole;
 import org.compiere.model.Query;
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
@@ -66,7 +68,8 @@ import org.spin.backend.grpc.form.express_shipment.ExpressShipmentGrpc.ExpressSh
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.SessionManager;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Empty;
@@ -97,6 +100,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -106,7 +110,28 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	ListBusinessPartnersResponse.Builder listBusinessPartners(ListBusinessPartnersRequest request) {
-		final String whereClause = "IsCustomer='Y' ";
+		String whereClause = "IsCustomer='Y' ";
+		List<Object> parameters = new ArrayList<Object>();
+
+		//	For search value
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
+			whereClause += " AND ("
+				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name2) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Description) LIKE '%' || UPPER(?) || '%'"
+				+ ")"
+			;
+			//	Add parameters
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+		}
+
 		Query query = new Query(
 			Env.getCtx(),
 			I_C_BPartner.Table_Name,
@@ -115,7 +140,8 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		)
 			.setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setParameters(parameters)
 		;
 
 		int count = query.count();
@@ -134,8 +160,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MBPartner.class)
-			.forEach(businessPartner -> {
+			.getIDsAsList()
+			.forEach(businessPartnerId -> {
+				MBPartner businessPartner = MBPartner.get(Env.getCtx(), businessPartnerId);
 				BusinessPartner.Builder builder = convertBusinessPartner(businessPartner);
 				builderList.addRecords(builder);
 			})
@@ -146,7 +173,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 
 	BusinessPartner.Builder convertBusinessPartner(MBPartner businessPartner) {
 		BusinessPartner.Builder builder = BusinessPartner.newBuilder();
-		if (builder == null) {
+		if (businessPartner == null) {
 			return builder;
 		}
 
@@ -181,6 +208,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -199,25 +227,41 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 
 		int businessPartnerId = request.getBusinessPartnerId();
 		if (businessPartnerId <= 0) {
-			throw new AdempiereException("@C_BPartner_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @C_BPartner_ID@");
 		}
 
-		final String whereClause = "IsSOTrx='Y' "
+		String whereClause = "IsSOTrx='Y' "
 			+ "AND C_BPartner_ID = ? "
 			+ "AND DocStatus IN ('CL','CO')"
 			+ "AND EXISTS(SELECT 1 FROM C_OrderLine ol "
 			+ "WHERE ol.C_Order_ID = C_Order.C_Order_ID "
 			+ "AND COALESCE(ol.QtyOrdered, 0) - COALESCE(ol.QtyDelivered, 0) > 0)"
 		;
+		List<Object> parameters = new ArrayList<Object>();
+		parameters.add(businessPartnerId);
+
+		//	For search value
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
+			whereClause += " AND ("
+				+ "UPPER(DocumentNo) LIKE '%' || UPPER(?) || '%' "
+				+ ")"
+			;
+			//	Add parameters
+			parameters.add(searchValue);
+		}
+
 		Query query = new Query(
 			context,
 			I_C_Order.Table_Name,
 			whereClause,
 			null
 		)
-			.setParameters(businessPartnerId)
+			.setParameters(parameters)
 			.setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -236,8 +280,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MOrder.class)
-			.forEach(salesOrder -> {
+			.getIDsAsList()
+			.forEach(salesOrderId -> {
+				MOrder salesOrder = new MOrder(context, salesOrderId, null);
 				SalesOrder.Builder builder = convertSalesOrder(salesOrder);
 				builderList.addRecords(builder);
 			});
@@ -278,6 +323,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -289,7 +335,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	private ListProductsResponse.Builder listProducts(ListProductsRequest request) {
 		int orderId = request.getOrderId();
 		if (orderId <= 0) {
-			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
 		}
 
 		//	Dynamic where clause
@@ -303,6 +349,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 
 		//	For search value
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
 			whereClause += " AND ("
 				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
@@ -311,10 +360,10 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 				+ ")"
 			;
 			//	Add parameters
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
 		}
 
 		Query query = new Query(
@@ -325,7 +374,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		)
 			.setClient_ID()
 			.setParameters(parameters)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -346,9 +395,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MProduct.class)
-			.forEach(product -> {
-				Product.Builder builder = convertProduct(product);
+			.getIDsAsList()
+			.forEach(productId -> {
+				Product.Builder builder = convertProduct(productId);
 				builderList.addRecords(builder);
 			});
 		;
@@ -430,6 +479,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -439,16 +489,13 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private Shipment.Builder createShipment(CreateShipmentRequest request) {
-		if (request.getOrderId() <= 0) {
-			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+		int orderId = request.getOrderId();
+		if (orderId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
 		}
 
 		AtomicReference<MInOut> maybeShipment = new AtomicReference<MInOut>();
 		Trx.run(transactionName -> {
-			int orderId = request.getOrderId();
-			if (orderId <= 0) {
-				throw new AdempiereException("@C_Order_ID@ @NotFound@");
-			}
 			MOrder salesOrder = new MOrder(Env.getCtx(), orderId, transactionName);
 			if (salesOrder == null || salesOrder.getC_Order_ID() <= 0) {
 				throw new AdempiereException("@C_Order_ID@ @NotFound@");
@@ -459,6 +506,14 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			// Valid if has a Order
 			if (!DocumentUtil.isCompleted(salesOrder)) {
 				throw new AdempiereException("@Invalid@ @C_Order_ID@ " + salesOrder.getDocumentNo());
+			}
+			MDocType orderDocType = MDocType.get(Env.getCtx(), salesOrder.getC_DocType_ID());
+			if (orderDocType.getC_DocTypeShipment_ID() <= 0) {
+				log.warning(
+					"@C_Order_ID@ " + salesOrder.getDocumentNo()
+					+ " @C_DocType_ID@ " + orderDocType.getName()
+					+ " : @C_DocTypeShipment_ID@ @NotFound@"
+				);
 			}
 
 			final String whereClause = "IsSOTrx='Y' "
@@ -480,6 +535,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			// Validate
 			if (shipment == null) {
 				shipment = new MInOut(salesOrder, 0, RecordUtil.getDate());
+				if (Util.isEmpty(shipment.getMovementType())) {
+					shipment.setMovementType(X_M_InOut.MOVEMENTTYPE_VendorReturns);
+				}
 			} else {
 				if(!DocumentUtil.isDrafted(shipment)) {
 					throw new AdempiereException("@M_InOut_ID@ @Processed@");
@@ -549,6 +607,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -558,15 +617,11 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private Empty.Builder deleteShipment(DeleteShipmentRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
+		int shipmentId = request.getId();
+		if (shipmentId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
 		}
 		Trx.run(transactionName -> {
-			int shipmentId = request.getId();
-			if (shipmentId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
-
 			MInOut shipment = new MInOut(Env.getCtx(), shipmentId, transactionName);
 			if (shipment == null || shipment.getM_InOut_ID() <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
@@ -594,6 +649,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -603,14 +659,13 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private Shipment.Builder processShipment(ProcessShipmentRequest request) {
+		int shipmentId = request.getId();
+		if (shipmentId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
+		}
 		AtomicReference<MInOut> shipmentReference = new AtomicReference<MInOut>();
 
 		Trx.run(transactionName -> {
-			int shipmentId = request.getId();
-			if (shipmentId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
-
 			MInOut shipment = new MInOut(Env.getCtx(), shipmentId, transactionName);
 			if (shipment == null || shipmentId <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
@@ -654,31 +709,24 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private ShipmentLine.Builder createShipmentLine(CreateShipmentLineRequest request) {
-		if (request.getShipmentId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
+		int shipmentId = request.getShipmentId();
+		if (shipmentId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
 		}
-		if (request.getProductId() <= 0) {
-			throw new AdempiereException("@M_Product_ID@ @NotFound@");
+		int productId = request.getProductId();
+		if (productId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Product_ID@");
 		}
 
 		AtomicReference<MInOutLine> shipmentLineReference = new AtomicReference<MInOutLine>();
 
 		Trx.run(transactionName -> {
-			int shipmentId = request.getShipmentId();
-			if (shipmentId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
 			MInOut shipment = new MInOut(Env.getCtx(), shipmentId, transactionName);
 			if (shipment == null || shipment.getM_InOut_ID() <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
 			}
 			if (shipment.isProcessed()) {
 				throw new AdempiereException("@M_InOut_ID@ @Processed@");
-			}
-
-			int productId = request.getProductId();
-			if (productId <= 0) {
-				throw new AdempiereException("@M_Product_ID@ @NotFound@");
 			}
 
 			final String whereClause = "M_Product_ID = ? "
@@ -701,7 +749,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
-				quantity = ValueManager.getBigDecimalFromValue(
+				quantity = NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				);
 				if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -762,6 +810,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -771,15 +820,12 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private Empty.Builder deleteShipmentLine(DeleteShipmentLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
+		int shipmentLineId = request.getId();
+		if (shipmentLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOutLine_ID@");
 		}
 
 		Trx.run(transactionName -> {
-			int shipmentLineId = request.getId();
-			if (shipmentLineId <= 0) {
-				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
-			}
 			MInOutLine shipmentLine = new MInOutLine(Env.getCtx(), shipmentLineId, transactionName);
 			if (shipmentLine == null || shipmentLine.getM_InOutLine_ID() <= 0) {
 				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
@@ -808,6 +854,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -817,17 +864,14 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private ShipmentLine.Builder updateShipmentLine(UpdateShipmentLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
+		int shipmentLineId = request.getId();
+		if (shipmentLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOutLine_ID@");
 		}
 
 		AtomicReference<MInOutLine> maybeShipmentLine = new AtomicReference<MInOutLine>();
 
 		Trx.run(transactionName -> {
-			int shipmentLineId = request.getId();
-			if (shipmentLineId <= 0) {
-				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
-			}
 			MInOutLine shipmentLine = new MInOutLine(Env.getCtx(), shipmentLineId, transactionName);
 			if (shipmentLine == null || shipmentLine.getM_InOutLine_ID() <= 0) {
 				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
@@ -844,7 +888,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
-				quantity = ValueManager.getBigDecimalFromValue(request.getQuantity());
+				quantity = NumberManager.getBigDecimalFromString(
+					request.getQuantity()
+				);
 				if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
 					quantity = BigDecimal.ONE;
 				}
@@ -885,6 +931,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -907,7 +954,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 				ValueManager.validateNull(shipmentLine.getDescription())
 			)
 			.setQuantity(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					shipmentLine.getQtyEntered()
 				)
 			)
@@ -923,11 +970,12 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 	}
 
 	private ListShipmentLinesResponse.Builder listShipmentLines(ListShipmentLinesRequest request) {
-		if (request.getShipmentId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-		}
 		int shipmentId = request.getShipmentId();
 		if (shipmentId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
+		}
+		MInOut shipment = new MInOut(Env.getCtx(), shipmentId, null);
+		if (shipment == null || shipment.getM_InOut_ID() <= 0) {
 			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
 		}
 		Query query = new Query(
@@ -939,7 +987,7 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 			.setParameters(shipmentId)
 			.setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -960,8 +1008,9 @@ public class ExpressShipment extends ExpressShipmentImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MInOutLine.class)
-			.forEach(shipmentLine -> {
+			.getIDsAsList()
+			.forEach(shipmentLineId -> {
+				MInOutLine shipmentLine = MInOutLine.get(Env.getCtx(), shipmentLineId);
 				ShipmentLine.Builder builder = convertShipmentLine(shipmentLine);
 				builderList.addRecords(builder);
 			});

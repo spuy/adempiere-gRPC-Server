@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -12,7 +12,7 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.grpc.service;
+package org.spin.grpc.service.form;
 
 import org.adempiere.exceptions.AdempiereException;
 
@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import org.adempiere.core.domains.models.I_AD_Column;
 import org.adempiere.core.domains.models.I_AD_Org;
 import org.adempiere.core.domains.models.I_AD_Ref_List;
-import org.adempiere.core.domains.models.I_C_BPartner;
 import org.adempiere.core.domains.models.I_C_Charge;
 import org.adempiere.core.domains.models.I_C_Currency;
 import org.adempiere.core.domains.models.I_C_Invoice;
@@ -81,7 +80,9 @@ import org.spin.backend.grpc.form.payment_allocation.TransactionType;
 import org.spin.backend.grpc.form.payment_allocation.PaymentAllocationGrpc.PaymentAllocationImplBase;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
+import org.spin.grpc.service.UserInterface;
 import org.spin.service.grpc.util.value.BooleanManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import io.grpc.Status;
@@ -144,16 +145,7 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 		if (businessPartnerId <= 0) {
 			throw new AdempiereException("@FillMandatory@ @C_BPartner_ID@");
 		}
-		MBPartner businessPartner = new Query(
-			Env.getCtx(),
-			I_C_BPartner.Table_Name,
-			" C_BPartner_ID = ? ",
-			null
-		)
-			.setParameters(businessPartnerId)
-			.setClient_ID()
-			.first()
-		;
+		MBPartner businessPartner = MBPartner.get(Env.getCtx(), businessPartnerId);
 		if (businessPartner == null || businessPartner.getC_BPartner_ID() <= 0) {
 			throw new AdempiereException("@C_BPartner_ID@ @NotFound@");
 		}
@@ -578,17 +570,17 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 						)
 					)
 					.setPaymentAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal(I_C_Payment.COLUMNNAME_PayAmt)
 						)
 					)
 					.setConvertedAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("ConvertedAmt")
 						)
 					)
 					.setOpenAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("AvailableAmt")
 						)
 					)
@@ -640,7 +632,9 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 	private ListInvoicesResponse.Builder listInvoices(ListInvoicesRequest request) {
 		Properties context = Env.getCtx();
 		int currencyId = request.getCurrencyId();
+		validateAndGetCurrency(currencyId);
 		int businessPartnerId = request.getBusinessPartnerId();
+		validateAndGetBusinessPartner(businessPartnerId);
 		Timestamp date = ValueManager.getDateFromTimestampDate(
 			request.getDate()
 		);
@@ -744,22 +738,22 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 						)
 					)
 					.setOriginalAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("OriginalAmt")
 						)
 					)
 					.setConvertedAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("ConvertedAmt")
 						)
 					)
 					.setOpenAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("OpenAmt")
 						)
 					)
 					.setDiscountAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("DiscountAmt")
 						)
 					)
@@ -848,7 +842,7 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 				)
 			)
 			.setAmount(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					charge.getChargeAmt()
 				)
 			)
@@ -971,7 +965,7 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 				);
 			}
 
-			BigDecimal totalDifference = ValueManager.getBigDecimalFromValue(
+			BigDecimal totalDifference = NumberManager.getBigDecimalFromString(
 				request.getTotalDifference()
 			);
 			String status = saveData(
@@ -1026,7 +1020,7 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 		// Sum up the payment and applied amounts.
 		BigDecimal paymentAppliedAmt = Env.ZERO;
 		for (PaymentSelection payment : paymentSelection) {
-			BigDecimal paymentAmt = ValueManager.getBigDecimalFromValue(
+			BigDecimal paymentAmt = NumberManager.getBigDecimalFromString(
 				payment.getAppliedAmount()
 			);
 			amountList.add(paymentAmt);
@@ -1056,17 +1050,17 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 		for (InvoiceSelection invoice : invoiceSelection) {
 			//  Invoice variables
 			int C_Invoice_ID = invoice.getId();
-			BigDecimal AppliedAmt = ValueManager.getBigDecimalFromValue(
+			BigDecimal AppliedAmt = NumberManager.getBigDecimalFromString(
 				invoice.getAppliedAmount()
 			);
 			//  semi-fixed fields (reset after first invoice)
-			BigDecimal DiscountAmt = ValueManager.getBigDecimalFromValue(
+			BigDecimal DiscountAmt = NumberManager.getBigDecimalFromString(
 				invoice.getDiscountAmount()
 			);
-			BigDecimal WriteOffAmt = ValueManager.getBigDecimalFromValue(
+			BigDecimal WriteOffAmt = NumberManager.getBigDecimalFromString(
 				invoice.getWriteOffAmount()
 			);
-			BigDecimal invoiceOpen = ValueManager.getBigDecimalFromValue(
+			BigDecimal invoiceOpen = NumberManager.getBigDecimalFromString(
 				invoice.getOpenAmount()
 			);
 			//	OverUnderAmt needs to be in Allocation Currency
@@ -1083,7 +1077,7 @@ public class PaymentAllocation extends PaymentAllocationImplBase {
 				PaymentSelection payment = paymentSelection.get(j);
 
 				int paymentId = payment.getId();
-				BigDecimal paymentAmt = ValueManager.getBigDecimalFromValue(
+				BigDecimal paymentAmt = NumberManager.getBigDecimalFromString(
 					payment.getAppliedAmount()
 				);
 

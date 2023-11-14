@@ -25,16 +25,11 @@ import org.compiere.util.Ini;
 import org.spin.base.setup.SetupLoader;
 import org.spin.base.util.Services;
 import org.spin.eca52.util.JWTUtil;
-import org.spin.grpc.service.BankStatementMatch;
 import org.spin.grpc.service.BusinessData;
 import org.spin.grpc.service.BusinessPartner;
 import org.spin.grpc.service.CoreFunctionality;
 import org.spin.grpc.service.Dashboarding;
-import org.spin.grpc.service.Dictionary;
 import org.spin.grpc.service.Enrollment;
-import org.spin.grpc.service.ExpressMovement;
-import org.spin.grpc.service.ExpressReceipt;
-import org.spin.grpc.service.ExpressShipment;
 import org.spin.grpc.service.FileManagement;
 import org.spin.grpc.service.GeneralLedger;
 import org.spin.grpc.service.ImportFileLoader;
@@ -45,13 +40,13 @@ import org.spin.grpc.service.LogsInfo;
 import org.spin.grpc.service.MatchPOReceiptInvoice;
 import org.spin.grpc.service.MaterialManagement;
 import org.spin.grpc.service.OrderInfo;
-import org.spin.grpc.service.PaymentAllocation;
 import org.spin.grpc.service.PaymentPrintExport;
 import org.spin.grpc.service.PaymentInfo;
 import org.spin.grpc.service.PayrollActionNotice;
 import org.spin.grpc.service.PointOfSalesForm;
 import org.spin.grpc.service.ProductInfo;
 import org.spin.grpc.service.RecordManagement;
+import org.spin.grpc.service.ReportManagement;
 import org.spin.grpc.service.Security;
 import org.spin.grpc.service.TimeControl;
 import org.spin.grpc.service.TimeRecord;
@@ -60,6 +55,13 @@ import org.spin.grpc.service.UserCustomization;
 import org.spin.grpc.service.UserInterface;
 import org.spin.grpc.service.WebStore;
 import org.spin.grpc.service.Workflow;
+import org.spin.grpc.service.dictionary.Dictionary;
+import org.spin.grpc.service.field.location_address.LocationAddress;
+import org.spin.grpc.service.form.ExpressMovement;
+import org.spin.grpc.service.form.ExpressReceipt;
+import org.spin.grpc.service.form.ExpressShipment;
+import org.spin.grpc.service.form.PaymentAllocation;
+import org.spin.grpc.service.form.bank_statement_match.BankStatementMatch;
 import org.spin.service.grpc.authentication.AuthorizationServerInterceptor;
 import org.spin.service.grpc.context.ServiceContextProvider;
 
@@ -213,6 +215,11 @@ public class AllInOneServices {
 			serverBuilder.addService(new ImportFileLoader());
 			logger.info("Service " + Services.IMPORT_FILE_LOADER.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
+		//	Location Address
+		if(SetupLoader.getInstance().getServer().isValidService(Services.LOCATION_ADDRESS.getServiceName())) {
+			serverBuilder.addService(new LocationAddress());
+			logger.info("Service " + Services.LOCATION_ADDRESS.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
 		//	Log
 		if(SetupLoader.getInstance().getServer().isValidService(Services.LOG.getServiceName())) {
 			serverBuilder.addService(new LogsInfo());
@@ -297,6 +304,11 @@ public class AllInOneServices {
 		if (SetupLoader.getInstance().getServer().isValidService(Services.RECORD_MANAGEMENT.getServiceName())) {
 			serverBuilder.addService(new RecordManagement());
 			logger.info("Service " + Services.RECORD_MANAGEMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		}
+		//	Report Management
+		if (SetupLoader.getInstance().getServer().isValidService(Services.REPORT_MANAGEMENT.getServiceName())) {
+			serverBuilder.addService(new ReportManagement());
+			logger.info("Service " + Services.REPORT_MANAGEMENT.getServiceName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		}
 		//	Time Control
 		if(SetupLoader.getInstance().getServer().isValidService(Services.TIME_CONTROL.getServiceName())) {

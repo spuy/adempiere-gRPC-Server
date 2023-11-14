@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -64,8 +64,8 @@ import org.spin.backend.grpc.issue_management.UpdateIssueRequest;
 import org.spin.backend.grpc.issue_management.User;
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.SessionManager;
 import org.spin.form.issue_management.IssueManagementConvertUtil;
+import org.spin.service.grpc.authentication.SessionManager;
 import org.spin.service.grpc.util.value.TimeManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
@@ -117,9 +117,9 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
 			.setParameters(filtersList)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setClient_ID()
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 		;
 		int recordCount = queryRequestTypes.count();
@@ -192,9 +192,9 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
+			.setClient_ID()
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(filtersList)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 			.setOnlyActiveRecords(true)
 		;
 		int recordCount = querySaleRepresentatives.count();
@@ -265,8 +265,8 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setClient_ID()
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -349,8 +349,8 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setClient_ID()
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -512,9 +512,9 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setClient_ID()
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(parametersList)
 		;
 
@@ -826,7 +826,6 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			// .setClient_ID()
 			.setOnlyActiveRecords(true)
 			.setParameters(recordId)
 			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)

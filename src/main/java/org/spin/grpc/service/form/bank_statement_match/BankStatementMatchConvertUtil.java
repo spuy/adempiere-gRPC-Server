@@ -12,7 +12,7 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.form.bank_statement_match;
+package org.spin.grpc.service.form.bank_statement_match;
 
 import java.math.BigDecimal;
 
@@ -129,7 +129,7 @@ public class BankStatementMatchConvertUtil {
 				currencyBuilder
 			)
 			.setCurrentBalance(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankAccount.getCurrentBalance()
 				)
 			)
@@ -193,17 +193,17 @@ public class BankStatementMatchConvertUtil {
 			.setIsManual(bankStatement.isManual())
 			.setIsProcessed(bankStatement.isProcessed())
 			.setBeginningBalance(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankStatement.getBeginningBalance()
 				)
 			)
 			.setStatementDifference(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankStatement.getStatementDifference()
 				)
 			)
 			.setEndingBalance(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankStatement.getEndingBalance()
 				)
 			)
@@ -360,7 +360,7 @@ public class BankStatementMatchConvertUtil {
 				)
 			)
 			.setAmount(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					paymentAmount
 				)
 			)
@@ -404,7 +404,7 @@ public class BankStatementMatchConvertUtil {
 				)
 			)
 			.setAmount(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankStatemet.getTrxAmt()
 				)
 			)
@@ -479,7 +479,7 @@ public class BankStatementMatchConvertUtil {
 				)
 			)
 			.setAmount(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					bankStatemet.getTrxAmt()
 				)
 			)
@@ -499,7 +499,7 @@ public class BankStatementMatchConvertUtil {
 					)
 				)
 				.setPaymentAmount(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						payment.getPayAmt()
 					)
 				)
@@ -560,7 +560,7 @@ public class BankStatementMatchConvertUtil {
 				)
 			)
 			.setAmount(
-				NumberManager.convertFromDecimalToValue(
+				NumberManager.getBigDecimalToString(
 					bankStatemet.getTrxAmt()
 				)
 			)
@@ -608,7 +608,7 @@ public class BankStatementMatchConvertUtil {
 					)
 				)
 				.setPaymentAmount(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						payment.getPayAmt()
 					)
 				)

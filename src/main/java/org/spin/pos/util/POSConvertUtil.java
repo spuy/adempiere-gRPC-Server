@@ -51,10 +51,12 @@ import org.spin.backend.grpc.pos.Order;
 import org.spin.backend.grpc.pos.Region;
 import org.spin.backend.grpc.pos.ShipmentLine;
 import org.spin.base.util.ConvertUtil;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 import org.spin.store.util.VueStoreFrontUtil;
 
 import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 
 /**
  * This class was created for add all convert methods for POS form
@@ -242,12 +244,12 @@ public class POSConvertUtil {
 				)
 			)
 			.setQuantity(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					shipmentLine.getQtyEntered()
 				)
 			)
 			.setMovementQuantity(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					shipmentLine.getMovementQty()
 				)
 			)
@@ -291,8 +293,8 @@ public class POSConvertUtil {
 		//	Additional Attributes
 		Struct.Builder customerAdditionalAttributes = Struct.newBuilder();
 		MTable.get(Env.getCtx(), businessPartner.get_Table_ID()).getColumnsAsList().stream()
-		.map(column -> column.getColumnName())
-		.filter(columnName -> {
+		.filter(column -> {
+			String columnName = column.getColumnName();
 			return !columnName.equals(MBPartner.COLUMNNAME_UUID)
 				&& !columnName.equals(MBPartner.COLUMNNAME_Value)
 				&& !columnName.equals(MBPartner.COLUMNNAME_TaxID)
@@ -302,12 +304,15 @@ public class POSConvertUtil {
 				&& !columnName.equals(MBPartner.COLUMNNAME_Name2)
 				&& !columnName.equals(MBPartner.COLUMNNAME_Description)
 			;
-		}).forEach(columnName -> {
+		}).forEach(column -> {
+			String columnName = column.getColumnName();
+			Value value = ValueManager.getValueFromReference(
+					businessPartner.get_Value(columnName),
+					column.getAD_Reference_ID()
+				).build();
 			customerAdditionalAttributes.putFields(
 				columnName,
-				ValueManager.getValueFromObject(
-					businessPartner.get_Value(columnName)
-				).build()
+				value
 			);
 		});
 		customer.setAdditionalAttributes(customerAdditionalAttributes);
@@ -333,18 +338,39 @@ public class POSConvertUtil {
 			return Address.newBuilder();
 		}
 		MLocation location = businessPartnerLocation.getLocation(true);
-		Address.Builder builder =  Address.newBuilder()
+		Address.Builder builder = Address.newBuilder()
 			.setId(businessPartnerLocation.getC_BPartner_Location_ID())
+			.setDisplayValue(
+				ValueManager.validateNull(
+					location.toString()
+				)
+			)
 			.setPostalCode(ValueManager.validateNull(location.getPostal()))
+			.setPostalCodeAdditional(
+				ValueManager.validateNull(
+					location.getPostal_Add()
+				)
+			)
 			.setAddress1(ValueManager.validateNull(location.getAddress1()))
 			.setAddress2(ValueManager.validateNull(location.getAddress2()))
 			.setAddress3(ValueManager.validateNull(location.getAddress3()))
 			.setAddress4(ValueManager.validateNull(location.getAddress4()))
 			.setPostalCode(ValueManager.validateNull(location.getPostal()))
-			// .setDescription(ValueManager.validateNull(businessPartnerLocation.get_ValueAsString("Description")))
-			// .setFirstName(ValueManager.validateNull(businessPartnerLocation.getName()))
-			// .setLastName(ValueManager.validateNull(businessPartnerLocation.get_ValueAsString("Name2")))
-			// .setContactName(ValueManager.validateNull(businessPartnerLocation.get_ValueAsString("ContactName")))
+			.setDescription(
+				ValueManager.validateNull(
+					businessPartnerLocation.getDescription()
+				)
+			)
+			.setLocationName(
+				ValueManager.validateNull(
+					businessPartnerLocation.getName()
+				)
+			)
+			.setContactName(
+				ValueManager.validateNull(
+					businessPartnerLocation.getContactPerson()
+				)
+			)
 			.setEmail(ValueManager.validateNull(businessPartnerLocation.getEMail()))
 			.setPhone(ValueManager.validateNull(businessPartnerLocation.getPhone()))
 			.setIsDefaultShipping(

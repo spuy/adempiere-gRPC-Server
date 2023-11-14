@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -12,11 +12,13 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.grpc.service;
+package org.spin.grpc.service.form;
 
 import org.adempiere.exceptions.AdempiereException;
 
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,7 +32,6 @@ import org.compiere.model.MLocator;
 import org.compiere.model.MMovement;
 import org.compiere.model.MMovementLine;
 import org.compiere.model.MProduct;
-import org.compiere.model.MRole;
 import org.compiere.model.MWarehouse;
 import org.compiere.model.Query;
 import org.compiere.util.CLogger;
@@ -57,7 +58,8 @@ import org.spin.backend.grpc.form.express_movement.ExpressMovementGrpc.ExpressMo
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.SessionManager;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Empty;
@@ -88,6 +90,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -97,7 +100,24 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	ListWarehousesResponse.Builder listWarehouses(ListWarehousesRequest request) {
-		final String whereClause = "M_Warehouse_ID > 0";
+		String whereClause = "M_Warehouse_ID > 0";
+		List<Object> parameters = new ArrayList<Object>();
+
+		//	For search value
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
+			whereClause += " AND ("
+				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ ")"
+			;
+			//	Add parameters
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+		}
+
 		Query query = new Query(
 			Env.getCtx(),
 			I_M_Warehouse.Table_Name,
@@ -106,7 +126,8 @@ public class ExpressMovement extends ExpressMovementImplBase {
 		)
 			.setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setParameters(parameters)
 		;
 
 		int count = query.count();
@@ -125,9 +146,10 @@ public class ExpressMovement extends ExpressMovementImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MWarehouse.class)
-			.forEach(businessPartner -> {
-				Warehouse.Builder builder = convertWarehouse(businessPartner);
+			.getIDsAsList()
+			.forEach(warehouseId -> {
+				MWarehouse warehouse = MWarehouse.get(Env.getCtx(), warehouseId);
+				Warehouse.Builder builder = convertWarehouse(warehouse);
 				builderList.addRecords(builder);
 			})
 		;
@@ -137,7 +159,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 
 	Warehouse.Builder convertWarehouse(MWarehouse warehouse) {
 		Warehouse.Builder builder = Warehouse.newBuilder();
-		if (builder == null) {
+		if (warehouse == null) {
 			return builder;
 		}
 
@@ -169,6 +191,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -185,6 +208,9 @@ public class ExpressMovement extends ExpressMovementImplBase {
 
 		//	For search value
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
 			whereClause += " AND ("
 				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
@@ -193,10 +219,10 @@ public class ExpressMovement extends ExpressMovementImplBase {
 				+ ")"
 			;
 			//	Add parameters
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
 		}
 
 		Query query = new Query(
@@ -207,7 +233,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 		)
 			.setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 			.setParameters(parameters);
 
 		int count = query.count();
@@ -228,9 +254,9 @@ public class ExpressMovement extends ExpressMovementImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MProduct.class)
-			.forEach(product -> {
-				Product.Builder builder = convertProduct(product);
+			.getIDsAsList()
+			.forEach(productId -> {
+				Product.Builder builder = convertProduct(productId);
 				builderList.addRecords(builder);
 			});
 		;
@@ -307,6 +333,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -320,7 +347,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 
 		Trx.run(transactionName -> {
 			MMovement inventoryMovement = new MMovement(Env.getCtx(), 0, transactionName);
-			inventoryMovement.setMovementDate(RecordUtil.getDate());
+			inventoryMovement.setMovementDate(RecordUtil.getDate()); // TODO: Verfy it
 			inventoryMovement.saveEx(transactionName);
 
 			maybeMovement.set(inventoryMovement);
@@ -347,6 +374,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -356,15 +384,11 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private Empty.Builder deleteMovement(DeleteMovementRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_Movement_ID@ @NotFound@");
+		int movementId = request.getId();
+		if (movementId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Movement_ID@");
 		}
 		Trx.run(transactionName -> {
-			int movementId = request.getId();
-			if (movementId <= 0) {
-				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
-			}
-
 			MMovement movement = new MMovement(Env.getCtx(), movementId, transactionName);
 			if (movement == null || movement.getM_Movement_ID() <= 0) {
 				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
@@ -392,6 +416,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -401,14 +426,14 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private Movement.Builder processMovement(ProcessMovementRequest request) {
+		int movementId = request.getId();
+		if (movementId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Movement_ID@");
+		}
+
 		AtomicReference<MMovement> shipmentReference = new AtomicReference<MMovement>();
 
 		Trx.run(transactionName -> {
-			int movementId = request.getId();
-			if (movementId <= 0) {
-				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
-			}
-
 			MMovement movement = new MMovement(Env.getCtx(), movementId, transactionName);
 			if (movement == null || movement.getM_Movement_ID() <= 0) {
 				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
@@ -446,6 +471,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -455,26 +481,26 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private MovementLine.Builder createMovementLine(CreateMovementLineRequest request) {
-		if (request.getMovementId() <= 0) {
-			throw new AdempiereException("@M_Movement_ID@ @NotFound@");
+		int movementId = request.getMovementId();
+		if (movementId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Movement_ID@");
 		}
-		if (request.getProductId() <= 0) {
-			throw new AdempiereException("@M_Product_ID@ @NotFound@");
+		int productId = request.getProductId();
+		if (productId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Product_ID@");
 		}
-		if (request.getWarehouseId() <= 0) {
-			throw new AdempiereException("@M_Warehouse_ID@ @NotFound@");
+		int warehouseId = request.getWarehouseId();
+		if (warehouseId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Warehouse_ID@");
 		}
-		if (request.getWarehouseToId() <= 0) {
-			throw new AdempiereException("@M_WarehouseTo_ID@ @NotFound@");
+		int warehouseToId = request.getWarehouseToId();
+		if (warehouseToId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_WarehouseTo_ID@");
 		}
 
 		AtomicReference<MMovementLine> movementLineReference = new AtomicReference<MMovementLine>();
 
 		Trx.run(transactionName -> {
-			int movementId = request.getMovementId();
-			if (movementId <= 0) {
-				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
-			}
 			MMovement movement = new MMovement(Env.getCtx(), movementId, transactionName);
 			if (movement == null || movement.getM_Movement_ID() <= 0) {
 				throw new AdempiereException("@M_Movement_ID@ @NotFound@");
@@ -483,16 +509,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 				throw new AdempiereException("@M_Movement_ID@ @Processed@");
 			}
 
-			int productId = request.getProductId();
-			if (productId <= 0) {
-				throw new AdempiereException("@M_Product_ID@ @NotFound@");
-			}
-
 			// warehouse and default locator
-			int warehouseId = request.getWarehouseId();
-			if (warehouseId <= 0) {
-				throw new AdempiereException("@M_Warehouse_ID@ @NotFound@");
-			}
 			MWarehouse warehouse = MWarehouse.get(Env.getCtx(), warehouseId);
 			if (warehouse == null || warehouse.getM_Warehouse_ID() <= 0) {
 				throw new AdempiereException("@M_Warehouse_ID@ @NotFound@");
@@ -503,10 +520,6 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			}
 
 			// warehouse to and default locator to
-			int warehouseToId = request.getWarehouseToId();
-			if (warehouseToId <= 0) {
-				throw new AdempiereException("@M_WarehouseTo_ID@ @NotFound@");
-			}
 			MWarehouse warehouseTo = MWarehouse.get(Env.getCtx(), warehouseToId);
 			MLocator locatorTo = warehouseTo.getDefaultLocator();
 			if (locatorTo == null || locatorTo.getM_Locator_ID() <= 0) {
@@ -529,13 +542,18 @@ public class ExpressMovement extends ExpressMovementImplBase {
 				whereClause,
 				transactionName
 			)
-				.setParameters(productId, movement.getM_Movement_ID(), locator.getM_Locator_ID(), locatorTo.getM_Locator_ID())
+				.setParameters(
+					productId,
+					movement.getM_Movement_ID(),
+					locator.getM_Locator_ID(),
+					locatorTo.getM_Locator_ID()
+				)
 				.setClient_ID()
 				.first();
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
-				quantity = ValueManager.getBigDecimalFromValue(
+				quantity = NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				);
 				if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -580,6 +598,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -589,16 +608,12 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private Empty.Builder deleteShipmentLine(DeleteMovementLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
+		int movementLineId = request.getId();
+		if (movementLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_MovementLine_ID@");
 		}
 
 		Trx.run(transactionName -> {
-			int movementLineId = request.getId();
-			if (movementLineId <= 0) {
-				throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
-			}
-
 			MMovementLine movementLine = new MMovementLine(Env.getCtx(), movementLineId, transactionName);
 			if (movementLine == null || movementLine.getM_MovementLine_ID() <= 0) {
 				throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
@@ -627,6 +642,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -636,17 +652,14 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private MovementLine.Builder updateMovementLine(UpdateMovementLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
+		int movementLineId = request.getId();
+		if (movementLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_MovementLine_ID@");
 		}
 
 		AtomicReference<MMovementLine> movementLineReference = new AtomicReference<MMovementLine>();
 
 		Trx.run(transactionName -> {
-			int movementLineId = request.getId();
-			if (movementLineId <= 0) {
-				throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
-			}
 			MMovementLine movementLine = new MMovementLine(Env.getCtx(), movementLineId, transactionName);
 			if (movementLine == null || movementLine.getM_MovementLine_ID() <= 0) {
 				throw new AdempiereException("@M_MovementLine_ID@ @NotFound@");
@@ -656,7 +669,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 				throw new AdempiereException("@M_MovementLine_ID@ @Processed@");
 			}
 
-			BigDecimal quantity = ValueManager.getBigDecimalFromValue(
+			BigDecimal quantity = NumberManager.getBigDecimalFromString(
 				request.getQuantity()
 			);
 			if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -693,6 +706,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -715,7 +729,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 				ValueManager.validateNull(movementLine.getDescription())
 			)
 			.setQuantity(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					movementLine.getMovementQty()
 				)
 			)
@@ -738,12 +752,9 @@ public class ExpressMovement extends ExpressMovementImplBase {
 	}
 
 	private ListMovementLinesResponse.Builder listMovementLines(ListMovementLinesRequest request) {
-		if (request.getMovementId() <= 0) {
-			throw new AdempiereException("@M_Movement_ID@ @NotFound@");
-		}
 		int movementId = request.getMovementId();
 		if (movementId <= 0) {
-			throw new AdempiereException("@M_Movement_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @M_Movement_ID@");
 		}
 		Query query = new Query(
 			Env.getCtx(),
@@ -754,7 +765,7 @@ public class ExpressMovement extends ExpressMovementImplBase {
 			.setParameters(movementId)
 			.setClient_ID()
 			.setOnlyActiveRecords(true)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -775,8 +786,9 @@ public class ExpressMovement extends ExpressMovementImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MMovementLine.class)
-			.forEach(movementLine -> {
+			.getIDsAsList()
+			.forEach(movementLineId -> {
+				MMovementLine movementLine = new MMovementLine(Env.getCtx(), movementLineId, null);
 				MovementLine.Builder builder = convertMovementLine(movementLine);
 				builderList.addRecords(builder);
 			});

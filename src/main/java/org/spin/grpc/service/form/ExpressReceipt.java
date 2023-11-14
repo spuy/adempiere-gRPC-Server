@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -12,11 +12,13 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.grpc.service;
+package org.spin.grpc.service.form;
 
 import org.adempiere.exceptions.AdempiereException;
 
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,12 +34,12 @@ import org.adempiere.core.domains.models.I_M_InOutLine;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.X_M_InOut;
 import org.compiere.model.MBPartner;
+import org.compiere.model.MDocType;
 import org.compiere.model.MInOut;
 import org.compiere.model.MInOutLine;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MProduct;
-import org.compiere.model.MRole;
 import org.compiere.model.MSysConfig;
 import org.compiere.model.Query;
 import org.compiere.util.CLogger;
@@ -67,7 +69,8 @@ import org.spin.backend.grpc.form.express_receipt.ExpressReceiptGrpc.ExpressRece
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.SessionManager;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Empty;
@@ -98,6 +101,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -107,7 +111,28 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	ListBusinessPartnersResponse.Builder listBusinessPartners(ListBusinessPartnersRequest request) {
-		final String whereClause = "IsVendor='Y' ";
+		String whereClause = "IsVendor='Y' ";
+		List<Object> parameters = new ArrayList<Object>();
+
+		//	For search value
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
+			whereClause += " AND ("
+				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name2) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Description) LIKE '%' || UPPER(?) || '%'"
+				+ ")"
+			;
+			//	Add parameters
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+		}
+
 		Query query = new Query(
 			Env.getCtx(),
 			I_C_BPartner.Table_Name,
@@ -116,9 +141,10 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		)
 			.setOnlyActiveRecords(true)
 			.setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			.setParameters(parameters)
 		;
-
+		query.getSQL();
 		int count = query.count();
 		String nexPageToken = "";
 		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
@@ -135,8 +161,9 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MBPartner.class)
-			.forEach(businessPartner -> {
+			.getIDsAsList()
+			.forEach(businessPartnerId -> {
+				MBPartner businessPartner = MBPartner.get(Env.getCtx(), businessPartnerId);
 				BusinessPartner.Builder builder = convertBusinessPartner(businessPartner);
 				builderList.addRecords(builder);
 			})
@@ -147,7 +174,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 
 	BusinessPartner.Builder convertBusinessPartner(MBPartner businessPartner) {
 		BusinessPartner.Builder builder = BusinessPartner.newBuilder();
-		if (builder == null) {
+		if (businessPartner == null) {
 			return builder;
 		}
 
@@ -182,6 +209,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -200,26 +228,42 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 
 		int businessPartnerId = request.getBusinessPartnerId();
 		if (businessPartnerId <= 0) {
-			throw new AdempiereException("@C_BPartner_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @C_BPartner_ID@");
 		}
 
 		// See dynamic validation 52464
-		final String whereClause = "IsSOTrx='N' "
+		String whereClause = "IsSOTrx='N' "
 			+ "AND C_BPartner_ID = ? "
 			+ "AND DocStatus IN ('CL','CO') "
 			+ "AND EXISTS(SELECT 1 FROM C_OrderLine ol "
 			+ "WHERE ol.C_Order_ID = C_Order.C_Order_ID "
 			+ "AND ol.QtyOrdered - ol.QtyDelivered > 0)"
 		;
+		List<Object> parameters = new ArrayList<Object>();
+		parameters.add(businessPartnerId);
+
+		//	For search value
+		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
+			whereClause += " AND ("
+				+ "UPPER(DocumentNo) LIKE '%' || UPPER(?) || '%' "
+				+ ")"
+			;
+			//	Add parameters
+			parameters.add(searchValue);
+		}
+
 		Query query = new Query(
 			context,
 			I_C_Order.Table_Name,
 			whereClause,
 			null
 		)
-			.setParameters(businessPartnerId)
+			.setParameters(parameters)
 			.setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -238,9 +282,12 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MOrder.class)
-			.forEach(purchase -> {
-				PurchaseOrder.Builder builder = convertPurchaseOrder(purchase);
+			.getIDsAsList()
+			.forEach(purchaseOrderId -> {
+				MOrder purcharseOrder = new MOrder(context, purchaseOrderId, null);
+				PurchaseOrder.Builder builder = convertPurchaseOrder(
+					purcharseOrder
+				);
 				builderList.addRecords(builder);
 			})
 		;
@@ -291,7 +338,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	private ListProductsResponse.Builder listProducts(ListProductsRequest request) {
 		int orderId = request.getOrderId();
 		if (orderId <= 0) {
-			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
 		}
 
 		//	Dynamic where clause
@@ -305,6 +352,9 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 
 		//	For search value
 		if (!Util.isEmpty(request.getSearchValue(), true)) {
+			// URL decode to change characteres
+			String searchValue = URLDecoder.decode(request.getSearchValue(), StandardCharsets.UTF_8);
+
 			whereClause += " AND ("
 				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
@@ -313,10 +363,10 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 				+ ")"
 			;
 			//	Add parameters
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
 		}
 
 		Query query = new Query(
@@ -327,7 +377,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		)
 			.setClient_ID()
 			.setParameters(parameters)
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		int count = query.count();
@@ -348,9 +398,9 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MProduct.class)
-			.forEach(product -> {
-				Product.Builder builder = convertProduct(product);
+			.getIDsAsList()
+			.forEach(productId -> {
+				Product.Builder builder = convertProduct(productId);
 				builderList.addRecords(builder);
 			});
 		;
@@ -432,6 +482,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -441,16 +492,13 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private Receipt.Builder createReceipt(CreateReceiptRequest request) {
-		if (request.getOrderId() <= 0) {
-			throw new AdempiereException("@C_Order_ID@ @NotFound@");
+		int orderId = request.getOrderId();
+		if (orderId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
 		}
 
 		AtomicReference<MInOut> maybeReceipt = new AtomicReference<MInOut>();
 		Trx.run(transactionName -> {
-			int orderId = request.getOrderId();
-			if (orderId <= 0) {
-				throw new AdempiereException("@C_Order_ID@ @NotFound@");
-			}
 			MOrder purchaseOrder = new MOrder(Env.getCtx(), orderId, transactionName);
 			if (purchaseOrder == null || purchaseOrder.getC_Order_ID() <= 0) {
 				throw new AdempiereException("@C_Order_ID@ @NotFound@");
@@ -461,6 +509,14 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			// Valid if has a Order
 			if (!DocumentUtil.isCompleted(purchaseOrder)) {
 				throw new AdempiereException("@Invalid@ @C_Order_ID@ " + purchaseOrder.getDocumentNo());
+			}
+			MDocType orderDocType = MDocType.get(Env.getCtx(), purchaseOrder.getC_DocType_ID());
+			if (orderDocType.getC_DocTypeShipment_ID() <= 0) {
+				log.warning(
+					"@C_Order_ID@ " + purchaseOrder.getDocumentNo()
+					+ " @C_DocType_ID@ " + orderDocType.getName()
+					+ " : @C_DocTypeShipment_ID@ @NotFound@"
+				);
 			}
 
 			final String whereClause = "IsSOTrx='N' "
@@ -481,6 +537,9 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			// Validate
 			if (receipt == null) {
 				receipt = new MInOut(purchaseOrder, 0, RecordUtil.getDate());
+				if (Util.isEmpty(receipt.getMovementType())) {
+					receipt.setMovementType(X_M_InOut.MOVEMENTTYPE_VendorReceipts);
+				}
 			} else {
 				if(!DocumentUtil.isDrafted(receipt)) {
 					throw new AdempiereException("@M_InOut_ID@ @Processed@");
@@ -496,7 +555,11 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			maybeReceipt.set(receipt);
 
 			if (request.getIsCreateLinesFromOrder()) {
-				boolean validateOrderedQty = MSysConfig.getBooleanValue("VALIDATE_MATCHING_TO_ORDERED_QTY", true, Env.getAD_Client_ID(Env.getCtx()));
+				boolean validateOrderedQty = MSysConfig.getBooleanValue(
+					"VALIDATE_MATCHING_TO_ORDERED_QTY",
+					true,
+					Env.getAD_Client_ID(Env.getCtx())
+				);
 
 				List<MOrderLine> orderLines = Arrays.asList(purchaseOrder.getLines());
 				orderLines.stream().forEach(purchaseOrderLine -> {
@@ -554,6 +617,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -563,15 +627,12 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private Empty.Builder deleteReceipt(DeleteReceiptRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
+		int receiptId = request.getId();
+		if (receiptId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
 		}
-		Trx.run(transactionName -> {
-			int receiptId = request.getId();
-			if (receiptId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
 
+		Trx.run(transactionName -> {
 			MInOut receipt = new MInOut(Env.getCtx(), receiptId, transactionName);
 			if (receipt == null || receipt.getM_InOut_ID() <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
@@ -599,6 +660,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -608,14 +670,14 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private Receipt.Builder processReceipt(ProcessReceiptRequest request) {
+		int receiptId = request.getId();
+		if (receiptId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
+		}
+
 		AtomicReference<MInOut> receiptReference = new AtomicReference<MInOut>();
 
 		Trx.run(transactionName -> {
-			int receiptId = request.getId();
-			if (receiptId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
-
 			MInOut receipt = new MInOut(Env.getCtx(), receiptId, transactionName);
 			if (receipt == null || receiptId <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
@@ -650,6 +712,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -659,16 +722,18 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private ReceiptLine.Builder createReceiptLine(CreateReceiptLineRequest request) {
-		if (request.getReceiptId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
+		int receiptId = request.getReceiptId();
+		if (receiptId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
 		}
+		int productId = request.getProductId();
+		if (productId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_Product_ID@");
+		}
+
 		AtomicReference<MInOutLine> receiptLineReference = new AtomicReference<MInOutLine>();
 
 		Trx.run(transactionName -> {
-			int receiptId = request.getReceiptId();
-			if (receiptId <= 0) {
-				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-			}
 			MInOut receipt = new MInOut(Env.getCtx(), receiptId, transactionName);
 			if (receipt == null || receipt.getM_InOut_ID() <= 0) {
 				throw new AdempiereException("@M_InOut_ID@ @NotFound@");
@@ -677,10 +742,6 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 				throw new AdempiereException("@M_InOut_ID@ @Processed@");
 			}
 
-			int productId = request.getProductId();
-			if (productId <= 0) {
-				throw new AdempiereException("@M_Product_ID@ @NotFound@");
-			}
 
 			final String whereClause = "M_Product_ID = ? "
 				+ "AND EXISTS(SELECT 1 FROM M_InOut "
@@ -702,7 +763,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
-				quantity = ValueManager.getBigDecimalFromValue(
+				quantity = NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				);
 				if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -758,6 +819,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -767,16 +829,12 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private Empty.Builder deleteReceiptLine(DeleteReceiptLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
+		int receiptLineId = request.getId();
+		if (receiptLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOutLine_ID@");
 		}
 
 		Trx.run(transactionName -> {
-			int receiptLineId = request.getId();
-			if (receiptLineId <= 0) {
-				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
-			}
-
 			MInOutLine receiptLine = new MInOutLine(Env.getCtx(), receiptLineId, transactionName);
 			if (receiptLine == null || receiptLine.getM_InOutLine_ID() <= 0) {
 				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
@@ -805,6 +863,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -814,18 +873,14 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private ReceiptLine.Builder updateReceiptLine(UpdateReceiptLineRequest request) {
-		if (request.getId() <= 0) {
-			throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
+		int receiptLineId = request.getId();
+		if (receiptLineId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOutLine_ID@");
 		}
 
 		AtomicReference<MInOutLine> maybeReceiptLine = new AtomicReference<MInOutLine>();
 
 		Trx.run(transactionName -> {
-			int receiptLineId = request.getId();
-			if (receiptLineId <= 0) {
-				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
-			}
-
 			MInOutLine receiptLine = new MInOutLine(Env.getCtx(), receiptLineId, transactionName);
 			if (receiptLine == null || receiptLine.getM_InOutLine_ID() <= 0) {
 				throw new AdempiereException("@M_InOutLine_ID@ @NotFound@");
@@ -842,7 +897,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 
 			BigDecimal quantity = BigDecimal.ONE;
 			if (request.getQuantity() != null) {
-				quantity = ValueManager.getBigDecimalFromValue(
+				quantity = NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				);
 				if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -850,7 +905,11 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 				}
 			}
 
-			boolean validateOrderedQty = MSysConfig.getBooleanValue("VALIDATE_MATCHING_TO_ORDERED_QTY", true, Env.getAD_Client_ID(Env.getCtx()));
+			boolean validateOrderedQty = MSysConfig.getBooleanValue(
+				"VALIDATE_MATCHING_TO_ORDERED_QTY",
+				true,
+				Env.getAD_Client_ID(Env.getCtx())
+			);
 			// Validate available
 			if (validateOrderedQty) {
 				BigDecimal orderQuantityDelivered = purchaseOrderLine.getQtyOrdered().subtract(purchaseOrderLine.getQtyDelivered());
@@ -889,6 +948,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 			responseObserver.onError(Status.INTERNAL
 				.withDescription(e.getLocalizedMessage())
 				.withCause(e)
@@ -911,7 +971,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 				ValueManager.validateNull(receiptLine.getDescription())
 			)
 			.setQuantity(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					receiptLine.getQtyEntered()
 				)
 			)
@@ -927,11 +987,12 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 	}
 
 	private ListReceiptLinesResponse.Builder listReceiptLines(ListReceiptLinesRequest request) {
-		if (request.getReceiptId() <= 0) {
-			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
-		}
 		int receiptId = request.getReceiptId();
 		if (receiptId <= 0) {
+			throw new AdempiereException("@FillMandatory@ @M_InOut_ID@");
+		}
+		MInOut receipt = new MInOut(Env.getCtx(), receiptId, null);
+		if (receipt == null || receipt.getM_InOut_ID() <= 0) {
 			throw new AdempiereException("@M_InOut_ID@ @NotFound@");
 		}
 
@@ -943,7 +1004,7 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		)
 			.setParameters(receiptId)
 			.setClient_ID()
-			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
+			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 			.setOnlyActiveRecords(true)
 		;
 
@@ -965,8 +1026,9 @@ public class ExpressReceipt extends ExpressReceiptImplBase {
 		;
 
 		query.setLimit(limit, offset)
-			.list(MInOutLine.class)
-			.forEach(receiptLine -> {
+			.getIDsAsList()
+			.forEach(receiptLineId -> {
+				MInOutLine receiptLine = MInOutLine.get(Env.getCtx(), receiptLineId);
 				ReceiptLine.Builder builder = convertReceiptLine(receiptLine);
 				builderList.addRecords(builder);
 			});

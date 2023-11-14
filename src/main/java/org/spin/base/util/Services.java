@@ -35,6 +35,7 @@ public enum Services {
 	IN_OUT("in_out"),
 	INVOICE("invoice"),
 	ISSUE_MANAGEMENT("issue_management"),
+	LOCATION_ADDRESS("location_address"),
 	LOG("log"),
 	MATCH_PO_RECEIPT_INVOICE("match_po_receipt_invoice"),
 	MATERIAL_MANAGEMENT("material_management"),
@@ -46,12 +47,13 @@ public enum Services {
 	POS("pos"),
 	PRODUCT("product"),
 	RECORD_MANAGEMENT("record_management"),
+	REPORT_MANAGEMENT("report_management"),
 	SECURITY("security"),
 	STORE("store"),
 	TIME_CONTROL("time_control"),
 	TIME_RECORD("time_record"),
 	USER_CUSTOMIZATION("user_customization"),
-	UI("ui"),
+	UI("user_interface"),
 	UPDATER("updater"),
 	WORKFLOW("workflow");
 

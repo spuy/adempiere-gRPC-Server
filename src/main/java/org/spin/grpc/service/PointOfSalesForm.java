@@ -146,6 +146,7 @@ import org.spin.pos.util.PaymentConvertUtil;
 import org.spin.pos.util.TicketHandler;
 import org.spin.pos.util.TicketResult;
 import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.TimeManager;
 import org.spin.service.grpc.util.value.ValueManager;
 import org.spin.store.model.MCPaymentMethod;
@@ -556,36 +557,8 @@ public class PointOfSalesForm extends StoreImplBase {
 					.asRuntimeException());
 		}
 	}
-	
-	@Override
-	public void createCustomer(CreateCustomerRequest request, StreamObserver<Customer> responseObserver) {
-		try {
-			Customer.Builder customer = createCustomer(Env.getCtx(), request);
-			responseObserver.onNext(customer.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
-		}
-	}
-	
-	@Override
-	public void updateCustomer(UpdateCustomerRequest request, StreamObserver<Customer> responseObserver) {
-		try {
-			Customer.Builder customer = updateCustomer(request);
-			responseObserver.onNext(customer.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
-		}
-	}
+
+
 
 	@Override
 	public void listCustomers(ListCustomersRequest request, StreamObserver<ListCustomersResponse> responseObserver) {
@@ -1303,7 +1276,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			MOrderLine rmaLine = ReturnSalesOrder.createRMALineFromOrder(
 				request.getRmaId(),
 				request.getSourceOrderLineId(),
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				),
 				request.getDescription()
@@ -1328,7 +1301,7 @@ public class PointOfSalesForm extends StoreImplBase {
 		try {
 			MOrderLine rmaLine = ReturnSalesOrder.updateRMALine(
 				request.getId(),
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				),
 				request.getDescription()
@@ -1551,12 +1524,12 @@ public class PointOfSalesForm extends StoreImplBase {
 						)
 					)
 					.setAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("GrandTotal")
 						)
 					)
 					.setOpenAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("OpenAmount")
 						)
 					)
@@ -1861,7 +1834,7 @@ public class PointOfSalesForm extends StoreImplBase {
 					)
 					.setIsRefund(rs.getString("IsReceipt").equals("Y")? false: true)
 					.setAmount(
-						ValueManager.getValueFromBigDecimal(
+						NumberManager.getBigDecimalToString(
 							rs.getBigDecimal("PaymentAmount")
 						)
 					)
@@ -1918,13 +1891,13 @@ public class PointOfSalesForm extends StoreImplBase {
 			GenericPO refundReferenceToCreate = new GenericPO("C_POSPaymentReference", Env.getCtx(), 0, transactionName);
 			refundReferenceToCreate.set_ValueOfColumn(
 				"Amount",
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getAmount()
 				)
 			);
 			refundReferenceToCreate.set_ValueOfColumn(
 				"AmtSource",
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getSourceAmount()
 				)
 			);
@@ -2462,7 +2435,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				.filter(shipmentLineTofind -> shipmentLineTofind.getC_OrderLine_ID() == salesOrderLine.getC_OrderLine_ID())
 				.findFirst();
 		AtomicReference<MInOutLine> shipmentLineReference = new AtomicReference<MInOutLine>();
-		BigDecimal quantity = ValueManager.getBigDecimalFromValue(
+		BigDecimal quantity = NumberManager.getBigDecimalFromString(
 			request.getQuantity()
 		);
 		//	Validate available
@@ -2623,6 +2596,25 @@ public class PointOfSalesForm extends StoreImplBase {
 	}
 
 
+
+	@Override
+	public void createCustomer(CreateCustomerRequest request, StreamObserver<Customer> responseObserver) {
+		try {
+			Customer.Builder customer = createCustomer(Env.getCtx(), request);
+			responseObserver.onNext(customer.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * Create Customer
 	 * @param request
@@ -2630,7 +2622,7 @@ public class PointOfSalesForm extends StoreImplBase {
 	 */
 	private Customer.Builder createCustomer(Properties context, CreateCustomerRequest request) {
 		//	Validate name
-		if(Util.isEmpty(request.getName())) {
+		if(Util.isEmpty(request.getName(), true)) {
 			throw new AdempiereException("@Name@ @IsMandatory@");
 		}
 		//	POS Uuid
@@ -2665,7 +2657,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			//	
 			businessPartner.setValue(code);
 			//	Set Value
-			Optional.ofNullable(request.getValue()).ifPresent(value -> businessPartner.setValue(value));			
+			Optional.ofNullable(request.getValue()).ifPresent(value -> businessPartner.setValue(value));
 			//	Tax Id
 			Optional.ofNullable(request.getTaxId()).ifPresent(value -> businessPartner.setTaxID(value));
 			//	Duns
@@ -2795,10 +2787,10 @@ public class PointOfSalesForm extends StoreImplBase {
 		businessPartnerLocation.setIsShipTo(address.getIsDefaultShipping());
 		businessPartnerLocation.set_ValueOfColumn(VueStoreFrontUtil.COLUMNNAME_IsDefaultShipping, address.getIsDefaultShipping());
 		Optional.ofNullable(address.getContactName()).ifPresent(contact -> businessPartnerLocation.setContactPerson(contact));
-		Optional.ofNullable(address.getFirstName()).ifPresent(firstName -> businessPartnerLocation.setName(firstName));
+		Optional.ofNullable(address.getLocationName()).ifPresent(locationName -> businessPartnerLocation.setName(locationName));
 		Optional.ofNullable(address.getEmail()).ifPresent(email -> businessPartnerLocation.setEMail(email));
 		Optional.ofNullable(address.getPhone()).ifPresent(phome -> businessPartnerLocation.setPhone(phome));
-		Optional.ofNullable(address.getDescription()).ifPresent(description -> businessPartnerLocation.set_ValueOfColumn("Description", description));
+		Optional.ofNullable(address.getDescription()).ifPresent(description -> businessPartnerLocation.setDescription(description));
 		if(Util.isEmpty(businessPartnerLocation.getName())) {
 			businessPartnerLocation.setName(".");
 		}
@@ -2824,7 +2816,27 @@ public class PointOfSalesForm extends StoreImplBase {
 			contact.saveEx(transactionName);
  		}
 	}
-	
+
+
+
+	@Override
+	public void updateCustomer(UpdateCustomerRequest request, StreamObserver<Customer> responseObserver) {
+		try {
+			Customer.Builder customer = updateCustomer(request);
+			responseObserver.onNext(customer.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * update Customer
 	 * @param request
@@ -2852,7 +2864,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			}
 			businessPartner.set_TrxName(transactionName);
 			//	Set Value
-			Optional.ofNullable(request.getValue()).ifPresent(value -> businessPartner.setValue(value));			
+			Optional.ofNullable(request.getValue()).ifPresent(value -> businessPartner.setValue(value));
 			//	Tax Id
 			Optional.ofNullable(request.getTaxId()).ifPresent(value -> businessPartner.setTaxID(value));
 			//	Duns
@@ -2914,13 +2926,11 @@ public class PointOfSalesForm extends StoreImplBase {
 						businessPartnerLocation.set_ValueOfColumn(VueStoreFrontUtil.COLUMNNAME_IsDefaultBilling, address.getIsDefaultBilling());
 						businessPartnerLocation.setIsShipTo(address.getIsDefaultShipping());
 						businessPartnerLocation.set_ValueOfColumn(VueStoreFrontUtil.COLUMNNAME_IsDefaultShipping, address.getIsDefaultShipping());
-						Optional.ofNullable(address.getContactName()).ifPresent(contactName -> businessPartnerLocation.set_ValueOfColumn("ContactName", contactName));
 						Optional.ofNullable(address.getContactName()).ifPresent(contact -> businessPartnerLocation.setContactPerson(contact));
-						Optional.ofNullable(address.getFirstName()).ifPresent(firstName -> businessPartnerLocation.setName(firstName));
-						Optional.ofNullable(address.getLastName()).ifPresent(lastName -> businessPartnerLocation.set_ValueOfColumn("Name2", lastName));
+						Optional.ofNullable(address.getLocationName()).ifPresent(locationName -> businessPartnerLocation.setName(locationName));
 						Optional.ofNullable(address.getEmail()).ifPresent(email -> businessPartnerLocation.setEMail(email));
 						Optional.ofNullable(address.getPhone()).ifPresent(phome -> businessPartnerLocation.setPhone(phome));
-						Optional.ofNullable(address.getDescription()).ifPresent(description -> businessPartnerLocation.set_ValueOfColumn("Description", description));
+						Optional.ofNullable(address.getDescription()).ifPresent(description -> businessPartnerLocation.setDescription(description));
 						//	Additional attributes
 						setAdditionalAttributes(businessPartnerLocation, address.getAdditionalAttributes().getFieldsMap());
 						businessPartnerLocation.saveEx(transactionName);
@@ -3176,12 +3186,12 @@ public class PointOfSalesForm extends StoreImplBase {
 					availablePaymentMethod.get_ValueAsBoolean("IsAllowedToRefundOpen")
 				)
 				.setMaximumRefundAllowed(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						(BigDecimal) availablePaymentMethod.get_Value("MaximumRefundAllowed")
 					)
 				)
 				.setMaximumDailyRefundAllowed(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						(BigDecimal) availablePaymentMethod.get_Value("MaximumDailyRefundAllowed")
 					)
 				)
@@ -3807,7 +3817,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			parameters.add(businessPartnerId);
 		}
 		//	Grand Total
-		BigDecimal grandTotal = ValueManager.getBigDecimalFromValue(
+		BigDecimal grandTotal = NumberManager.getBigDecimalFromString(
 			request.getGrandTotal()
 		);
 		if(grandTotal != null
@@ -3816,7 +3826,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			parameters.add(grandTotal);
 		}
 		//	Support Open Amount
-		BigDecimal openAmount = ValueManager.getBigDecimalFromValue(
+		BigDecimal openAmount = NumberManager.getBigDecimalFromString(
 			request.getOpenAmount()
 		);
 		if(openAmount != null
@@ -4176,17 +4186,17 @@ public class PointOfSalesForm extends StoreImplBase {
 				configureWarehouse(salesOrder);
 			}
 			//	Discount Amount
-			BigDecimal discountRate = ValueManager.getBigDecimalFromValue(
+			BigDecimal discountRate = NumberManager.getBigDecimalFromString(
 				request.getDiscountRate()
 			);
 			if(discountRate != null) {
 				configureDiscount(salesOrder, discountRate, transactionName);
 			}
 			//	Discount Off
-			BigDecimal discountRateOff = ValueManager.getBigDecimalFromValue(
+			BigDecimal discountRateOff = NumberManager.getBigDecimalFromString(
 				request.getDiscountRateOff()
 			);
-			BigDecimal discountAmountOff = ValueManager.getBigDecimalFromValue(
+			BigDecimal discountAmountOff = NumberManager.getBigDecimalFromString(
 				request.getDiscountAmountOff()
 			);
 			if(discountRateOff != null) {
@@ -4773,13 +4783,13 @@ public class PointOfSalesForm extends StoreImplBase {
 			updateOrderLine(
 				pos,
 				orderLineId,
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				),
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getPrice()
 				),
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getDiscountRate()
 				),
 				request.getIsAddQuantity(),
@@ -4819,7 +4829,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				request.getProductId(),
 				request.getChargeId(),
 				request.getWarehouseId(),
-				ValueManager.getBigDecimalFromValue(
+				NumberManager.getBigDecimalFromString(
 					request.getQuantity()
 				)
 			);
@@ -5282,7 +5292,7 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Special values
 		builder
 			.setMaximumRefundAllowed(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getBigDecimalValueFromPOS(
 						pos,
 						userId,
@@ -5291,7 +5301,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				)
 			)
 			.setMaximumDailyRefundAllowed(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getBigDecimalValueFromPOS(
 						pos,
 						userId,
@@ -5300,7 +5310,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				)
 			)
 			.setMaximumDiscountAllowed(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getBigDecimalValueFromPOS(
 						pos,
 						userId,
@@ -5309,7 +5319,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				)
 			)
 			.setMaximumLineDiscountAllowed(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getBigDecimalValueFromPOS(
 						pos,
 						userId,
@@ -5318,12 +5328,12 @@ public class PointOfSalesForm extends StoreImplBase {
 				)
 			)
 			.setWriteOffAmountTolerance(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getWriteOffAmtTolerance(pos)
 				)
 			)
 			.setWriteOffPercentageTolerance(
-				ValueManager.getValueFromBigDecimal(
+				NumberManager.getBigDecimalToString(
 					getBigDecimalValueFromPOS(
 						pos,
 						userId,
@@ -5749,7 +5759,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				payment.addDescription(request.getDescription());
 			}
 			//	Amount
-			BigDecimal paymentAmount = ValueManager.getBigDecimalFromValue(
+			BigDecimal paymentAmount = NumberManager.getBigDecimalFromString(
 				request.getAmount()
 			);
 	        payment.setPayAmt(paymentAmount);
@@ -5904,19 +5914,16 @@ public class PointOfSalesForm extends StoreImplBase {
 		.<MProduct>list()
 		.forEach(product -> {
 			ProductPrice.Builder productPrice = convertProductPrice(
-					product, 
-					businessPartnerId, 
-					priceList, 
-					warehouseId.get(), 
-					validFrom.get(),
-					displayCurrencyId,
-					conversionTypeId,
-					null);
-			if(productPrice.hasPriceList()
-					&& productPrice.hasPriceStandard()
-					&& productPrice.hasPriceLimit()) {
-				builder.addProductPrices(productPrice);
-			}
+				product,
+				businessPartnerId,
+				priceList,
+				warehouseId.get(),
+				validFrom.get(),
+				displayCurrencyId,
+				conversionTypeId,
+				null
+			);
+			builder.addProductPrices(productPrice);
 		});
 		//	
 		builder.setRecordCount(count);
@@ -5987,17 +5994,17 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Prices
 		if(Optional.ofNullable(productPricing.getPriceStd()).orElse(Env.ZERO).signum() > 0) {
 			builder.setPriceList(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						Optional.ofNullable(productPricing.getPriceList()).orElse(Env.ZERO)
 					)
 				)
 				.setPriceStandard(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						Optional.ofNullable(priceStd).orElse(Env.ZERO)
 					)
 				)
 				.setPriceLimit(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						Optional.ofNullable(
 							productPricing.getPriceLimit()
 						).orElse(Env.ZERO)
@@ -6019,7 +6026,7 @@ public class PointOfSalesForm extends StoreImplBase {
 					if(conversionRate != null) {
 						BigDecimal multiplyRate = conversionRate.getMultiplyRate();
 						builder.setDisplayPriceList(
-								ValueManager.getValueFromBigDecimal(
+								NumberManager.getBigDecimalToString(
 									Optional.ofNullable(
 										productPricing.getPriceList()
 									)
@@ -6028,7 +6035,7 @@ public class PointOfSalesForm extends StoreImplBase {
 								)
 							)
 							.setDisplayPriceStandard(
-								ValueManager.getValueFromBigDecimal(
+								NumberManager.getBigDecimalToString(
 									Optional.ofNullable(
 										productPricing.getPriceStd()
 									)
@@ -6037,7 +6044,7 @@ public class PointOfSalesForm extends StoreImplBase {
 								)
 							)
 							.setDisplayPriceLimit(
-								ValueManager.getValueFromBigDecimal(
+								NumberManager.getBigDecimalToString(
 									Optional.ofNullable(
 										productPricing.getPriceLimit()
 									)
@@ -6046,7 +6053,9 @@ public class PointOfSalesForm extends StoreImplBase {
 								)
 							)
 							.setConversionRate(
-								ConvertUtil.convertConversionRate(conversionRate)
+								ConvertCommon.convertConversionRate(
+									conversionRate
+								)
 							)
 						;
 					}
@@ -6070,22 +6079,22 @@ public class PointOfSalesForm extends StoreImplBase {
 					quantityAvailable.updateAndGet(quantity -> quantity.add(storage.getQtyOnHand().subtract(storage.getQtyReserved())));
 				});
 			builder.setQuantityOnHand(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						quantityOnHand.get()
 					)
 				)
 				.setQuantityReserved(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						quantityReserved.get()
 					)
 				)
 				.setQuantityOrdered(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						quantityOrdered.get()
 					)
 				)
 				.setQuantityAvailable(
-					ValueManager.getValueFromBigDecimal(
+					NumberManager.getBigDecimalToString(
 						quantityAvailable.get()
 					)
 				)
