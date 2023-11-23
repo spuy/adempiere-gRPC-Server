@@ -176,24 +176,8 @@ public class BusinessData extends BusinessDataImplBase {
 					.asRuntimeException());
 		}
 	}
-	
-	@Override
-	public void listEntities(ListEntitiesRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
-		try {
-			ListEntitiesResponse.Builder entityValueList = convertEntitiesList(Env.getCtx(), request);
-			responseObserver.onNext(entityValueList.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			e.printStackTrace();
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
-			);
-		}
-	}
-	
+
+
 	@Override
 	public void runBusinessProcess(RunBusinessProcessRequest request, StreamObserver<ProcessLog> responseObserver) {
 		try {
@@ -234,7 +218,10 @@ public class BusinessData extends BusinessDataImplBase {
 		if(process == null || process.getAD_Process_ID() <= 0) {
 			throw new AdempiereException("@AD_Process_ID@ @NotFound@");
 		}
-		if(!MRole.getDefault().getProcessAccess(process.getAD_Process_ID())) {
+
+		// Role access
+		Boolean isWithAccess = MRole.getDefault().getProcessAccess(process.getAD_Process_ID());
+		if(isWithAccess == null || !isWithAccess.booleanValue()) {
 			if (process.isReport()) {
 				throw new AdempiereException("@AccessCannotReport@");
 			}
@@ -560,12 +547,31 @@ public class BusinessData extends BusinessDataImplBase {
 		return ConvertUtil.convertEntity(entity);
 	}
 
+
+
+	@Override
+	public void listEntities(ListEntitiesRequest request, StreamObserver<ListEntitiesResponse> responseObserver) {
+		try {
+			ListEntitiesResponse.Builder entityValueList = listEntities(Env.getCtx(), request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * Convert Object to list
 	 * @param request
 	 * @return
 	 */
-	private ListEntitiesResponse.Builder convertEntitiesList(Properties context, ListEntitiesRequest request) {
+	private ListEntitiesResponse.Builder listEntities(Properties context, ListEntitiesRequest request) {
 		StringBuffer whereClause = new StringBuffer();
 		List<Object> params = new ArrayList<>();
 		//	For dynamic condition
@@ -577,17 +583,19 @@ public class BusinessData extends BusinessDataImplBase {
 			//	Add
 			whereClause.append(dynamicWhere);
 		}
+
 		//	TODO: Add support to this functionality with a distinct scope
 		//	Add from reference
-//		if(!Util.isEmpty(criteria.getReferenceUuid())) {
-//			String referenceWhereClause = referenceWhereClauseCache.get(criteria.getReferenceUuid());
-//			if(!Util.isEmpty(referenceWhereClause)) {
-//				if(whereClause.length() > 0) {
-//					whereClause.append(" AND ");
-//				}
-//				whereClause.append("(").append(referenceWhereClause).append(")");
-//			}
-//		}
+		if(!Util.isEmpty(request.getRecordReferenceUuid())) {
+			String referenceWhereClause = RecordUtil.referenceWhereClauseCache.get(request.getRecordReferenceUuid());
+			if(!Util.isEmpty(referenceWhereClause, true)) {
+				if(whereClause.length() > 0) {
+					whereClause.append(" AND ");
+				}
+				whereClause.append("(").append(referenceWhereClause).append(")");
+			}
+		}
+
 		//	Get page and count
 		String nexPageToken = null;
 		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
