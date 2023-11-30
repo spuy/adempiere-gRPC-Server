@@ -23,12 +23,20 @@ repositories {
     mavenCentral()
     mavenLocal()
     maven {
-    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com'
+        url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com'
         credentials {
-        	username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
-            password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token'] 
-		}
-	}
+            username = project.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
+            password = project.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
+        }
+    }
+
+    maven {
+        url = "https://maven.pkg.github.com/spuy/spuy-core"
+        credentials {
+            username = project.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
+            password = project.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
+        }
+    }
 }
 
 ext {
@@ -49,8 +57,8 @@ def protocVersion = '3.5.1-1'
 //def adempiereBaseVersion = '3.9.4-rc-1.0.6'
 
 dependencies {
-    implementation project(':spuy-core')
-    implementation project(':adempiere')
+    implementation 'uy.solop:spuy-core:issue-redmine-20656-v-39'
+
     implementation fileTree(
         dir: 'dependencies',
         include: [
@@ -109,7 +117,7 @@ dependencies {
 	implementation 'com.github.jjYBdx4IL:ecs:1.4.2.1'
 	implementation 'com.itextpdf:itextpdf:5.5.13.3' // used by org.adempiere.pdf.iText7Document
 	implementation 'io.konik:konik:1.3.2' // used by org.adempiere.pdf.iText7Document
-	implementation 'io.vavr:vavr:1.0.0-alpha-4' // used by org.compiere.util.DB
+	implementation 'io.vavr:vavr:0.10.4' // used by org.compiere.util.DB
 	implementation "org.codehaus.groovy:groovy-all:2.4.15"
 
 	// ADempiere Projects with additional features
@@ -193,7 +201,7 @@ run {
 		environment 'JWT_EXPIRATION_TIME', 86400000
 	}
 	args = [
-		"resources/standalone.yaml"
+		"/home/raulo/Desarrollo/workspace/Idea4/backend/resources/standalone.yaml"
 	]
 }
 
@@ -253,8 +261,8 @@ publishing {
         maven {
             url = System.properties['deploy.packages'] ?: System.getenv("GITHUB_PACKAGES_URL") ?: "https://maven.pkg.github.com/solop-develop/backend"
             credentials {
-                username = System.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER") ?: ''
-                password = System.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN") ?: ''
+                username = project.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
+                password = project.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
             }
         }
     }
