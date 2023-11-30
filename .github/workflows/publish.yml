@@ -10,7 +10,7 @@ on:
       - created
   push:
     tags:
-      - 'issue/redmine/20656*'
+      - '*'
 
 jobs:
 
