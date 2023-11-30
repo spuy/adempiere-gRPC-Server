@@ -8,6 +8,9 @@ on:
   release:
     types:
       - created
+  push:
+    tags:
+      - 'issue/redmine/20656*'
 
 jobs:
 
@@ -43,8 +46,7 @@ jobs:
           arguments: createRelease
         env:
           GITHUB_DEPLOY_USER: ${{ github.actor }}
-          GITHUB_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-          GITHUB_DEPLOY_REPOSITORY: ${{ secrets.DEPLOY_REPOSITORY }}
+          GITHUB_DEPLOY_TOKEN: ${{ github.token }}
 
       - name: Upload descriptor file artifact
         uses: actions/upload-artifact@v3
@@ -94,7 +96,7 @@ jobs:
     steps:
       - id: check_maven_secrets_job
         run: |
-          if [[ "${{ secrets.DEPLOY_TOKEN }}" != "" && \
+          if [[ "${{ github.token }}" != "" && \
                 "${{ secrets.DEPLOY_REPOSITORY }}" != "" ]]; \
           then
             echo "Secrets to use a maven registry are configured in the repo"
@@ -132,7 +134,7 @@ jobs:
         env:
           LIBRARY_VERSION: ${{ github.event.release.tag_name }}
           GITHUB_DEPLOY_USER: "${{ github.actor }}"
-          GITHUB_DEPLOY_TOKEN: "${{ secrets.DEPLOY_TOKEN }}"
+          GITHUB_DEPLOY_TOKEN: "${{ github.token }}"
           GITHUB_DEPLOY_REPOSITORY: ${{ secrets.DEPLOY_REPOSITORY }}
           GITHUB_PACKAGES_URL: https://maven.pkg.github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
 
