@@ -38,6 +38,7 @@ jobs:
         uses: actions/checkout@v3
 
       - run: echo "${{ github.actor }}"
+      - run: echo "${{ github.token }}"
 
       - name: Set up Java JDK 11
         uses: actions/setup-java@v3
