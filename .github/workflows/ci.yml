@@ -39,6 +39,7 @@ jobs:
 
       - run: echo "${{ github.actor }}"
       - run: echo "${{ secrets.GITHUB_TOKEN }}"
+      - run: echo "${{ secrets.GITHUB_T3OKEN }}"
 
       - name: Set up Java JDK 11
         uses: actions/setup-java@v3
