@@ -126,8 +126,12 @@ public class IssueManagement extends IssueManagementImplBase {
 	private ListRequestTypesResponse.Builder listRequestTypes(ListRequestTypesRequest request) {
 		String whereClause = null;
 		List<Object> filtersList = new ArrayList<>();
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause = " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -138,8 +142,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			null
 		)
 			.setParameters(filtersList)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 		;
 		int recordCount = queryRequestTypes.count();
@@ -161,7 +164,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequestTypes
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MRequestType.class)
 			.forEach(requestTypeId -> {
@@ -201,8 +204,12 @@ public class IssueManagement extends IssueManagementImplBase {
 			+ "AND (bp.IsEmployee='Y' OR bp.IsSalesRep='Y'))"
 		;
 		List<Object> filtersList = new ArrayList<>();
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -212,8 +219,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(filtersList)
 			.setOnlyActiveRecords(true)
 		;
@@ -236,7 +242,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		querySaleRepresentatives
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			.forEach(userId -> {
 				User.Builder builder = IssueManagementConvertUtil.convertUser(userId);
@@ -274,8 +280,11 @@ public class IssueManagement extends IssueManagementImplBase {
 		List<Object> filtersList = new ArrayList<>();
 		filtersList.add(MRequest.PRIORITY_AD_Reference_ID);
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -285,8 +294,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -310,7 +318,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryPriority
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.list(MRefList.class)
 			.forEach(priority -> {
 				Priority.Builder builder = IssueManagementConvertUtil.convertPriority(priority);
@@ -437,8 +445,11 @@ public class IssueManagement extends IssueManagementImplBase {
 		List<Object> filtersList = new ArrayList<>();
 		filtersList.add(requestTypeId);
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -448,8 +459,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -473,7 +483,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequests
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MStatus.class)
 			.forEach(statusId -> {
@@ -915,14 +925,17 @@ public class IssueManagement extends IssueManagementImplBase {
 			;
 		}
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
 			whereClause += " AND (UPPER(DocumentNo) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Subject) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Summary) LIKE '%' || UPPER(?) || '%' )"
 			;
-			parametersList.add(request.getSearchValue());
-			parametersList.add(request.getSearchValue());
-			parametersList.add(request.getSearchValue());
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
 		}
 
 		// filter status by status category
@@ -943,8 +956,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			null
 		)
 			.setOnlyActiveRecords(true)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(parametersList)
 		;
 
@@ -967,7 +979,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequests
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.setOrderBy(I_R_Request.COLUMNNAME_DateNextAction + " NULLS FIRST ")
 			.getIDsAsList()
 			// .list(MRequest.class)
@@ -1292,7 +1304,7 @@ public class IssueManagement extends IssueManagementImplBase {
 
 		List<IssueComment.Builder> issueCommentsList = new ArrayList<>();
 		queryRequestsUpdate
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(X_R_RequestUpdate.class)
 			.forEach(requestUpdateId -> {
@@ -1302,7 +1314,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			});
 
 		queryRequestsLog
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MRequestAction.class)
 			.forEach(requestActionId -> {
@@ -1312,8 +1324,8 @@ public class IssueManagement extends IssueManagementImplBase {
 			});
 
 		issueCommentsList.stream()
-		//	TODO: Add support here... Other way?
-//			.sorted(Comparator.comparing(IssueComment.Builder::getCreated))
+			// TODO: Add support here... Other way?
+			// .sorted(Comparator.comparing(IssueComment.Builder::getCreated))
 			.forEach(issueComment -> {
 				builderList.addRecords(issueComment);
 			});
