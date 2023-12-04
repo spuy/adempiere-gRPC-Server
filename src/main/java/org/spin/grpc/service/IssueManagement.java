@@ -18,11 +18,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.adempiere.core.domains.models.I_AD_User;
+import org.adempiere.core.domains.models.I_C_BPartner;
+import org.adempiere.core.domains.models.I_C_Project;
+import org.adempiere.core.domains.models.I_R_Category;
+import org.adempiere.core.domains.models.I_R_Group;
 import org.adempiere.core.domains.models.I_R_Request;
 import org.adempiere.core.domains.models.I_R_RequestAction;
 import org.adempiere.core.domains.models.I_R_RequestType;
 import org.adempiere.core.domains.models.I_R_RequestUpdate;
 import org.adempiere.core.domains.models.I_R_Status;
+import org.adempiere.core.domains.models.I_R_StatusCategory;
+import org.adempiere.core.domains.models.X_R_Request;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MRefList;
 import org.compiere.model.MRequest;
@@ -36,14 +42,22 @@ import org.compiere.util.CLogger;
 import org.compiere.util.Env;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
+import org.spin.backend.grpc.issue_management.Category;
 import org.spin.backend.grpc.issue_management.CreateIssueCommentRequest;
 import org.spin.backend.grpc.issue_management.CreateIssueRequest;
 import org.spin.backend.grpc.issue_management.DeleteIssueCommentRequest;
 import org.spin.backend.grpc.issue_management.DeleteIssueRequest;
 import org.spin.backend.grpc.issue_management.ExistsIssuesRequest;
 import org.spin.backend.grpc.issue_management.ExistsIssuesResponse;
+import org.spin.backend.grpc.issue_management.Group;
 import org.spin.backend.grpc.issue_management.Issue;
 import org.spin.backend.grpc.issue_management.IssueComment;
+import org.spin.backend.grpc.issue_management.ListBusinessPartnersRequest;
+import org.spin.backend.grpc.issue_management.ListBusinessPartnersResponse;
+import org.spin.backend.grpc.issue_management.ListCategoriesRequest;
+import org.spin.backend.grpc.issue_management.ListCategoriesResponse;
+import org.spin.backend.grpc.issue_management.ListGroupsRequest;
+import org.spin.backend.grpc.issue_management.ListGroupsResponse;
 import org.spin.backend.grpc.issue_management.IssueManagementGrpc.IssueManagementImplBase;
 import org.spin.backend.grpc.issue_management.ListIssueCommentsReponse;
 import org.spin.backend.grpc.issue_management.ListIssueCommentsRequest;
@@ -51,17 +65,27 @@ import org.spin.backend.grpc.issue_management.ListIssuesReponse;
 import org.spin.backend.grpc.issue_management.ListIssuesRequest;
 import org.spin.backend.grpc.issue_management.ListPrioritiesRequest;
 import org.spin.backend.grpc.issue_management.ListPrioritiesResponse;
+import org.spin.backend.grpc.issue_management.ListProjectsRequest;
+import org.spin.backend.grpc.issue_management.ListProjectsResponse;
 import org.spin.backend.grpc.issue_management.ListRequestTypesRequest;
 import org.spin.backend.grpc.issue_management.ListRequestTypesResponse;
 import org.spin.backend.grpc.issue_management.ListSalesRepresentativesRequest;
 import org.spin.backend.grpc.issue_management.ListSalesRepresentativesResponse;
+import org.spin.backend.grpc.issue_management.ListStatusCategoriesRequest;
+import org.spin.backend.grpc.issue_management.ListStatusCategoriesResponse;
 import org.spin.backend.grpc.issue_management.ListStatusesRequest;
 import org.spin.backend.grpc.issue_management.ListStatusesResponse;
+import org.spin.backend.grpc.issue_management.ListTaskStatusesRequest;
+import org.spin.backend.grpc.issue_management.ListTaskStatusesResponse;
 import org.spin.backend.grpc.issue_management.Priority;
+import org.spin.backend.grpc.issue_management.Project;
 import org.spin.backend.grpc.issue_management.RequestType;
+import org.spin.backend.grpc.issue_management.StatusCategory;
+import org.spin.backend.grpc.issue_management.TaskStatus;
 import org.spin.backend.grpc.issue_management.UpdateIssueCommentRequest;
 import org.spin.backend.grpc.issue_management.UpdateIssueRequest;
 import org.spin.backend.grpc.issue_management.User;
+import org.spin.backend.grpc.issue_management.BusinessPartner;
 import org.spin.base.db.LimitUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.form.issue_management.IssueManagementConvertUtil;
@@ -106,8 +130,12 @@ public class IssueManagement extends IssueManagementImplBase {
 	private ListRequestTypesResponse.Builder listRequestTypes(ListRequestTypesRequest request) {
 		String whereClause = null;
 		List<Object> filtersList = new ArrayList<>();
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause = " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -118,8 +146,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			null
 		)
 			.setParameters(filtersList)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 		;
 		int recordCount = queryRequestTypes.count();
@@ -141,7 +168,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequestTypes
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MRequestType.class)
 			.forEach(requestTypeId -> {
@@ -181,8 +208,12 @@ public class IssueManagement extends IssueManagementImplBase {
 			+ "AND (bp.IsEmployee='Y' OR bp.IsSalesRep='Y'))"
 		;
 		List<Object> filtersList = new ArrayList<>();
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -192,8 +223,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(filtersList)
 			.setOnlyActiveRecords(true)
 		;
@@ -216,7 +246,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		querySaleRepresentatives
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			.forEach(userId -> {
 				User.Builder builder = IssueManagementConvertUtil.convertUser(userId);
@@ -252,11 +282,14 @@ public class IssueManagement extends IssueManagementImplBase {
 		String whereClause = "AD_Reference_ID = ?";
 
 		List<Object> filtersList = new ArrayList<>();
-		filtersList.add(MRequest.PRIORITY_AD_Reference_ID);
+		filtersList.add(X_R_Request.PRIORITY_AD_Reference_ID);
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
+			filtersList.add(searchValue);
 		}
 
 		Query queryPriority = new Query(
@@ -265,8 +298,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -290,10 +322,89 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryPriority
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.list(MRefList.class)
 			.forEach(priority -> {
 				Priority.Builder builder = IssueManagementConvertUtil.convertPriority(priority);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listStatusCategories(ListStatusCategoriesRequest request, StreamObserver<ListStatusCategoriesResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListStatusCategoriesResponse.Builder entityValueList = listStatusCategories(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListStatusCategoriesResponse.Builder listStatusCategories(ListStatusCategoriesRequest request) {
+		List<Object> filtersList = new ArrayList<>();
+		StringBuffer whereClause = new StringBuffer();
+
+		//		For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			whereClause.append(
+				"UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+			);
+			filtersList.add(searchValue);
+		}
+
+		Query queryRequests = new Query(
+			Env.getCtx(),
+			I_R_StatusCategory.Table_Name,
+			whereClause.toString(),
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryRequests.count();
+
+		ListStatusCategoriesResponse.Builder builderList = ListStatusCategoriesResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryRequests
+			// .setLimit(limit, offset)
+			.getIDsAsList()
+			.forEach(statusCategoryId -> {
+				StatusCategory.Builder builder = IssueManagementConvertUtil.convertStatusCategory(
+					statusCategoryId
+				);
 				builderList.addRecords(builder);
 			});
 
@@ -338,8 +449,11 @@ public class IssueManagement extends IssueManagementImplBase {
 		List<Object> filtersList = new ArrayList<>();
 		filtersList.add(requestTypeId);
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
-			filtersList.add(request.getSearchValue());
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
 			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -349,8 +463,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			whereClause,
 			null
 		)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -374,11 +487,408 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequests
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MStatus.class)
 			.forEach(statusId -> {
 				org.spin.backend.grpc.issue_management.Status.Builder builder = IssueManagementConvertUtil.convertStatus(statusId);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listCategories(ListCategoriesRequest request, StreamObserver<ListCategoriesResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListCategoriesResponse.Builder entityValueList = listCategories(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListCategoriesResponse.Builder listCategories(ListCategoriesRequest request) {
+		List<Object> filtersList = new ArrayList<>();
+		StringBuffer whereClause = new StringBuffer();
+
+		//		For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			whereClause.append(
+				"UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+			);
+			filtersList.add(searchValue);
+		}
+
+		Query queryRequests = new Query(
+			Env.getCtx(),
+			I_R_Category.Table_Name,
+			whereClause.toString(),
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryRequests.count();
+
+		ListCategoriesResponse.Builder builderList = ListCategoriesResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryRequests
+			// .setLimit(limit, offset)
+			.getIDsAsList()
+			.forEach(categoryId -> {
+				Category.Builder builder = IssueManagementConvertUtil.convertCategory(
+					categoryId
+				);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listGroups(ListGroupsRequest request, StreamObserver<ListGroupsResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListGroupsResponse.Builder entityValueList = listGroups(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListGroupsResponse.Builder listGroups(ListGroupsRequest request) {
+		List<Object> filtersList = new ArrayList<>();
+		StringBuffer whereClause = new StringBuffer();
+
+		//		For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			whereClause.append(
+				"UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+			);
+			filtersList.add(searchValue);
+		}
+
+		Query queryRequests = new Query(
+			Env.getCtx(),
+			I_R_Group.Table_Name,
+			whereClause.toString(),
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryRequests.count();
+
+		ListGroupsResponse.Builder builderList = ListGroupsResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryRequests
+			// .setLimit(limit, offset)
+			.getIDsAsList()
+			.forEach(groupId -> {
+				Group.Builder builder = IssueManagementConvertUtil.convertGroup(
+					groupId
+				);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listTaskStatuses(ListTaskStatusesRequest request, StreamObserver<ListTaskStatusesResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListTaskStatusesResponse.Builder entityValueList = listTaskStatuses(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListTaskStatusesResponse.Builder listTaskStatuses(ListTaskStatusesRequest request) {
+		String whereClause = "AD_Reference_ID = ?";
+
+		List<Object> filtersList = new ArrayList<>();
+		filtersList.add(X_R_Request.TASKSTATUS_AD_Reference_ID);
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			filtersList.add(searchValue);
+			whereClause += " AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
+		}
+
+		Query queryPriority = new Query(
+			Env.getCtx(),
+			MRefList.Table_Name,
+			whereClause,
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryPriority.count();
+
+		ListTaskStatusesResponse.Builder builderList = ListTaskStatusesResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryPriority
+			// .setLimit(limit, offset)
+			.list(MRefList.class)
+			.forEach(priority -> {
+				TaskStatus.Builder builder = IssueManagementConvertUtil.convertTaskStatus(priority);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listBusinessPartners(ListBusinessPartnersRequest request, StreamObserver<ListBusinessPartnersResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListBusinessPartnersResponse.Builder entityValueList = listBusinessPartners(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListBusinessPartnersResponse.Builder listBusinessPartners(ListBusinessPartnersRequest request) {
+		List<Object> filtersList = new ArrayList<>();
+		StringBuffer whereClause = new StringBuffer();
+
+		//		For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			whereClause.append(
+				"(UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ " OR UPPER(Value) LIKE '%' || UPPER(?) || '%' )"
+
+			);
+			filtersList.add(searchValue);
+			filtersList.add(searchValue);
+		}
+
+		Query queryRequests = new Query(
+			Env.getCtx(),
+			I_C_BPartner.Table_Name,
+			whereClause.toString(),
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryRequests.count();
+
+		ListBusinessPartnersResponse.Builder builderList = ListBusinessPartnersResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryRequests
+			// .setLimit(limit, offset)
+			.getIDsAsList()
+			.forEach(businessPartnerId -> {
+				BusinessPartner.Builder builder = IssueManagementConvertUtil.convertBusinessPartner(
+					businessPartnerId
+				);
+				builderList.addRecords(builder);
+			});
+
+		return builderList;
+	}
+
+
+
+	@Override
+	public void listProjects(ListProjectsRequest request, StreamObserver<ListProjectsResponse> responseObserver) {
+		try {
+			if (request == null) {
+				throw new AdempiereException("Object Requested is Null");
+			}
+			ListProjectsResponse.Builder entityValueList = listProjects(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(Status.INTERNAL
+				.withDescription(e.getLocalizedMessage())
+				.withCause(e)
+				.asRuntimeException()
+			);
+		}
+	}
+
+	private ListProjectsResponse.Builder listProjects(ListProjectsRequest request) {
+		List<Object> filtersList = new ArrayList<>();
+		StringBuffer whereClause = new StringBuffer();
+
+		//		For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			whereClause.append(
+				"(UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ " OR UPPER(Value) LIKE '%' || UPPER(?) || '%' )"
+			);
+			filtersList.add(searchValue);
+			filtersList.add(searchValue);
+		}
+
+		Query queryRequests = new Query(
+			Env.getCtx(),
+			I_C_Project.Table_Name,
+			whereClause.toString(),
+			null
+		)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setOnlyActiveRecords(true)
+			.setParameters(filtersList)
+		;
+
+		int recordCount = queryRequests.count();
+
+		ListProjectsResponse.Builder builderList = ListProjectsResponse.newBuilder();
+		builderList.setRecordCount(recordCount);
+
+		String nexPageToken = null;
+		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
+		int limit = LimitUtil.getPageSize(request.getPageSize());
+		int offset = (pageNumber - 1) * limit;
+
+		// Set page token
+		if (LimitUtil.isValidNextPageToken(recordCount, offset, limit)) {
+			nexPageToken = LimitUtil.getPagePrefix(SessionManager.getSessionUuid()) + (pageNumber + 1);
+		}
+		builderList.setNextPageToken(
+			ValueManager.validateNull(nexPageToken)
+		);
+
+		queryRequests
+			// .setLimit(limit, offset)
+			.getIDsAsList()
+			.forEach(projectId -> {
+				Project.Builder builder = IssueManagementConvertUtil.convertProject(
+					projectId
+				);
 				builderList.addRecords(builder);
 			});
 
@@ -496,14 +1006,28 @@ public class IssueManagement extends IssueManagementImplBase {
 			;
 		}
 
-		if (!Util.isEmpty(request.getSearchValue(), false)) {
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
 			whereClause += " AND (UPPER(DocumentNo) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Subject) LIKE '%' || UPPER(?) || '%' "
 				+ "OR UPPER(Summary) LIKE '%' || UPPER(?) || '%' )"
 			;
-			parametersList.add(request.getSearchValue());
-			parametersList.add(request.getSearchValue());
-			parametersList.add(request.getSearchValue());
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+		}
+
+		// filter status by status category
+		if (request.getStatusCategoryId() > 0) {
+			whereClause += " AND EXISTS("
+				+ "SELECT 1 FROM R_Status AS sc "
+				+ "WHERE sc.R_StatusCategory_ID = ? "
+				+ "AND R_Request.R_StatusCategory_ID = sc.R_StatusCategory_ID"
+				+")"
+			;
+			parametersList.add(request.getStatusCategoryId());
 		}
 
 		Query queryRequests = new Query(
@@ -513,8 +1037,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			null
 		)
 			.setOnlyActiveRecords(true)
-			.setClient_ID()
-			// .setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
 			.setParameters(parametersList)
 		;
 
@@ -537,7 +1060,7 @@ public class IssueManagement extends IssueManagementImplBase {
 		);
 
 		queryRequests
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.setOrderBy(I_R_Request.COLUMNNAME_DateNextAction + " NULLS FIRST ")
 			.getIDsAsList()
 			// .list(MRequest.class)
@@ -633,6 +1156,31 @@ public class IssueManagement extends IssueManagementImplBase {
 		requestRecord.setDateNextAction(
 			TimeManager.getTimestampFromString(request.getDateNextAction())
 		);
+		if (request.getCategoryId() > 0) {
+			requestRecord.setR_Category_ID(
+				request.getCategoryId()
+			);
+		}
+		if (request.getGroupId() > 0) {
+			requestRecord.setR_Group_ID(
+				request.getGroupId()
+			);
+		}
+		if (Util.isEmpty(request.getTaskStatusValue(), true)) {
+			requestRecord.setTaskStatus(
+				request.getTaskStatusValue()
+			);
+		}
+		if (request.getBusinessPartnerId() > 0) {
+			requestRecord.setC_BPartner_ID(
+				request.getBusinessPartnerId()
+			);
+		}
+		if (request.getProjectId() > 0) {
+			requestRecord.setC_Project_ID(
+				request.getProjectId()
+			);
+		}
 		requestRecord.saveEx();
 
 		Issue.Builder builder = IssueManagementConvertUtil.convertRequest(requestRecord);
@@ -704,6 +1252,31 @@ public class IssueManagement extends IssueManagementImplBase {
 		if (request.getStatusId() > 0) {
 			int statusId = request.getStatusId();
 			requestRecord.setR_Status_ID(statusId);
+		}
+		if (request.getCategoryId() > 0) {
+			requestRecord.setR_Category_ID(
+				request.getCategoryId()
+			);
+		}
+		if (request.getGroupId() > 0) {
+			requestRecord.setR_Group_ID(
+				request.getGroupId()
+			);
+		}
+		if (Util.isEmpty(request.getTaskStatusValue(), true)) {
+			requestRecord.setTaskStatus(
+				request.getTaskStatusValue()
+			);
+		}
+		if (request.getBusinessPartnerId() > 0) {
+			requestRecord.setC_BPartner_ID(
+				request.getBusinessPartnerId()
+			);
+		}
+		if (request.getProjectId() > 0) {
+			requestRecord.setC_Project_ID(
+				request.getProjectId()
+			);
 		}
 
 		requestRecord.saveEx();
@@ -862,7 +1435,7 @@ public class IssueManagement extends IssueManagementImplBase {
 
 		List<IssueComment.Builder> issueCommentsList = new ArrayList<>();
 		queryRequestsUpdate
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(X_R_RequestUpdate.class)
 			.forEach(requestUpdateId -> {
@@ -872,7 +1445,7 @@ public class IssueManagement extends IssueManagementImplBase {
 			});
 
 		queryRequestsLog
-			.setLimit(limit, offset)
+			// .setLimit(limit, offset)
 			.getIDsAsList()
 			// .list(MRequestAction.class)
 			.forEach(requestActionId -> {
@@ -882,8 +1455,8 @@ public class IssueManagement extends IssueManagementImplBase {
 			});
 
 		issueCommentsList.stream()
-		//	TODO: Add support here... Other way?
-//			.sorted(Comparator.comparing(IssueComment.Builder::getCreated))
+			// TODO: Add support here... Other way?
+			// .sorted(Comparator.comparing(IssueComment.Builder::getCreated))
 			.forEach(issueComment -> {
 				builderList.addRecords(issueComment);
 			});

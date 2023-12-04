@@ -1476,11 +1476,17 @@ public class PointOfSalesForm extends StoreImplBase {
 			//	Count records
 			parameters.add(request.getCustomerId());
 			parameters.add(pos.getAD_Org_ID());
-			if(!Util.isEmpty(request.getSearchValue())) {
+
+			// search value
+			final String searchValue = ValueManager.getDecodeUrl(
+				request.getSearchValue()
+			);
+			if(!Util.isEmpty(searchValue, true)) {
 				whereClause.append(" AND UPPER(i.DocumentNo) LIKE '%' || UPPER(?) || '%'");
 				//	Add parameters
-				parameters.add(request.getSearchValue());
+				parameters.add(searchValue);
 			}
+
 			if(request.getDocumentTypeId() > 0) {
 				sql.append(" AND i.C_DocType_ID = ?");
 				parameters.add(request.getDocumentTypeId());
@@ -1492,8 +1498,9 @@ public class PointOfSalesForm extends StoreImplBase {
 			int index = 1;
 			pstmt.setInt(index++, request.getCustomerId());
 			pstmt.setInt(index++, pos.getAD_Org_ID());
+
 			if(whereClause.length() > 0) {
-				pstmt.setString(index++, request.getSearchValue());
+				pstmt.setString(index++, searchValue);
 			}
 			if(request.getDocumentTypeId() > 0) {
 				pstmt.setInt(index++, request.getDocumentTypeId());
@@ -5864,8 +5871,12 @@ public class PointOfSalesForm extends StoreImplBase {
 		StringBuffer whereClause = new StringBuffer();
 		//	Parameters
 		List<Object> parameters = new ArrayList<Object>();
+
 		//	For search value
-		if(!Util.isEmpty(request.getSearchValue())) {
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if(!Util.isEmpty(searchValue, true)) {
 			whereClause.append("IsSold = 'Y' "
 				+ "AND ("
 				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%'"
@@ -5874,10 +5885,10 @@ public class PointOfSalesForm extends StoreImplBase {
 				+ "OR UPPER(SKU) = UPPER(?)"
 				+ ")");
 			//	Add parameters
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
-			parameters.add(request.getSearchValue());
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
 		} 
 		//	for price list
 		if(whereClause.length() > 0) {
@@ -6135,7 +6146,17 @@ public class PointOfSalesForm extends StoreImplBase {
 	private ProductPrice.Builder getProductPrice(GetProductPriceRequest request) {
 		//	Get Product
 		MProduct product = null;
-		if(!Util.isEmpty(request.getSearchValue(), true)) {
+
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if(!Util.isEmpty(searchValue, true)) {
+			List<Object> parameters = new ArrayList<Object>();
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+			parameters.add(searchValue);
+
 			product = new Query(
 				Env.getCtx(),
 				I_M_Product.Table_Name,
@@ -6147,7 +6168,7 @@ public class PointOfSalesForm extends StoreImplBase {
 				+ ")",
 				null
 			)
-				.setParameters(request.getSearchValue(), request.getSearchValue(), request.getSearchValue(), request.getSearchValue())
+				.setParameters(parameters)
 				.setClient_ID()
 				.setOnlyActiveRecords(true)
 				.first();

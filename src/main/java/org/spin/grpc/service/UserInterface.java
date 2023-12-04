@@ -566,7 +566,7 @@ public class UserInterface extends UserInterfaceImplBase {
 	 * @param request
 	 * @return
 	 */
-	private Entity.Builder getTabEntity(GetTabEntityRequest request, ArrayList<Object> multiKeys) {
+	public static Entity.Builder getTabEntity(GetTabEntityRequest request, ArrayList<Object> multiKeys) {
 		if (request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
@@ -607,8 +607,11 @@ public class UserInterface extends UserInterfaceImplBase {
 
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
-		Entity.Builder valueObjectBuilder = Entity.newBuilder();
-		valueObjectBuilder.setTableName(table.getTableName());
+		Entity.Builder valueObjectBuilder = Entity.newBuilder()
+			.setTableName(table.getTableName())
+		;
+		CLogger log = CLogger.getCLogger(UserInterface.class);
+
 		try {
 			LinkedHashMap<String, MColumn> columnsMap = new LinkedHashMap<>();
 			//	Add field to map
@@ -625,20 +628,21 @@ public class UserInterface extends UserInterfaceImplBase {
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			if (rs.next()) {
-				Struct.Builder values = Struct.newBuilder();
+				Struct.Builder rowValues = Struct.newBuilder();
 				ResultSetMetaData metaData = rs.getMetaData();
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
-						String columnName = metaData.getColumnName (index);
+						String columnName = metaData.getColumnName(index);
 						MColumn field = columnsMap.get(columnName.toUpperCase());
-						Value.Builder valueBuilder = Value.newBuilder();
 						//	Display Columns
 						if(field == null) {
-							String value = rs.getString(index);
-							if(!Util.isEmpty(value)) {
-								valueBuilder = ValueManager.getValueFromString(value);
-							}
-							values.putFields(columnName, valueBuilder.build());
+							String displayValue = rs.getString(index);
+							Value.Builder displayValueBuilder = ValueManager.getValueFromString(displayValue);
+
+							rowValues.putFields(
+								columnName,
+								displayValueBuilder.build()
+							);
 							continue;
 						}
 						if (field.isKey()) {
@@ -647,17 +651,20 @@ public class UserInterface extends UserInterfaceImplBase {
 						//	From field
 						String fieldColumnName = field.getColumnName();
 						Object value = rs.getObject(index);
-						valueBuilder = ValueManager.getValueFromReference(
+						Value.Builder valueBuilder = ValueManager.getValueFromReference(
 							value,
 							field.getAD_Reference_ID()
 						);
-						values.putFields(fieldColumnName, valueBuilder.build());
+						rowValues.putFields(
+							fieldColumnName,
+							valueBuilder.build()
+						);
 					} catch (Exception e) {
 						log.severe(e.getLocalizedMessage());
 						e.printStackTrace();
 					}
 				}
-				valueObjectBuilder.setValues(values);
+				valueObjectBuilder.setValues(rowValues);
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
@@ -2214,7 +2221,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		sql = Env.parseContext(context, windowNo, sql, false);
 		if(Util.isEmpty(sql, true)
 				&& !Util.isEmpty(reference.Query, true)) {
-			throw new AdempiereException("@AD_Tab_ID@ @WhereClause@ @Unparseable@");
+			throw new AdempiereException("@AD_Reference_ID@ @WhereClause@ @Unparseable@");
 		}
 		String sqlWithRoleAccess = MRole.getDefault(context, false)
 			.addAccessSQL(
@@ -2469,7 +2476,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			//	Get from Query
 			rs = pstmt.executeQuery();
 			while(rs.next()) {
-				Struct.Builder values = Struct.newBuilder();
+				Struct.Builder rowValues = Struct.newBuilder();
 				ResultSetMetaData metaData = rs.getMetaData();
 
 				Entity.Builder entityBuilder = Entity.newBuilder();
@@ -2482,27 +2489,25 @@ public class UserInterface extends UserInterfaceImplBase {
 					try {
 						String columnName = metaData.getColumnName(index);
 						MBrowseField field = fieldsMap.get(columnName.toUpperCase());
-						Value.Builder valueBuilder = Value.newBuilder();;
 						//	Display Columns
 						if(field == null) {
-							String value = rs.getString(index);
-							if(!Util.isEmpty(value)) {
-								valueBuilder = ValueManager.getValueFromString(value);
-							}
-							values.putFields(
+							String displayValue = rs.getString(index);
+							Value.Builder displayValueBuilder = ValueManager.getValueFromString(displayValue);
+
+							rowValues.putFields(
 								columnName,
-								valueBuilder.build()
+								displayValueBuilder.build()
 							);
 							continue;
 						}
 						//	From field
 						String fieldColumnName = field.getAD_View_Column().getColumnName();
 						Object value = rs.getObject(index);
-						valueBuilder = ValueManager.getValueFromReference(
+						Value.Builder valueBuilder = ValueManager.getValueFromReference(
 							value,
 							field.getAD_Reference_ID()
 						);
-						values.putFields(
+						rowValues.putFields(
 							fieldColumnName,
 							valueBuilder.build()
 						);
@@ -2511,14 +2516,17 @@ public class UserInterface extends UserInterfaceImplBase {
 					}
 				}
 				//	
-				entityBuilder.setValues(values);
+				entityBuilder.setValues(rowValues);
 				builder.addRecords(entityBuilder.build());
 				recordCount++;
 			}
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
 		} finally {
 			DB.close(rs, pstmt);
+			rs = null;
+			pstmt = null;
 		}
 		//	Set record counts
 		if (builder.getRecordCount() <= 0) {
@@ -2527,6 +2535,8 @@ public class UserInterface extends UserInterfaceImplBase {
 		//	Return
 		return builder;
 	}
+
+
 
 	@Override
 	public void runCallout(RunCalloutRequest request, StreamObserver<org.spin.backend.grpc.user_interface.Callout> responseObserver) {

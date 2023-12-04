@@ -15,8 +15,6 @@
  *************************************************************************************/
 package org.spin.base.util;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -333,7 +331,9 @@ public class RecordUtil {
 		}
 
 		// URL decode to change characteres
-		String searchValue = URLDecoder.decode(search_value, StandardCharsets.UTF_8);
+		final String searchValue = ValueManager.getDecodeUrl(
+			search_value
+		);
 
 		String lang = Env.getAD_Language(Env.getCtx());
 		// search on trl table
@@ -539,22 +539,20 @@ public class RecordUtil {
 				Entity.Builder entityBuilder = Entity.newBuilder()
 					.setTableName(table.getTableName())
 				;
-				Struct.Builder values = Struct.newBuilder();
+				Struct.Builder rowValues = Struct.newBuilder();
 				ResultSetMetaData metaData = rs.getMetaData();
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
-						String columnName = metaData.getColumnName (index);
+						String columnName = metaData.getColumnName(index);
 						MColumn field = columnsMap.get(columnName.toUpperCase());
-						Value.Builder valueBuilder = Value.newBuilder();
 						//	Display Columns
 						if(field == null) {
-							String value = rs.getString(index);
-							if(!Util.isEmpty(value)) {
-								valueBuilder = ValueManager.getValueFromString(value);
-							}
-							values.putFields(
+							String displayValue = rs.getString(index);
+							Value.Builder displayValueBuilder = ValueManager.getValueFromString(displayValue);
+
+							rowValues.putFields(
 								columnName,
-								valueBuilder.build()
+								displayValueBuilder.build()
 							);
 							continue;
 						}
@@ -564,11 +562,11 @@ public class RecordUtil {
 						//	From field
 						String fieldColumnName = field.getColumnName();
 						Object value = rs.getObject(index);
-						valueBuilder = ValueManager.getValueFromReference(
+						Value.Builder valueBuilder = ValueManager.getValueFromReference(
 							value,
 							field.getAD_Reference_ID()
 						);
-						values.putFields(
+						rowValues.putFields(
 							fieldColumnName,
 							valueBuilder.build()
 						);
@@ -577,7 +575,7 @@ public class RecordUtil {
 					}
 				}
 				//	
-				entityBuilder.setValues(values);
+				entityBuilder.setValues(rowValues);
 				builder.addRecords(entityBuilder.build());
 				recordCount++;
 			}
@@ -592,4 +590,5 @@ public class RecordUtil {
 		//	Return
 		return builder;
 	}
+
 }
