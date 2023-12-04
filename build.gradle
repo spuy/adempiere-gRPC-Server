@@ -57,7 +57,7 @@ dependencies {
         ]
     )
 
-    implementation project(":spuy-core")
+    //implementation project(":spuy-core")
     implementation 'uy.solop:spuy-core:issue-redmine-20656-v-53'
 
 	implementation "io.netty:netty-handler:4.1.99.Final"
