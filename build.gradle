@@ -195,7 +195,7 @@ run {
 		environment 'JWT_EXPIRATION_TIME', 86400000
 	}
 	args = [
-		"/home/raulo/Desarrollo/workspace/Idea4/backend/resources/standalone.yaml"
+		"resources/standalone.yaml"
 	]
 }
 
