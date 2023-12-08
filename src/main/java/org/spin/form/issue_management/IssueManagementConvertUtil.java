@@ -163,8 +163,9 @@ public class IssueManagementConvertUtil {
 			)
 		;
 		if (user.getLogo_ID() > 0) {
-			MClientInfo clientInfo = MClientInfo.get(Env.getCtx(), Env.getAD_Client_ID(Env.getCtx()));
-			if (clientInfo != null && AttachmentUtil.getInstance().isValidForClient(clientInfo.getAD_Client_ID())) {
+			int clientId = Env.getAD_Client_ID(Env.getCtx());
+			MClientInfo clientInfo = MClientInfo.get(Env.getCtx(), clientId);
+			if (clientInfo != null && AttachmentUtil.getInstance().isValidForClient(clientId)) {
 				MADAttachmentReference attachmentReference = MADAttachmentReference.getByImageId(
 					Env.getCtx(),
 					clientInfo.getFileHandler_ID(),
@@ -247,7 +248,12 @@ public class IssueManagementConvertUtil {
 			.setDescription(
 				ValueManager.validateNull(requestType.getDescription())
 			)
-			.setDueDateTolerance(requestType.getDueDateTolerance())
+			.setDueDateTolerance(
+				requestType.getDueDateTolerance()
+			)
+			.setIsDefault(
+				requestType.isDefault()
+			)
 		;
 
 		final String whereClause = "R_StatusCategory_ID = ? AND IsDefault = 'Y' ";
@@ -322,6 +328,11 @@ public class IssueManagementConvertUtil {
 		builder.setId(status.getR_Status_ID())
 			.setName(
 				ValueManager.validateNull(status.getName())
+			)
+			.setValue(
+				ValueManager.validateNull(
+					status.getValue()
+				)
 			)
 			.setDescription(
 				ValueManager.validateNull(status.getDescription())
