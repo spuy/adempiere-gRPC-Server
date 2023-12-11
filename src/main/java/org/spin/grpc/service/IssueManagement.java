@@ -1243,6 +1243,7 @@ public class IssueManagement extends IssueManagementImplBase {
 
 		// fill values
 		requestRecord.setR_RequestType_ID(requestTypeId);
+		requestRecord.setR_Status_ID(request.getStatusId());
 		requestRecord.setSubject(request.getSubject());
 		requestRecord.setSummary(request.getSummary());
 		requestRecord.setSalesRep_ID(salesRepresentativeId);
@@ -1262,7 +1263,7 @@ public class IssueManagement extends IssueManagementImplBase {
 				request.getGroupId()
 			);
 		}
-		if (Util.isEmpty(request.getTaskStatusValue(), true)) {
+		if (!Util.isEmpty(request.getTaskStatusValue(), true)) {
 			requestRecord.setTaskStatus(
 				request.getTaskStatusValue()
 			);
@@ -1352,8 +1353,12 @@ public class IssueManagement extends IssueManagementImplBase {
 		requestRecord.setR_Group_ID(
 			request.getGroupId()
 		);
+		String taskStatus = null;
+		if (!Util.isEmpty(request.getTaskStatusValue(), true)) {
+			taskStatus = request.getTaskStatusValue();
+		}
 		requestRecord.setTaskStatus(
-			request.getTaskStatusValue()
+			taskStatus
 		);
 		requestRecord.setC_BPartner_ID(
 			request.getBusinessPartnerId()
