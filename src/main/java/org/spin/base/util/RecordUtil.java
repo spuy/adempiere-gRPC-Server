@@ -18,6 +18,7 @@ package org.spin.base.util;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,13 +109,8 @@ public class RecordUtil {
 	 * @return
 	 */
 	public static PO getEntity(Properties context, String tableName, String uuid, int recordId, String transactionName) {
-		if (Util.isEmpty(tableName, true)) {
-			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
-		}
-		MTable table = MTable.get(context, tableName);
-		if (table == null || table.getAD_Table_ID() <= 0) {
-			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
-		}
+		// Vaidate and get Table
+		final MTable table = RecordUtil.validateAndGetTable(tableName);
 		//	Validate ID
 		if (Util.isEmpty(uuid, true) && !isValidId(recordId, table.getAccessLevel())) {
 			throw new AdempiereException("@FillMandatory@ @Record_ID@ / @UUID@");
@@ -173,6 +169,25 @@ public class RecordUtil {
 		//	Get
 		return IDFinder.getIdFromUUID(Env.getCtx(), tableName, uuid, Env.getAD_Client_ID(Env.getCtx()), transactionName);
 	}
+
+
+
+	/**
+	 * Validate tableName and MTable, and get instance
+	 * @param tableName
+	 * @return
+	 */
+	public static MTable validateAndGetTable(String tableName) {
+		if (Util.isEmpty(tableName, true)) {
+			throw new AdempiereException("@FillMandatory@ @AD_Table_ID@");
+		}
+		MTable table = MTable.get(Env.getCtx(), tableName);
+		if (table == null || table.getAD_Table_ID() <= 0) {
+			throw new AdempiereException("@AD_Table_ID@ @NotFound@");
+		}
+		return table;
+	}
+
 
 
 	/**
@@ -510,6 +525,30 @@ public class RecordUtil {
 	public static Timestamp getDate() {
 		return TimeUtil.getDay(System.currentTimeMillis());
 	}
+
+
+
+	/**
+	 * Verify if exist a column
+	 * @param metaData
+	 * @param columnName
+	 * @return
+	 * @throws SQLException
+	 */
+	public static int getColumnIndex(ResultSetMetaData metaData, String columnName) throws SQLException {
+		if (metaData == null) {
+			return -1;
+		}
+		for(int columnIndex = 0; columnIndex <= metaData.getColumnCount(); columnIndex++) {
+			String metaDataColumnName = metaData.getColumnName(columnIndex);
+			if(metaDataColumnName != null && metaDataColumnName.toLowerCase().equals(columnName.toLowerCase())) {
+				return columnIndex;
+			}
+		}
+		return -1;
+	}
+
+
 
 	/**
 	 * Convert Entities List
