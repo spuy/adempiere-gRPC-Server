@@ -39,14 +39,6 @@ import org.adempiere.core.domains.models.I_AD_PrintFormatItem;
 import org.adempiere.core.domains.models.I_AD_Ref_List;
 import org.adempiere.core.domains.models.I_AD_User;
 import org.adempiere.core.domains.models.I_C_BP_BankAccount;
-import org.adempiere.core.domains.models.I_C_BP_Group;
-import org.adempiere.core.domains.models.I_C_BPartner;
-import org.adempiere.core.domains.models.I_C_Bank;
-import org.adempiere.core.domains.models.I_C_BankAccount;
-import org.adempiere.core.domains.models.I_C_BankStatement;
-import org.adempiere.core.domains.models.I_C_Campaign;
-import org.adempiere.core.domains.models.I_C_Charge;
-import org.adempiere.core.domains.models.I_C_City;
 import org.adempiere.core.domains.models.I_C_ConversionType;
 import org.adempiere.core.domains.models.I_C_Currency;
 import org.adempiere.core.domains.models.I_C_Invoice;
@@ -62,8 +54,6 @@ import org.adempiere.core.domains.models.X_C_Payment;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.model.GenericPO;
 import org.adempiere.pos.process.ReverseTheSalesTransaction;
-import org.adempiere.pos.services.CPOS;
-import org.adempiere.pos.util.POSTicketHandler;
 import org.compiere.model.MAllocationHdr;
 import org.compiere.model.MAllocationLine;
 import org.compiere.model.MAttributeSetInstance;
@@ -105,7 +95,6 @@ import org.compiere.model.PO;
 import org.compiere.model.Query;
 import org.compiere.process.DocAction;
 import org.compiere.process.ProcessInfo;
-import org.compiere.util.CCache;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.DisplayType;
@@ -138,7 +127,6 @@ import org.spin.pos.service.order.OrderManagement;
 import org.spin.pos.service.order.OrderUtil;
 import org.spin.pos.service.order.RMAUtil;
 import org.spin.pos.service.order.ReturnSalesOrder;
-import org.spin.pos.service.order.ReverseSalesTransaction;
 import org.spin.pos.service.pos.POS;
 import org.spin.pos.util.ColumnsAdded;
 import org.spin.pos.util.POSConvertUtil;
@@ -2176,9 +2164,36 @@ public class PointOfSalesForm extends StoreImplBase {
 		if (orderId <= 0) {
 			throw new AdempiereException("@FillMandatory@ @C_Order_ID@");
 		}
-		MOrder returnOrder = ReverseSalesTransaction.returnCompleteOrder(pos, orderId, request.getDescription());
+
+		AtomicReference<MOrder> order = new AtomicReference<>();
+		Trx.run(transactionName -> {
+			order.set(new MOrder(Env.getCtx(), orderId, transactionName));
+
+			int targetDocumentTypeId = RMAUtil.getReturnDocumentTypeId(order.get().getC_POS_ID(), pos.getC_POS_ID(), order.get().getC_DocTypeTarget_ID());
+			//	Set Document base for return
+			if(targetDocumentTypeId <= 0) {
+				targetDocumentTypeId = MDocType.getDocTypeBaseOnSubType(order.get().getAD_Org_ID(),
+						MDocType.DOCBASETYPE_SalesOrder , MDocType.DOCSUBTYPESO_ReturnMaterial);
+			}
+			ProcessInfo infoProcess = ProcessBuilder
+					.create(Env.getCtx())
+					.process(ReverseTheSalesTransaction.getProcessId())
+					.withoutTransactionClose()
+					.withRecordId(MOrder.Table_ID, orderId)
+					.withParameter("C_Order_ID", orderId)
+					.withParameter("Bill_BPartner_ID", order.get().getC_BPartner_ID())
+					.withParameter("IsCancelled", true)
+					.withParameter("C_DocTypeRMA_ID", targetDocumentTypeId)
+					.execute(transactionName);
+			MOrder returnOrder = new MOrder(Env.getCtx(), infoProcess.getRecord_ID(), transactionName);
+			if(!Util.isEmpty(request.getDescription())) {
+				returnOrder.setDescription(request.getDescription());
+				returnOrder.saveEx(transactionName);
+			}
+		});
+
 		//	Default
-		return ConvertUtil.convertOrder(returnOrder);
+		return ConvertUtil.convertOrder(order.get());
 	}
 
 	/**
