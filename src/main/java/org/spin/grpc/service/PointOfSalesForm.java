@@ -104,6 +104,8 @@ import org.compiere.util.MimeType;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
+import org.eevolution.model.MTaxGroup;
+import org.openup.LUY.util.CFEUtils;
 import org.spin.backend.grpc.common.Currency;
 import org.eevolution.services.dsl.ProcessBuilder;
 import org.spin.backend.grpc.common.ProcessLog;
@@ -2689,6 +2691,10 @@ public class PointOfSalesForm extends StoreImplBase {
 			//	Additional attributes
 			setAdditionalAttributes(businessPartner, request.getAdditionalAttributes().getFieldsMap());
 			//	Save it
+			if (businessPartner.getC_TaxGroup_ID() >= 0) {
+				Optional<MTaxGroup> taxGroup = CFEUtils.getRUT(Env.getCtx(), transactionName);
+				taxGroup.ifPresent(mTaxGroup -> businessPartner.setC_TaxGroup_ID(mTaxGroup.getC_TaxGroup_ID()));
+			}
 			businessPartner.saveEx(transactionName);
 			
 			// clear price list from business partner group
