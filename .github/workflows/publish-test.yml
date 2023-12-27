@@ -35,6 +35,8 @@ jobs:
       - run: find .
       - run: mv docker/backend-redmine20804v18 docker/adempiere-grpc-server
       - run: find .
+      - run: cd docker/adempiere-grpc-server
+      - run: docker build -t registry.digitalocean.com/spuy/backend:alpine
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
@@ -49,6 +51,5 @@ jobs:
 #          tags: |
 #            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
 #            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
-      - run: cd docker/adempiere-grpc-server
-      - run: docker build -t registry.digitalocean.com/spuy/backend:alpine
+
       - run: docker push registry.digitalocean.com/spuy/backend:alpine
