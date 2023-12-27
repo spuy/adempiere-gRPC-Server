@@ -303,34 +303,22 @@ jobs:
       - name: Unzip Asset
         run: |
           unzip adempiere-grpc-server.zip -d docker/
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
+
+      - name: DigitalOcean App Platform deployment
+        uses: digitalocean/app_action@v1.1.5 # replace this with current version from https://github.com/digitalocean/app_action/releases
         with:
+          app_name: my_DO_app
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      - name: Log in to DigitalOcean Container Registry with short-lived credentials
-        run: doctl registry login --expiry-seconds 600
-
-      #- name: Remove all old images
-      #  run: if [ ! -z "$(doctl registry repository list | grep "$(echo $IMAGE_NAME)")" ]; then doctl registry repository delete-manifest $(echo $IMAGE_NAME) $(doctl registry repository list-tags $(echo $IMAGE_NAME) | grep -o "sha.*") --force; else echo "No repository"; fi
-      - name: Push image in Docker Hub
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: docker/focal.Dockerfile
-          push: false
-          tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:${{ github.event.release.tag_name }}
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:latest
-      - name: Tag image to Registry
-        run: docker tag docker.io/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
-        with:
-          context: .
-          file: docker/focal.Dockerfile
-
-      - name: Push image to DigitalOcean Container Registry
-        #run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
-        run: docker push ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+          images: '[
+                  {
+                    "name": "backend",
+                    "image":{
+                      "registry_type": "DOCKER_HUB",
+                      "registry": "registry.digitalocean.com/spuy",
+                      "repository": "backend",
+                      "tag": "0.2"
+                    },
+                ]'
 
   # Publish docker image multiplatform in Docker Hub Registry to application
 #  push-grpc-proxy-imame-dhr:
