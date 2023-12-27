@@ -40,7 +40,10 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      - name: Push alpine image in Docker Hub
+      - run: doctl registry login --expiry-seconds 600
+             
+             
+             - name: Push alpine image in Docker Hub
         uses: docker/build-push-action@v4
         with:
           context: .
