@@ -22,12 +22,13 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: redmine20804v18
-      - name: Download build dist app
-        uses: actions/download-artifact@v3
-        with:
-          path: https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
+#      - name: Download build dist app
+#        uses: actions/download-artifact@v3
+#        with:
+#          path: https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
       - run: |
           pwd /
+          wget https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip /
           ls -alh
       - name: Unzip Asset
         run: |
