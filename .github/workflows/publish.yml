@@ -323,7 +323,7 @@ jobs:
             ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:latest
       - name: Tag image to Registry
-        run: docker tag ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+        run: docker tag docker.io/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
 
       - name: Push image to DigitalOcean Container Registry
         #run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
