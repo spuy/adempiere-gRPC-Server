@@ -32,6 +32,7 @@ jobs:
       - name: Unzip Asset
         run: |
           unzip *.zip -d docker/
+      - run: find .
       - run: mv docker/redmine20804v18 docker/adempiere-grpc-server
       - run: find .
       - name: Login to GitHub Container Registry
