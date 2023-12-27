@@ -313,8 +313,8 @@ jobs:
 
       #- name: Remove all old images
       #  run: if [ ! -z "$(doctl registry repository list | grep "$(echo $IMAGE_NAME)")" ]; then doctl registry repository delete-manifest $(echo $IMAGE_NAME) $(doctl registry repository list-tags $(echo $IMAGE_NAME) | grep -o "sha.*") --force; else echo "No repository"; fi
-      #- name: Tag image to Registry
-      #  run: docker tag ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+      - name: Tag image to Registry
+        run: docker tag ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
       - name: Push image in Docker Hub
         uses: docker/build-push-action@v4
         with:
