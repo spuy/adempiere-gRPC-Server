@@ -49,5 +49,6 @@ jobs:
 #          tags: |
 #            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
 #            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
-      - run: docker build -t registry.digitalocean.com/spuy/backend:alpine-${{ github.event.release.tag_name }} .
-      - run: docker push registry.digitalocean.com/spuy/backend:alpine-${{ github.event.release.tag_name }}
+      - run: cd docker/backend-redmine20804v18
+      - run: docker build -t registry.digitalocean.com/spuy/backend:alpine
+      - run: docker push registry.digitalocean.com/spuy/backend:alpine
