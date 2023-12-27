@@ -5,9 +5,9 @@
 name: Publish Project
 
 on:
-  release:
-    types:
-      - created
+#  release:
+#    types:
+#      - created
 
 jobs:
 
@@ -307,6 +307,7 @@ jobs:
       - name: DigitalOcean App Platform deployment
         uses: digitalocean/app_action@v1.1.5 # replace this with current version from https://github.com/digitalocean/app_action/releases
         with:
+          context: .
           app_name: my_DO_app
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           images: '[
