@@ -290,6 +290,8 @@ jobs:
 
   push-imame-dor:
     name: Push docker image to DigitalOcean Docker Registry
+    needs:
+      - check-docker-secrets
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
