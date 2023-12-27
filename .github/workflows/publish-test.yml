@@ -40,12 +40,14 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - run: doctl registry login --expiry-seconds 600
-      - name: Push alpine image in Docker Hub
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: docker/alpine.Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+#      - name: Push alpine image in Docker Hub
+#        uses: docker/build-push-action@v4
+#        with:
+#          context: .
+#          file: docker/alpine.Dockerfile
+#          push: true
+#          tags: |
+#            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
+#            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+      - run: docker build -t registry.digitalocean.com/spuy/backend:alpine-${{ github.event.release.tag_name }} .
+      - run: docker push registry.digitalocean.com/spuy/backend:alpine-${{ github.event.release.tag_name }}
