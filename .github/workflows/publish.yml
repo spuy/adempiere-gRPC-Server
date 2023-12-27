@@ -316,7 +316,7 @@ jobs:
 
       - name: Push image to DigitalOcean Container Registry
         #run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
-        run: docker push ${{ secrets.DIGITALOCEAN_REGISTRY }}/backend:${{ github.event.release.tag_name }}
+        run: docker push ${{ vars.DIGITALOCEAN_REGISTRY }}/backend:${{ github.event.release.tag_name }}
 
   # Publish docker image multiplatform in Docker Hub Registry to application
 #  push-grpc-proxy-imame-dhr:
