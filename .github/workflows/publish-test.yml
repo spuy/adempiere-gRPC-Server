@@ -39,8 +39,8 @@ jobs:
       - run: pwd
       - run: find .
       - run: |
-          cd docker/adempiere-grpc-server
-          docker build -t registry.digitalocean.com/spuy/backend:alpine docker -f alpine.Dockerfile
+          cd docker/adempiere-grpc-server/docker
+          docker build -t registry.digitalocean.com/spuy/backend:alpine . -f alpine.Dockerfile
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
