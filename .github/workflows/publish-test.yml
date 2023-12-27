@@ -28,7 +28,7 @@ jobs:
           path: https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
       - name: Unzip Asset
         run: |
-          unzip adempiere-grpc-server*.zip -d docker/
+          unzip *.zip -d docker/
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
