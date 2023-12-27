@@ -315,6 +315,16 @@ jobs:
       #  run: if [ ! -z "$(doctl registry repository list | grep "$(echo $IMAGE_NAME)")" ]; then doctl registry repository delete-manifest $(echo $IMAGE_NAME) $(doctl registry repository list-tags $(echo $IMAGE_NAME) | grep -o "sha.*") --force; else echo "No repository"; fi
       #- name: Tag image to Registry
       #  run: docker tag ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }} ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+      - name: Push image in Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/focal.Dockerfile
+          platforms: linux/amd64,linux/amd64/v2,linux/arm64/v8
+          push: false
+          tags: |
+            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:${{ github.event.release.tag_name }}
+            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:latest
 
       - name: Push image to DigitalOcean Container Registry
         #run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
