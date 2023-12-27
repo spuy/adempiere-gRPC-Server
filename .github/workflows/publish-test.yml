@@ -40,6 +40,7 @@ jobs:
         with:
           # CONFIGURE DOCKER SECRETS INTO REPOSITORY
           registry: registry.gitlab.com
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Push alpine image in Docker Hub
