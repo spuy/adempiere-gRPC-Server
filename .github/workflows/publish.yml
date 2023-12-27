@@ -320,7 +320,7 @@ jobs:
         with:
           context: .
           file: docker/focal.Dockerfile
-          platforms: inux/amd64/v2
+          platforms: linux/amd64/v2
           push: false
           tags: |
             ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:${{ github.event.release.tag_name }}
