@@ -25,7 +25,6 @@ jobs:
       - name: Download build dist app
         uses: actions/download-artifact@v3
         with:
-          name: adempiere-grpc-server.zip
           path: https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
       - name: Unzip Asset
         run: |
