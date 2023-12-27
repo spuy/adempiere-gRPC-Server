@@ -16,7 +16,6 @@ jobs:
   push-alpine-imame-dhr:
     name: Push docker alpine image to Docker Hub
     # Skip step based on secret
-    if: needs.check-docker-secrets.outputs.is_have_secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
