@@ -26,10 +26,9 @@ jobs:
 #        uses: actions/download-artifact@v3
 #        with:
 #          path: https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
-      - run: |
-          pwd /
-          wget https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip /
-          ls -alh
+      - run: pwd
+      - run: wget https://github.com/spuy/backend/archive/refs/tags/redmine20804v18.zip
+      - run: ls -alh
       - name: Unzip Asset
         run: |
           unzip *.zip -d docker/
