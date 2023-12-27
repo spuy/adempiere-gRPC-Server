@@ -32,7 +32,7 @@ jobs:
       - name: Unzip Asset
         run: |
           unzip *.zip -d docker/
-      - run: mv docker/redmine20804v18.zip docker/adempiere-grpc-server
+      - run: mv docker/redmine20804v18 docker/adempiere-grpc-server
       - run: find .
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
