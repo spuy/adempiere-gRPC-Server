@@ -4,6 +4,7 @@
 
 name: Publish Project
 
+on:
 
 
 jobs:
