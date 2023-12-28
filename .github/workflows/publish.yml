@@ -211,6 +211,26 @@ jobs:
             echo "is_have_secrets=false" >> $GITHUB_OUTPUT
           fi
 
+  check-digitalocean-secrets:
+    name: Check if Digitalocean registry information was set on secrets
+    needs:
+      - build-app
+    runs-on: ubuntu-latest
+    outputs:
+      is_have_secrets: ${{ steps.check_digitalocean_secrets_job.outputs.is_have_secrets }}
+    steps:
+      - id: check_digitalocean_secrets_job
+        run: |
+          if [[ "${{ vars.DIGITALOCEAN_REGISTRY }}" != "" ]]; \
+          then
+            echo "Secrets to use DigitalOcean container registry are configured in the repo"
+            echo "is_have_secrets=true" >> $GITHUB_OUTPUT
+          else
+            echo "Secrets to use DigitalOcean container registry were not configured in the repo"
+            echo "is_have_secrets=false" >> $GITHUB_OUTPUT
+          fi
+
+
   # TODO: Download .tar and add docker image without uncompress
   # Publish docker alpine image in Docker Hub Registry to application
   push-alpine-imame-dhr:
@@ -291,11 +311,11 @@ jobs:
   # TODO: Download .tar and add docker image without uncompress
   # Publish docker alpine image in Docker Hub Registry to application
   push-alpine-imame-dhr-do:
-    name: Push docker alpine image to DigitalOcean
+    name: Push docker alpine image to DigitalOcean Registry
     needs:
-      - check-docker-secrets
+      - check-digitalocean-secrets
     # Skip step based on secret
-    if: needs.check-docker-secrets.outputs.is_have_secrets == 'true'
+    if: needs.check-digitalocean-secrets.outputs.is_have_secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -310,7 +330,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: registry.digitalocean.com/spuy
+          registry: ${{ vars.DIGITALOCEAN_REGISTRY }}
           username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
@@ -321,5 +341,5 @@ jobs:
           file: docker/alpine.Dockerfile
           push: true
           tags: |
-            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
-            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+            ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
+            ${{ vars.DIGITALOCEAN_REGISTRY }}/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
