@@ -75,6 +75,9 @@ dependencies {
     implementation 'javax.xml.bind:jaxb-api:2.3.1'
 	implementation 'com.sun.xml.bind:jaxb-impl:2.3.1'
 	implementation 'com.sun.xml.bind:jaxb-core:2.3.0.1'
+    implementation 'javax.xml.bind:jaxb-api:2.4.0-b180830.0359'
+	implementation 'com.sun.xml.bind:jaxb-impl:3.0.0-M4'
+	implementation 'com.sun.xml.bind:jaxb-core:3.0.0-M4'
 	implementation 'javax.activation:activation:1.1.1'
 
 	implementation "${baseGroupId}:adempiere-grpc-utils:1.2.6"
@@ -108,6 +111,8 @@ dependencies {
 	implementation "${baseGroupId}:jasperreports:${baseVersion}"
 	//	Others
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+	implementation 'net.sf.jasperreports:jasperreports-fonts:6.21.0'
+
 	// ADempiere External Libraries
 	implementation 'com.github.jjYBdx4IL:ecs:1.4.2.1'
 	implementation 'com.itextpdf:itextpdf:5.5.13.3' // used by org.adempiere.pdf.iText7Document
