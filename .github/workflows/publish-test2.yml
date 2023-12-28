@@ -43,3 +43,12 @@ jobs:
           registry: registry.digitalocean.com/spuy
           username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      - name: Push alpine image in Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/alpine.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
+            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
