@@ -48,5 +48,5 @@ jobs:
           file: docker/alpine.Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
+            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
