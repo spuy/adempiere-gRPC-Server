@@ -291,7 +291,7 @@ jobs:
   # TODO: Download .tar and add docker image without uncompress
   # Publish docker alpine image in Docker Hub Registry to application
   push-alpine-imame-dhr-do:
-    name: Push docker alpine image to Docker Hub
+    name: Push docker alpine image to DigitalOcean
     needs:
       - check-docker-secrets
     # Skip step based on secret
@@ -321,5 +321,5 @@ jobs:
           file: docker/alpine.Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
-            ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
+            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine
+            registry.digitalocean.com/spuy/${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:alpine-${{ github.event.release.tag_name }}
