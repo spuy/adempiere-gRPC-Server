@@ -221,7 +221,8 @@ jobs:
     steps:
       - id: check_digitalocean_secrets_job
         run: |
-          if [[ "${{ vars.DIGITALOCEAN_REGISTRY }}" != "" ]]; \
+          if [[ "${{ vars.DIGITALOCEAN_REGISTRY }}" != "" && \
+                 ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} != "" ]]; \
           then
             echo "Secrets to use DigitalOcean container registry are configured in the repo"
             echo "is_have_secrets=true" >> $GITHUB_OUTPUT
@@ -308,9 +309,8 @@ jobs:
             ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_REPO_ADEMPIERE_GRPC_SERVER }}:latest
 
-  # TODO: Download .tar and add docker image without uncompress
-  # Publish docker alpine image in Docker Hub Registry to application
-  push-alpine-imame-dhr-do:
+  # Publish docker alpine image in DigitalOcean Registry to application
+  push-alpine-imame-dor:
     name: Push docker alpine image to DigitalOcean Registry
     needs:
       - check-digitalocean-secrets
