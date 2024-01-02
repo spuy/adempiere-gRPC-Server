@@ -38,6 +38,9 @@ service TrialBalanceDrillable {
 	rpc ListBudgets(ListBudgetsRequest) returns (data.ListLookupItemsResponse) {
 		option (google.api.http) = { get: "/trial-balance-drillable/budgets" };
 	}
+	rpc ListUser1(ListUser1Request) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = { get: "/trial-balance-drillable/user-1" };
+	}
 	rpc ListPeriods(ListPeriodsRequest) returns (data.ListLookupItemsResponse) {
 		option (google.api.http) = { get: "/trial-balance-drillable/periods" };
 	}
@@ -74,6 +77,16 @@ message ListOrganizationsRequest {
 }
 
 message ListBudgetsRequest {
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+}
+
+message ListUser1Request {
 	string filters = 1;
 	string sort_by = 2;
 	repeated string group_columns = 3;
@@ -129,6 +142,7 @@ message ListFactAcctSummaryRequest {
 	int32 accouting_from_id = 11;
 	int32 accouting_to_id = 12;
 	int32 report_cube_id = 13;
+	int32 user1_id = 14;
 }
 
 message ListFactAcctSummaryResponse {
@@ -155,6 +169,7 @@ message ExportRequest {
 	int32 accouting_from_id = 5;
 	int32 accouting_to_id = 6;
 	int32 report_cube_id = 7;
+	int32 user1_id = 8;
 }
 
 message ExportResponse {
