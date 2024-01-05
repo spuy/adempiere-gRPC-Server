@@ -95,7 +95,7 @@ dependencies {
 	// Business Processors (To Task's and Schedulers)
 	implementation "${baseGroupId}:adempiere-business-processors:1.0.5"
 	// Engine as Queue
-	implementation "${baseGroupId}:adempiere-kafka-connector:1.0.2"
+	implementation "${baseGroupId}:adempiere-kafka-connector:1.0.8"
 	// Third part access using JWT
 	implementation "${baseGroupId}:adempiere-jwt-token:1.0.2"
 }
