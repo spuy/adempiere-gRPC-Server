@@ -145,7 +145,6 @@ import org.spin.backend.grpc.user_interface.UpdateBrowserEntityRequest;
 import org.spin.backend.grpc.user_interface.UpdateTabEntityRequest;
 import org.spin.backend.grpc.user_interface.UserInterfaceGrpc.UserInterfaceImplBase;
 import org.spin.base.db.CountUtil;
-import org.spin.base.db.LimitUtil;
 import org.spin.base.db.OrderByUtil;
 import org.spin.base.db.ParameterUtil;
 import org.spin.base.db.QueryUtil;
@@ -162,6 +161,7 @@ import org.spin.grpc.service.ui.UserInterfaceConvertUtil;
 import org.spin.grpc.service.ui.UserInterfaceLogic;
 import org.spin.model.MADContextInfo;
 import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.db.LimitUtil;
 import org.spin.service.grpc.util.value.BooleanManager;
 import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.TimeManager;
@@ -205,25 +205,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		}
 	}
 
-	@Override
-	public void listLookupItems(ListLookupItemsRequest request, StreamObserver<ListLookupItemsResponse> responseObserver) {
-		try {
-			if(request == null) {
-				throw new AdempiereException("Lookup Request Null");
-			}
 
-			ListLookupItemsResponse.Builder entityValueList = listLookupItems(request);
-			responseObserver.onNext(entityValueList.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			e.printStackTrace();
-			responseObserver.onError(Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException());
-		}
-	}
 
 	@Override
 	public void updateBrowserEntity(UpdateBrowserEntityRequest request, StreamObserver<Entity> responseObserver) {
@@ -1834,7 +1816,14 @@ public class UserInterface extends UserInterfaceImplBase {
 
 		//	Convert value from type
 		if (DisplayType.isID(referenceId) || referenceId == DisplayType.Integer) {
-			defaultValueAsObject = NumberManager.getIntegerFromObject(defaultValueAsObject);
+			Integer integerValue = NumberManager.getIntegerFromObject(defaultValueAsObject);
+			if (integerValue == null && defaultValueAsObject != null
+				&& (DisplayType.Search == referenceId || DisplayType.Table == referenceId)) {
+					// EntityType, AD_Language columns
+				;
+			} else {
+				defaultValueAsObject = integerValue;
+			}
 		} else if (DisplayType.isNumeric(referenceId)) {
 			defaultValueAsObject = NumberManager.getIntegerFromObject(defaultValueAsObject);
 		}
@@ -2109,6 +2098,29 @@ public class UserInterface extends UserInterfaceImplBase {
 		return builder;
 	}
 
+
+
+	@Override
+	public void listLookupItems(ListLookupItemsRequest request, StreamObserver<ListLookupItemsResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Lookup Request Null");
+			}
+
+			ListLookupItemsResponse.Builder entityValueList = listLookupItems(request);
+			responseObserver.onNext(entityValueList.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
+			);
+		}
+	}
 
 	/**
 	 * Convert Object Request to list

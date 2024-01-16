@@ -50,13 +50,13 @@ jobs:
         with:
           name: adempiere-grpc-server.pb
           path: build/descriptors/adempiere-grpc-server.pb
-          
+
       - name: Upload envoy file artifact
         uses: actions/upload-artifact@v3
         with:
           name: envoy.yaml
           path: resources/envoy.yaml
-          
+
       - name: Upload dist app zip artifact
         uses: actions/upload-artifact@v3
         with:
@@ -80,6 +80,7 @@ jobs:
         with:
           name: adempiere-grpc-server.tar.MD5
           path: build/release/adempiere-grpc-server.tar.MD5
+
 
 
   # Check secrets to push artifact in maven registry
@@ -159,7 +160,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           args: envoy.yaml/envoy.yaml
-          
+
       - name: Upload zip
         uses: skx/github-action-publish-binaries@master
         env:

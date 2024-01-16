@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2018-2023 E.R.P. Consultores y Asociados, C.A.                     *
+ * Copyright (C) 2018-2024 E.R.P. Consultores y Asociados, C.A.                     *
  * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
  * This program is free software: you can redistribute it and/or modify             *
  * it under the terms of the GNU General Public License as published by             *
@@ -12,7 +12,7 @@
  * You should have received a copy of the GNU General Public License                *
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
-package org.spin.grpc.service;
+package org.spin.grpc.service.form.match_po_receipt_invoice;
 
 import org.adempiere.exceptions.AdempiereException;
 
@@ -63,10 +63,11 @@ import org.spin.backend.grpc.form.match_po_receipt_invoice.ProcessRequest;
 import org.spin.backend.grpc.form.match_po_receipt_invoice.ProcessResponse;
 import org.spin.backend.grpc.form.match_po_receipt_invoice.Product;
 import org.spin.backend.grpc.form.match_po_receipt_invoice.MatchPORReceiptInvoiceGrpc.MatchPORReceiptInvoiceImplBase;
-import org.spin.base.db.LimitUtil;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.ReferenceUtil;
+import org.spin.grpc.service.UserInterface;
 import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.db.LimitUtil;
 import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
@@ -97,10 +98,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -169,7 +172,11 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 				valuesOrder
 			)
 		;
-		builderList.addRecords(lookupOrder);
+		builderList.addRecords(lookupOrder)
+			.setRecordCount(
+				builderList.getRecordsList().size()
+			)
+		;
 
 		return builderList;
 	}
@@ -188,10 +195,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -204,7 +213,7 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 
 		// Receipt -> Invocie / Purchase Order
 		if (matchTypeFrom == MatchType.RECEIPT) {
-				// Invoice
+			// Invoice
 			Struct.Builder valuesInvoice = Struct.newBuilder()
 				.putFields(LookupUtil.VALUE_COLUMN_KEY,
 					ValueManager.getValueFromInt(
@@ -268,6 +277,11 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			builderList.addRecords(lookupReceipt);
 		}
 
+		builderList.setRecordCount(
+				builderList.getRecordsList().size()
+			)
+		;
+
 		return builderList;
 	}
 
@@ -283,10 +297,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -338,7 +354,11 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 				valuesMatched
 			)
 		;
-		builderList.addRecords(lookupMatched);
+		builderList.addRecords(lookupMatched)
+			.setRecordCount(
+				builderList.getRecordsList().size()
+			)
+		;
 
 		return builderList;
 	}
@@ -357,10 +377,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -400,10 +422,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -518,10 +542,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -531,9 +557,9 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 		int matchFromType = request.getMatchFromTypeValue();
 		int matchToType = request.getMatchToTypeValue();
 
-		final String dateColumn = org.spin.form.match_po_receipt_invoice.Util.getDateColumn(matchFromType);
-		final String sql = org.spin.form.match_po_receipt_invoice.Util.getSQL(isMatched, matchFromType, matchToType);
-		final String groupBy = org.spin.form.match_po_receipt_invoice.Util.getGroupBy(isMatched, matchFromType);
+		final String dateColumn = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getDateColumn(matchFromType);
+		final String sql = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getSQL(isMatched, matchFromType, matchToType);
+		final String groupBy = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getGroupBy(isMatched, matchFromType);
 
 		String whereClause = "";
 		if (request.getProductId() > 0) {
@@ -579,12 +605,13 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			while (rs.next()) {
 				recordCount++;
 
-				Matched.Builder matchedBuilder = org.spin.form.match_po_receipt_invoice.Util.convertMatched(rs);
+				Matched.Builder matchedBuilder = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.convertMatched(rs);
 				builderList.addRecords(matchedBuilder);
 			}
 		}
 		catch (SQLException e) {
 			log.log(Level.SEVERE, sql, e);
+			e.printStackTrace();
 		}
 		finally {
 			DB.close(rs, pstmt);
@@ -611,10 +638,12 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
@@ -625,20 +654,23 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 		int matchToType = request.getMatchToTypeValue();
 		int matchFromSelectedId = request.getMatchFromSelectedId();
 
-		final String dateColumn = org.spin.form.match_po_receipt_invoice.Util.getDateColumn(matchFromType);
-		final String sql = org.spin.form.match_po_receipt_invoice.Util.getSQL(isMatched, matchFromType, matchToType);
-		final String groupBy = org.spin.form.match_po_receipt_invoice.Util.getGroupBy(isMatched, matchFromType);
+		final String dateColumn = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getDateColumn(matchFromType);
+		final String sql = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getSQL(isMatched, matchFromType, matchToType);
+		final String groupBy = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getGroupBy(isMatched, matchFromType);
 
 		String whereClause = "";
+
+		// always same vendor
+		if (request.getVendorId() <= 0) {
+			throw new AdempiereException("@FillMandatory@ @Vendor@");
+		}
+		whereClause += " AND hdr.C_BPartner_ID = " + request.getVendorId();
+
+		// always same product
 		if (request.getProductId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @M_Product_ID@");
 		}
 		whereClause += " AND lin.M_Product_ID = " + request.getProductId();
-
-		if (request.getVendorId() <= 0) {
-			throw new AdempiereException("@FillMandatory@ @C_BPartner_ID@");
-		}
-		whereClause += " AND hdr.C_BPartner_ID = " + request.getVendorId();
 
 		// Date filter
 		Timestamp dateFrom = ValueManager.getDateFromTimestampDate(
@@ -658,8 +690,8 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 		}
 
 		if (request.getIsSameQuantity()) {
-			final String quantityColumn = org.spin.form.match_po_receipt_invoice.Util.getQuantityColumn(matchFromType);
-			Matched.Builder matchedFromSelected = org.spin.form.match_po_receipt_invoice.Util.getMatchedSelectedFrom(matchFromSelectedId, isMatched, matchFromType, matchToType);
+			final String quantityColumn = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getQuantityColumn(matchFromType);
+			Matched.Builder matchedFromSelected = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getMatchedSelectedFrom(matchFromSelectedId, isMatched, matchFromType, matchToType);
 			BigDecimal quantity = NumberManager.getBigDecimalFromString(
 				matchedFromSelected.getQuantity()
 			);
@@ -685,12 +717,13 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			while (rs.next()) {
 				recordCount++;
 
-				Matched.Builder matchedBuilder = org.spin.form.match_po_receipt_invoice.Util.convertMatched(rs);
+				Matched.Builder matchedBuilder = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.convertMatched(rs);
 				builderList.addRecords(matchedBuilder);
 			}
 		}
 		catch (SQLException e) {
 			log.log(Level.SEVERE, sql, e);
+			e.printStackTrace();
 		}
 		finally {
 			DB.close(rs, pstmt);
@@ -717,17 +750,19 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 			responseObserver.onCompleted();
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
-			responseObserver.onError(Status.INTERNAL
-				.withDescription(e.getLocalizedMessage())
-				.withCause(e)
-				.asRuntimeException()
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
 			);
 		}
 	}
 
 	private ProcessResponse.Builder process(ProcessRequest request) {
 		if (request.getMatchFromSelectedId() <= 0) {
-			throw new AdempiereException("");
+			throw new AdempiereException("Without @Selection@");
 		}
 
 		AtomicReference<String> atomicStatus = new AtomicReference<String>();
@@ -742,7 +777,7 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 
 			boolean isMatchToOrder = MatchType.PURCHASE_ORDER == request.getMatchToType();
 
-			Matched.Builder matchedFromSelected = org.spin.form.match_po_receipt_invoice.Util.getMatchedSelectedFrom(
+			Matched.Builder matchedFromSelected = org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.getMatchedSelectedFrom(
 				request.getMatchFromSelectedId(),
 				isMatchMode,
 				request.getMatchFromType().getNumber(),
@@ -793,7 +828,7 @@ public class MatchPOReceiptInvoice extends MatchPORReceiptInvoiceImplBase {
 					lineId = matchedFromSelected.getId();
 				}
 
-				org.spin.form.match_po_receipt_invoice.Util.createMatchRecord(
+				org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoiceUtil.createMatchRecord(
 					isInvoice,
 					inOutLineId,
 					lineId,

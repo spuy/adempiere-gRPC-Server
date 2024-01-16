@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import org.adempiere.core.domains.models.I_AD_PInstance;
 import org.adempiere.core.domains.models.I_AD_PInstance_Log;
@@ -58,7 +59,8 @@ import org.spin.backend.grpc.common.ReportOutput;
 import org.spin.backend.grpc.logs.ChangeLog;
 import org.spin.backend.grpc.logs.EntityEventType;
 import org.spin.backend.grpc.logs.EntityLog;
-import org.spin.backend.grpc.logs.ListEntityLogsResponse;
+import org.spin.service.grpc.util.value.BooleanManager;
+import org.spin.service.grpc.util.value.TimeManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Struct;
@@ -156,11 +158,18 @@ public class LogsConvertUtil {
 	 * @param recordLog
 	 * @return
 	 */
-	public static ListEntityLogsResponse.Builder convertRecordLog(List<MChangeLog> recordLogList) {
+	public static List<EntityLog.Builder> convertRecordLog(List<MChangeLog> recordLogList) {
 		Map<Integer, EntityLog.Builder> indexMap = new HashMap<Integer, EntityLog.Builder>();
-		recordLogList.stream().filter(recordLog -> !indexMap.containsKey(recordLog.getAD_ChangeLog_ID())).forEach(recordLog -> {
-			indexMap.put(recordLog.getAD_ChangeLog_ID(), convertRecordLogHeader(recordLog));
-		});
+		recordLogList.stream()
+			.filter(recordLog -> {
+				return !indexMap.containsKey(recordLog.getAD_ChangeLog_ID());
+			})
+			// .sorted(
+			// 	Comparator.comparing(MChangeLog::getCreated)
+			// )
+			.forEach(recordLog -> {
+				indexMap.put(recordLog.getAD_ChangeLog_ID(), convertRecordLogHeader(recordLog));
+			});
 		//	convert changes
 		recordLogList.forEach(recordLog -> {
 			ChangeLog.Builder changeLog = convertChangeLog(recordLog);
@@ -168,9 +177,46 @@ public class LogsConvertUtil {
 			recordLogBuilder.addChangeLogs(changeLog);
 			indexMap.put(recordLog.getAD_ChangeLog_ID(), recordLogBuilder);
 		});
-		ListEntityLogsResponse.Builder builder = ListEntityLogsResponse.newBuilder();
-		indexMap.values().stream().forEach(recordLog -> builder.addEntityLogs(recordLog));
-		return builder;
+
+		List<EntityLog.Builder> entitiesListBuilder = indexMap.values().stream()
+			// .sorted(
+			// 	Comparator.comparing(EntityLog.Builder::getLogDate)
+			// 		.reversed()
+			// )
+			.sorted((log1, log2) -> {
+				Timestamp from = TimeManager.convertValueToDate(
+					log1.getLogDate()
+				);
+
+				Timestamp to = TimeManager.convertValueToDate(
+					log2.getLogDate()
+				);
+
+				if (from == null || to == null) {
+					// prevent Null Pointer Exception
+					return 1;
+				}
+				int compared = to.compareTo(from);
+				if (compared == 0) {
+					// if is insert down
+					if (log1.getEventType() == EntityEventType.INSERT) {
+						return 1;
+					} else if (log2.getEventType() == EntityEventType.INSERT) {
+						return -1;
+					}
+					// if is delete up
+					if (log1.getEventType() == EntityEventType.DELETE) {
+						return -1;
+					} else if (log2.getEventType() == EntityEventType.DELETE) {
+						return 1;
+					}
+				}
+				return compared;
+			})
+			.collect(Collectors.toList())
+		;
+
+		return entitiesListBuilder;
 	}
 
 	/**
@@ -234,8 +280,8 @@ public class LogsConvertUtil {
 				;
 			} else if (column.getAD_Reference_ID() == DisplayType.YesNo) {
 				if (oldValue != null) {
-					boolean yes = oldValue.equals("true") || oldValue.equals("Y");
-					displayOldValue = Msg.getMsg(Env.getCtx(), yes ? "Y" : "N");
+					boolean yes = BooleanManager.getBooleanFromString(oldValue);
+					displayOldValue = BooleanManager.getBooleanToString(yes, true);
 				}
 				if (newValue != null) {
 					boolean yes = newValue.equals("true") || newValue.equals("Y");
