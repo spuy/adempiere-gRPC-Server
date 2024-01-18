@@ -17,7 +17,8 @@ package org.spin.base.db;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.adempiere.core.domains.models.I_AD_WF_Node;
+import org.adempiere.core.domains.models.I_AD_ChangeLog;
+import org.adempiere.core.domains.models.X_AD_Reference;
 import org.adempiere.model.MBrowse;
 import org.adempiere.model.MBrowseField;
 import org.adempiere.model.MView;
@@ -34,6 +35,7 @@ import org.compiere.util.Util;
 import org.spin.base.util.LookupUtil;
 import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ReferenceUtil;
+import org.spin.service.grpc.util.db.FromUtil;
 import org.spin.util.ASPUtil;
 
 public class QueryUtil {
@@ -72,15 +74,32 @@ public class QueryUtil {
 			int displayTypeId = column.getAD_Reference_ID();
 			String columnName = column.getColumnName();
 
-			if (displayTypeId == DisplayType.Button) {
-				if (columnName.equals(I_AD_WF_Node.COLUMNNAME_DocAction)) {
-					displayTypeId = DisplayType.List;
+			//	Reference Value
+			int referenceValueId = column.getAD_Reference_Value_ID();
+
+			if (DisplayType.Button == displayTypeId) {
+				//	Reference Value
+				if (referenceValueId > 0) {
+					X_AD_Reference reference = new X_AD_Reference(Env.getCtx(), referenceValueId, null);
+					if (reference != null && reference.getAD_Reference_ID() > 0) {
+						// overwrite display type to Table or List
+						if (X_AD_Reference.VALIDATIONTYPE_TableValidation.equals(reference.getValidationType())) {
+							displayTypeId = DisplayType.Table;
+						} else {
+							displayTypeId = DisplayType.List;
+						}
+					}
+				} else if (columnName.equals(I_AD_ChangeLog.COLUMNNAME_Record_ID)) {
+					// int tableId = Env.getContextAsInt(Env.getCtx(), 0, I_AD_Table.COLUMNNAME_AD_Table_ID);
+					// MTable tableButton = MTable.get(Env.getCtx(), tableId);
+					// String tableKeyColumn = tableButton.getTableName() + "_ID";
+					// columnName = tableKeyColumn;
+					// // overwrite display type to Table Direct
+					// displayTypeId = DisplayType.TableDir;
 				}
 			}
-			if (ReferenceUtil.validateReference(displayTypeId)) {
-				//	Reference Value
-				int referenceValueId = column.getAD_Reference_Value_ID();
 
+			if (ReferenceUtil.validateReference(displayTypeId)) {
 				//	Validation Code
 				ReferenceInfo referenceInfo = ReferenceUtil.getInstance(Env.getCtx())
 					.getReferenceInfo(
@@ -154,9 +173,32 @@ public class QueryUtil {
 			if (displayTypeId <= 0) {
 				displayTypeId = column.getAD_Reference_ID();
 			}
-			if (displayTypeId == DisplayType.Button) {
-				if (columnName.equals(I_AD_WF_Node.COLUMNNAME_DocAction)) {
-					displayTypeId = DisplayType.List;
+
+			//	Reference Value
+			int referenceValueId = field.getAD_Reference_Value_ID();
+			if(referenceValueId <= 0) {
+				referenceValueId = column.getAD_Reference_Value_ID();
+			}
+
+			if (DisplayType.Button == displayTypeId) {
+				//	Reference Value
+				if (referenceValueId > 0) {
+					X_AD_Reference reference = new X_AD_Reference(Env.getCtx(), referenceValueId, null);
+					if (reference != null && reference.getAD_Reference_ID() > 0) {
+						// overwrite display type to Table or List
+						if (X_AD_Reference.VALIDATIONTYPE_TableValidation.equals(reference.getValidationType())) {
+							displayTypeId = DisplayType.Table;
+						} else {
+							displayTypeId = DisplayType.List;
+						}
+					}
+				} else if (columnName.equals(I_AD_ChangeLog.COLUMNNAME_Record_ID)) {
+					// int tableId = Env.getContextAsInt(Env.getCtx(), 0, I_AD_Table.COLUMNNAME_AD_Table_ID);
+					// MTable tableButton = MTable.get(Env.getCtx(), tableId);
+					// String tableKeyColumn = tableButton.getTableName() + "_ID";
+					// columnName = tableKeyColumn;
+					// // overwrite display type to Table Direct
+					// displayTypeId = DisplayType.TableDir;
 				}
 			}
 			if (ReferenceUtil.validateReference(displayTypeId)) {
@@ -170,12 +212,6 @@ public class QueryUtil {
 					;
 					queryToAdd.append(displayColumnSQL);
 					continue;
-				}
-
-				//	Reference Value
-				int referenceValueId = field.getAD_Reference_Value_ID();
-				if(referenceValueId == 0) {
-					referenceValueId = column.getAD_Reference_Value_ID();
 				}
 
 				//	Validation Code
