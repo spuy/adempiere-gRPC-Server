@@ -109,15 +109,16 @@ import org.openup.LUY.util.CFEUtils;
 import org.spin.backend.grpc.common.Currency;
 import org.eevolution.services.dsl.ProcessBuilder;
 import org.spin.backend.grpc.common.ProcessLog;
-import org.spin.backend.grpc.common.ProductPrice;
 import org.spin.backend.grpc.common.RunBusinessProcessRequest;
+import org.spin.backend.grpc.core_functionality.Currency;
+import org.spin.backend.grpc.core_functionality.ProductPrice;
 import org.spin.backend.grpc.pos.*;
 import org.spin.backend.grpc.pos.StoreGrpc.StoreImplBase;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.DocumentUtil;
 import org.spin.base.util.FileUtil;
 import org.spin.base.util.RecordUtil;
-import org.spin.base.util.convert.ConvertCommon;
+import org.spin.grpc.service.core_functionality.CoreFunctionalityConvert;
 import org.spin.pos.service.POSLogic;
 import org.spin.pos.service.bank.BankManagement;
 import org.spin.pos.service.cash.CashManagement;
@@ -1503,7 +1504,7 @@ public class PointOfSalesForm extends StoreImplBase {
 						)
 					)
 					.setCurrency(
-						ConvertCommon.convertCurrency(
+						CoreFunctionalityConvert.convertCurrency(
 							rs.getInt("C_Currency_ID")
 						)
 					)
@@ -1812,7 +1813,7 @@ public class PointOfSalesForm extends StoreImplBase {
 						)
 					)
 					.setCurrency(
-						ConvertCommon.convertCurrency(
+						CoreFunctionalityConvert.convertCurrency(
 							rs.getInt("C_Currency_ID")
 						)
 					)
@@ -2070,7 +2071,7 @@ public class PointOfSalesForm extends StoreImplBase {
 					)
 				)
 				.setDocumentType(
-					ConvertCommon.convertDocumentType(
+					CoreFunctionalityConvert.convertDocumentType(
 						bankStatement.getC_DocType_ID()
 					)
 				)
@@ -3221,14 +3222,14 @@ public class PointOfSalesForm extends StoreImplBase {
 			;
 			if(availablePaymentMethod.get_ValueAsInt("RefundReferenceCurrency_ID") > 0) {
 				tenderTypeValue.setRefundReferenceCurrency(
-					ConvertCommon.convertCurrency(
+					CoreFunctionalityConvert.convertCurrency(
 						availablePaymentMethod.get_ValueAsInt("RefundReferenceCurrency_ID")
 					)
 				);
 			}
 			if(availablePaymentMethod.get_ValueAsInt("ReferenceCurrency_ID") > 0) {
 				tenderTypeValue.setReferenceCurrency(
-					ConvertCommon.convertCurrency(
+					CoreFunctionalityConvert.convertCurrency(
 						availablePaymentMethod.get_ValueAsInt("ReferenceCurrency_ID")
 					)
 				);
@@ -3335,7 +3336,7 @@ public class PointOfSalesForm extends StoreImplBase {
 		query.setLimit(limit, offset)
 			.getIDsAsList()
 			.forEach(currencyId -> {
-				Currency.Builder currencyBuilder = ConvertCommon.convertCurrency(currencyId);
+				Currency.Builder currencyBuilder = CoreFunctionalityConvert.convertCurrency(currencyId);
 				builder.addCurrencies(currencyBuilder);
 			});
 		//	
@@ -5311,7 +5312,11 @@ public class PointOfSalesForm extends StoreImplBase {
 			)
 			.setIsModifyPrice(pos.isModifyPrice())
 			.setIsPosRequiredPin(pos.isPOSRequiredPIN())
-			.setSalesRepresentative(ConvertUtil.convertSalesRepresentative(MUser.get(pos.getCtx(), pos.getSalesRep_ID())))
+			.setSalesRepresentative(
+				CoreFunctionalityConvert.convertSalesRepresentative(
+					MUser.get(pos.getCtx(), pos.getSalesRep_ID())
+				)
+			)
 			.setTemplateCustomer(
 				POSConvertUtil.convertCustomer(
 					pos.getBPartner()
@@ -5403,7 +5408,7 @@ public class PointOfSalesForm extends StoreImplBase {
 
 		if(pos.get_ValueAsInt(ColumnsAdded.COLUMNNAME_RefundReferenceCurrency_ID) > 0) {
 			builder.setRefundReferenceCurrency(
-				ConvertCommon.convertCurrency(
+				CoreFunctionalityConvert.convertCurrency(
 					pos.get_ValueAsInt(ColumnsAdded.COLUMNNAME_RefundReferenceCurrency_ID)
 				)
 			);
@@ -5411,7 +5416,9 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Set Price List and currency
 		if(pos.getM_PriceList_ID() != 0) {
 			MPriceList priceList = MPriceList.get(Env.getCtx(), pos.getM_PriceList_ID(), null);
-			builder.setPriceList(ConvertUtil.convertPriceList(priceList));
+			builder.setPriceList(
+				CoreFunctionalityConvert.convertPriceList(priceList)
+			);
 		}
 		//	Bank Account
 		if(pos.getC_BankAccount_ID() != 0) {
@@ -5419,13 +5426,13 @@ public class PointOfSalesForm extends StoreImplBase {
 			builder.setDefaultOpeningChargeId(cashAccount.get_ValueAsInt("DefaultOpeningCharge_ID"))
 				.setDefaultWithdrawalChargeId(cashAccount.get_ValueAsInt("DefaultWithdrawalCharge_ID"))
 				.setCashBankAccount(
-					ConvertCommon.convertBankAccount(cashAccount)
+					CoreFunctionalityConvert.convertBankAccount(cashAccount)
 				);
 		}
 		//	Bank Account to transfer
 		if(pos.getCashTransferBankAccount_ID() != 0) {
 			builder.setCashBankAccount(
-				ConvertCommon.convertBankAccount(
+				CoreFunctionalityConvert.convertBankAccount(
 					pos.getCashTransferBankAccount_ID()
 				)
 			);
@@ -5433,12 +5440,14 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Warehouse
 		if(pos.getM_Warehouse_ID() > 0) {
 			MWarehouse warehouse = MWarehouse.get(Env.getCtx(), pos.getM_Warehouse_ID());
-			builder.setWarehouse(ConvertUtil.convertWarehouse(warehouse));
+			builder.setWarehouse(
+				CoreFunctionalityConvert.convertWarehouse(warehouse)
+			);
 		}
 		//	Price List
 		if(pos.get_ValueAsInt(ColumnsAdded.COLUMNNAME_DisplayCurrency_ID) > 0) {
 			builder.setDisplayCurrency(
-				ConvertCommon.convertCurrency(
+				CoreFunctionalityConvert.convertCurrency(
 					pos.get_ValueAsInt(ColumnsAdded.COLUMNNAME_DisplayCurrency_ID)
 				)
 			);
@@ -5446,7 +5455,7 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Document Type
 		if(pos.getC_DocType_ID() > 0) {
 			builder.setDocumentType(
-				ConvertCommon.convertDocumentType(
+				CoreFunctionalityConvert.convertDocumentType(
 					pos.getC_DocType_ID()
 				)
 			);
@@ -5454,7 +5463,7 @@ public class PointOfSalesForm extends StoreImplBase {
 		//	Return Document Type
 		if(pos.get_ValueAsInt("C_DocTypeRMA_ID") > 0) {
 			builder.setReturnDocumentType(
-				ConvertCommon.convertDocumentType(
+				CoreFunctionalityConvert.convertDocumentType(
 					pos.get_ValueAsInt("C_DocTypeRMA_ID")
 				)
 			);
@@ -5993,7 +6002,9 @@ public class PointOfSalesForm extends StoreImplBase {
 		MProductPricing productPricing = new MProductPricing(product.getM_Product_ID(), businessPartnerId, priceQuantity, true, null);
 		productPricing.setM_PriceList_ID(priceList.getM_PriceList_ID());
 		productPricing.setPriceDate(validFrom);
-		builder.setProduct(ConvertUtil.convertProduct(product));
+		builder.setProduct(
+			CoreFunctionalityConvert.convertProduct(product)
+		);
 		BigDecimal priceStd = productPricing.getPriceStd();
 		int taxCategoryId = product.getC_TaxCategory_ID();
 		Optional<MTax> optionalTax = Arrays.asList(MTax.getAll(Env.getCtx()))
@@ -6006,11 +6017,15 @@ public class PointOfSalesForm extends StoreImplBase {
 		.findFirst();
 		//	Validate
 		if(optionalTax.isPresent()) {
-			builder.setTaxRate(ConvertUtil.convertTaxRate(optionalTax.get()));
+			builder.setTaxRate(
+				CoreFunctionalityConvert.convertTaxRate(
+					optionalTax.get()
+				)
+			);
 		}
 		//	Set currency
 		builder.setCurrency(
-			ConvertCommon.convertCurrency(
+			CoreFunctionalityConvert.convertCurrency(
 				priceList.getC_Currency_ID()
 			)
 		);
@@ -6054,7 +6069,7 @@ public class PointOfSalesForm extends StoreImplBase {
 			//	Get from schema
 			if(displayCurrencyId > 0) {
 				builder.setDisplayCurrency(
-					ConvertCommon.convertCurrency(
+					CoreFunctionalityConvert.convertCurrency(
 						displayCurrencyId
 					)
 				);
@@ -6093,7 +6108,7 @@ public class PointOfSalesForm extends StoreImplBase {
 								)
 							)
 							.setConversionRate(
-								ConvertCommon.convertConversionRate(
+								CoreFunctionalityConvert.convertConversionRate(
 									conversionRate
 								)
 							)
@@ -6552,7 +6567,7 @@ public class PointOfSalesForm extends StoreImplBase {
 					)
 					.setIsPosRequiredPin(availableCash.get_ValueAsBoolean(I_C_POS.COLUMNNAME_IsPOSRequiredPIN))
 					.setBankAccount(
-						ConvertCommon.convertBankAccount(
+						CoreFunctionalityConvert.convertBankAccount(
 							bankAccount
 						)
 					)
