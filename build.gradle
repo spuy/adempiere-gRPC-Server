@@ -98,6 +98,9 @@ dependencies {
 	implementation "${baseGroupId}:adempiere-kafka-connector:1.1.0"
 	// Third part access using JWT
 	implementation "${baseGroupId}:adempiere-jwt-token:1.0.2"
+	//	Temporary projects
+	//	Keycloak and Okta connector (Open-ID  based)
+	implementation "${baseGroupId}:adempiere-open-id-connector:1.0.0"
 }
 
 configurations.all {
