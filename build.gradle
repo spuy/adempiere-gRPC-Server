@@ -98,6 +98,16 @@ dependencies {
 	implementation "${baseGroupId}:adempiere-kafka-connector:1.1.0"
 	// Third part access using JWT
 	implementation "${baseGroupId}:adempiere-jwt-token:1.0.2"
+	// https://mvnrepository.com/artifact/com.nimbusds/oauth2-oidc-sdk
+	implementation 'com.nimbusds:oauth2-oidc-sdk:9.35'
+	// https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
+	implementation 'com.nimbusds:nimbus-jose-jwt:9.22'
+	// https://mvnrepository.com/artifact/com.nimbusds/content-type
+	implementation 'com.nimbusds:content-type:2.2'
+	// https://mvnrepository.com/artifact/net.minidev/json-smart
+	implementation 'net.minidev:json-smart:2.4.8'
+	// https://mvnrepository.com/artifact/net.minidev/accessors-smart
+	implementation 'net.minidev:accessors-smart:2.4.8'
 	//	Temporary projects
 	//	Keycloak and Okta connector (Open-ID  based)
 	implementation "${baseGroupId}:adempiere-open-id-connector:1.0.0"
