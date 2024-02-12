@@ -84,6 +84,12 @@ service FileManagement {
 			}
 		};
 	}
+	rpc ConfirmResourceReference(ConfirmResourceReferenceRequest) returns (ResourceReference) {
+		option (google.api.http) = {
+			put: "/file-management/references/{id}/confirm",
+			body: "*"
+		};
+	}
 	rpc SetResourceReferenceDescription(SetResourceReferenceDescriptionRequest) returns (ResourceReference) {
 		option (google.api.http) = {
 			put: "/file-management/references/{id}/description",
@@ -223,6 +229,11 @@ message SetResourceReferenceRequest {
 	string text_message = 8;
 }
 
+message ConfirmResourceReferenceRequest {
+	int32 id = 1;
+	string file_size = 2;
+}
+
 message SetResourceReferenceDescriptionRequest {
 	int32 id = 1;
 	string file_name = 2;
@@ -237,6 +248,7 @@ message DeleteResourceReferenceRequest {
 	string fileName = 4;
 	int32 image_id = 5;
 	int32 archive_id = 6;
+	bool is_delete_external_file = 7; // delete external file with attachment util
 }
 
 message ExistsAttachmentRequest {
