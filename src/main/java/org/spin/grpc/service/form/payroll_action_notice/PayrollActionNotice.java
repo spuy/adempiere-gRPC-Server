@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
+import org.adempiere.core.domains.models.I_AD_Element;
 import org.adempiere.core.domains.models.I_C_BPartner;
 import org.adempiere.core.domains.models.X_AD_Reference;
 import org.adempiere.exceptions.AdempiereException;
@@ -102,7 +103,8 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 	}
 
 	private ListLookupItemsResponse.Builder convertPayrollProcessList(Properties context, ListPayrollProcessRequest request) {
-		String sql = "SELECT HR_Process_ID, DocumentNo ||'-'|| Name AS DisplayColumn, DocumentNo, Name, UUID "
+		String sql = "SELECT HR_Process_ID, DocumentNo ||'-'|| Name AS DisplayColumn, "
+			+ "DocumentNo, Name, UUID, IsActive "
 			+ "FROM HR_Process "
 			+ "WHERE IsActive = 'Y' "
 			+ "AND DocStatus IN('DR', 'IP') ";
@@ -144,8 +146,15 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 				int keyValue = rs.getInt(MHRProcess.COLUMNNAME_HR_Process_ID);
 				String uuid = rs.getString(MHRProcess.COLUMNNAME_UUID);
 				String displayColumn = rs.getString(LookupUtil.DISPLAY_COLUMN_KEY);
+				boolean isActive = rs.getBoolean(MHRProcess.COLUMNNAME_IsActive);
 				//
-				LookupItem.Builder valueObject = LookupUtil.convertObjectFromResult(keyValue, uuid, null, displayColumn);
+				LookupItem.Builder valueObject = LookupUtil.convertObjectFromResult(
+					keyValue,
+					uuid,
+					null,
+					displayColumn,
+					isActive
+				);
 				valueObject.setTableName(MHRProcess.Table_Name);
 				lookupsList.addRecords(valueObject.build());
 			}
@@ -207,7 +216,8 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 
 		List<Object> parameters = new ArrayList<>();
 		String selectQuery = "SELECT bp.C_BPartner_ID, "
-			+ "bp.Value || ' - ' || bp.Name || COALESCE(' ' || bp.Name2, '') AS DisplayColumn, UUID "
+			+ "bp.Value || ' - ' || bp.Name || COALESCE(' ' || bp.Name2, '') AS DisplayColumn, "
+			+ "UUID, IsActive "
 			+ "FROM C_BPartner bp";
 		selectQuery = RecordUtil.addSearchValueAndGet(selectQuery, MHRProcess.Table_Name, "bp", request.getSearchValue(), parameters);
 		selectQuery = MRole.getDefault(Env.getCtx(), false)
@@ -269,8 +279,15 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 				int keyValue = rs.getInt(I_C_BPartner.COLUMNNAME_C_BPartner_ID);
 				String uuid = rs.getString(I_C_BPartner.COLUMNNAME_UUID);
 				String displayColumn = rs.getString(LookupUtil.DISPLAY_COLUMN_KEY);
+				boolean isActive = rs.getBoolean(I_C_BPartner.COLUMNNAME_IsActive);
 				//
-				LookupItem.Builder valueObject = LookupUtil.convertObjectFromResult(keyValue, uuid, null, displayColumn);
+				LookupItem.Builder valueObject = LookupUtil.convertObjectFromResult(
+					keyValue,
+					uuid,
+					null,
+					displayColumn,
+					isActive
+				);
 				valueObject.setTableName(MHRProcess.Table_Name);
 				lookupsList.addRecords(valueObject.build());
 			}
@@ -337,7 +354,8 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 		String selectQuery = "SELECT hrpc.HR_Concept_ID, "
 			+ "hrpc.Value || ' - ' || hrpc.Name AS DisplayColumn, "
 			+ "hrpc.Value, "
-			+ "hrpc.UUID "
+			+ "hrpc.UUID, "
+			+ "hrpc.IsActive "
 			+ "FROM HR_Concept hrpc ";
 
 		selectQuery = RecordUtil.addSearchValueAndGet(selectQuery, MHRConcept.Table_Name, "hrpc", request.getSearchValue(), parameters);
@@ -404,8 +422,17 @@ public class PayrollActionNotice extends PayrollActionNoticeImplBase {
 				String value = rs.getString(MHRConcept.COLUMNNAME_Value);
 				String uuid = rs.getString(MHRConcept.COLUMNNAME_UUID);
 				String displayColumn = rs.getString(LookupUtil.DISPLAY_COLUMN_KEY);
+				boolean isActive = rs.getBoolean(
+					I_AD_Element.COLUMNNAME_IsActive
+				);
 				//
-				LookupItem.Builder lookupBuilder = LookupUtil.convertObjectFromResult(id, uuid, value, displayColumn);
+				LookupItem.Builder lookupBuilder = LookupUtil.convertObjectFromResult(
+					id,
+					uuid,
+					value,
+					displayColumn,
+					isActive
+				);
 				lookupBuilder.setTableName(MHRConcept.Table_Name);
 
 				listLookups.addRecords(lookupBuilder.build());
