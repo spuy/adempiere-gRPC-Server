@@ -20,10 +20,7 @@ option java_package = "org.spin.backend.grpc.field.business_partner";
 option java_outer_classname = "ADempiereBusinessPartner";
 
 import "google/api/annotations.proto";
-import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-
-import "base_data_type.proto";
 
 // Base URL
 // /field/business-partners/
@@ -66,14 +63,18 @@ service BusinessPartnerInfoService {
 message BusinessPartnerInfo {
 	int32 id = 1;
 	string uuid = 2;
-	string value = 3;
-	string name = 4;
-	string name2 = 5;
-	string business_partner_group = 6;
-	string open_balance_amount = 7;
-	string credit_available_amount = 8;
-	string credit_used_amount = 9;
-	string revenue_amount = 10;
+	string display_value = 3;
+	string value = 4;
+	string tax_id = 5;
+	string name = 6;
+	string name2 = 7;
+	string description = 8;
+	string business_partner_group = 9;
+	string open_balance_amount = 10;
+	string credit_available_amount = 11;
+	string credit_used_amount = 12;
+	string revenue_amount = 13;
+	bool is_active = 14;
 }
 
 message ListBusinessPartnersInfoResponse {
@@ -106,7 +107,7 @@ message ListBusinessPartnersInfoRequest {
 	string customer = 19;
 	string name = 20;
 	string email = 21;
-	string postal = 22;
+	string postal_code = 22;
 	string is_vendor = 23;
 	string is_customer = 24;
 }

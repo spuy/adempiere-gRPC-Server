@@ -100,6 +100,27 @@ public class BusinessPartnerLogic {
 		}
 
 		List<Object> parametersList = new ArrayList<>();
+		//	For search value
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if(!Util.isEmpty(searchValue, true)) {
+			whereClause.append(" AND ("
+				+ "UPPER(Value) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(TaxID) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name2) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Description) LIKE '%' || UPPER(?) || '%'"
+				+ ") "
+			);
+			//	Add parameters
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+		}
+
 		// Customer
 		if (!Util.isEmpty(request.getIsCustomer(), true)) {
 			whereClause.append(" AND IsCustomer = ? ");
@@ -111,36 +132,57 @@ public class BusinessPartnerLogic {
 			parametersList.add(request.getIsVendor());
 		}
 		// Value
-		if (!Util.isEmpty(request.getValue())) {
+		final String value = ValueManager.getDecodeUrl(
+			request.getValue()
+		);
+		if (!Util.isEmpty(value)) {
 			whereClause.append(" AND UPPER(Value) LIKE UPPER(?) ");
-			parametersList.add(request.getValue());
+			parametersList.add(value);
 		}
 		// Name
-		if (!Util.isEmpty(request.getName())) {
+		final String name = ValueManager.getDecodeUrl(
+			request.getName()
+		);
+		if (!Util.isEmpty(name)) {
 			whereClause.append(" AND UPPER(Name) LIKE UPPER(?) ");
-			parametersList.add(request.getName());
+			parametersList.add(name);
 		}
 		// Contact
-		if (!Util.isEmpty(request.getContact())) {
-			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID from AD_User AS c WHERE UPPER(c.Name) LIKE UPPER(?)) ");
-			parametersList.add(request.getContact());
+		final String contact = ValueManager.getDecodeUrl(
+			request.getContact()
+		);
+		if (!Util.isEmpty(contact)) {
+			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID FROM AD_User AS c ")
+				.append("WHERE UPPER(c.Name) LIKE UPPER(?)) ");
+			parametersList.add(contact);
 		}
 		// E-Mail
-		if (!Util.isEmpty(request.getEmail())) {
-			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID from AD_User AS c WHERE UPPER(c.EMail) LIKE UPPER(?)) ");
-			parametersList.add(request.getEmail());
+		final String eMail = ValueManager.getDecodeUrl(
+			request.getEmail()
+		);
+		if (!Util.isEmpty(eMail)) {
+			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID FROM AD_User AS c ")
+				.append("WHERE UPPER(c.EMail) LIKE UPPER(?)) ");
+			parametersList.add(eMail);
 		}
 		// Phone
-		if (!Util.isEmpty(request.getPhone())) {
-			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID from AD_User AS c WHERE UPPER(c.Phone) LIKE UPPER(?)) ");
-			parametersList.add(request.getPhone());
+		final String phone = ValueManager.getDecodeUrl(
+			request.getPhone()
+		);
+		if (!Util.isEmpty(phone)) {
+			whereClause.append(" AND C_BPartner.C_BPartner_ID IN (SELECT C_BPartner_ID FROM AD_User AS c ")
+				.append("WHERE UPPER(c.Phone) LIKE UPPER(?)) ");
+			parametersList.add(phone);
 		}
 		// Postal Code
-		if (!Util.isEmpty(request.getPostal())) {
-			whereClause.append(" AND C_BPartner_ID IN (SELECT C_BPartner_ID FROM C_BPartner_Location bpl, ")
-				.append("C_Location AS l WHERE l.C_Location_ID = bpl.C_Location_ID AND UPPER(Postal) LIKE UPPER(?)) ")
+		final String postalCode = ValueManager.getDecodeUrl(
+			request.getPostalCode()
+		);
+		if (!Util.isEmpty(postalCode)) {
+			whereClause.append(" AND C_BPartner_ID IN (SELECT C_BPartner_ID FROM C_BPartner_Location bpl, C_Location AS l ")
+				.append("WHERE l.C_Location_ID = bpl.C_Location_ID AND UPPER(Postal) LIKE UPPER(?)) ")
 			;
-			parametersList.add(request.getPhone());
+			parametersList.add(postalCode);
 		}
 
 		Query query = new Query(
@@ -149,8 +191,9 @@ public class BusinessPartnerLogic {
 			whereClause.toString(),
 			null
 		)
+			.setClient_ID()
 			.setParameters(parametersList)
-			.setOrderBy("Value")
+			.setOrderBy(I_C_BPartner.COLUMNNAME_Value)
 		;
 
 		//	Get page and count
@@ -197,7 +240,8 @@ public class BusinessPartnerLogic {
 			null
 		)
 			.setParameters(businessPartner.getC_BPartner_ID())
-			.setOrderBy("AD_User_ID")
+			.setOrderBy(I_AD_User.COLUMNNAME_AD_User_ID)
+			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 		;
 
 		ListBusinessPartnerContactsResponse.Builder builderList = ListBusinessPartnerContactsResponse.newBuilder()

@@ -55,9 +55,19 @@ public class BusinessPartnerConvert {
 					businessPartner.getUUID()
 				)
 			)
+			.setDisplayValue(
+				ValueManager.validateNull(
+					businessPartner.getDisplayValue()
+				)
+			)
 			.setValue(
 				ValueManager.validateNull(
 					businessPartner.getValue()
+				)
+			)
+			.setTaxId(
+				ValueManager.validateNull(
+					businessPartner.getTaxID()
 				)
 			)
 			.setName(
@@ -68,6 +78,11 @@ public class BusinessPartnerConvert {
 			.setName2(
 				ValueManager.validateNull(
 					businessPartner.getName2()
+				)
+			)
+			.setDescription(
+				ValueManager.validateNull(
+					businessPartner.getDescription()
 				)
 			)
 			.setBusinessPartnerGroup(
@@ -96,6 +111,9 @@ public class BusinessPartnerConvert {
 				NumberManager.getBigDecimalToString(
 					businessPartner.getActualLifeTimeValue()
 				)
+			)
+			.setIsActive(
+				businessPartner.isActive()
 			)
 		;
 		return builder;
