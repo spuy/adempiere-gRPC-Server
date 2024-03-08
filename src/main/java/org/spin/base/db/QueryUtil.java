@@ -314,7 +314,7 @@ public class QueryUtil {
 			if (ReferenceUtil.validateReference(displayTypeId) || DisplayType.ID == displayTypeId) {
 				MViewColumn viewColumn = MViewColumn.getById(Env.getCtx(), browseField.getAD_View_Column_ID(), null);
 				MViewDefinition viewDefinition = MViewDefinition.get(Env.getCtx(), viewColumn.getAD_View_Definition_ID());
-				String tableName = viewDefinition.getTableAlias();
+				final String tableName = viewDefinition.getTableAlias();
 
 				String columnName = browseField.getAD_Element().getColumnName();
 				if (viewColumn.getAD_Column_ID() > 0) {
@@ -332,6 +332,8 @@ public class QueryUtil {
 					);
 				if(referenceInfo != null) {
 					queryToAdd.append(", ");
+					final String dbColumnName = viewColumn.getColumnName();
+					referenceInfo.setDisplayColumnAlias(LookupUtil.DISPLAY_COLUMN_KEY + "_" + dbColumnName);
 					final String displayColumn = referenceInfo.getDisplayValue(columnName);
 					queryToAdd.append(displayColumn);
 					String joinClause = referenceInfo.getJoinValue(columnName, tableName);

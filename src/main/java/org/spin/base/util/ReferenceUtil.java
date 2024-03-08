@@ -110,7 +110,7 @@ public class ReferenceUtil {
 		if(!validateReference(referenceId)) {
 			return null;
 		}
-		String key = referenceId + "|" + referenceValueId + "|" + columnName + "|" + language;
+		final String key = referenceId + "|" + referenceValueId + "|" + columnName + "|" + language;
 		ReferenceInfo referenceInfo = referenceInfoMap.get(key);
 		Language languageValue = Language.getLanguage(Env.getAD_Language(Env.getCtx()));
 		if (referenceInfo != null) {
@@ -202,7 +202,7 @@ public class ReferenceUtil {
 			if (!Util.isEmpty(displayColumn)) {
 				referenceInfo.setDisplayColumnValue(displayColumn);
 			}
-			referenceInfo.setJoinColumnName((lookupInfo.KeyColumn == null? "": lookupInfo.KeyColumn).replace(lookupInfo.TableName + ".", ""));
+			referenceInfo.setJoinColumnName((lookupInfo.KeyColumn == null ? "" : lookupInfo.KeyColumn).replace(lookupInfo.TableName + ".", ""));
 			referenceInfo.setTableName(lookupInfo.TableName);
 			if(DisplayType.List == referenceId
 					&& referenceValueId != 0) {
