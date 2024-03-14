@@ -156,11 +156,11 @@ public class WindowUtil {
 		// to prevent duplicity of associated processes in different locations (table, column and tab).
 		HashMap<Integer, MProcess> processList = new HashMap<>();
 
+		MRole role = MRole.getDefault(tab.getCtx(), false);
 		//	First Process Tab
 		if(tab.getAD_Process_ID() > 0) {
-			MRole role = MRole.getDefault(tab.getCtx(), false);
-			Boolean processAccess = role.getProcessAccess(tab.getAD_Process_ID());
-			if (processAccess != null && processAccess.booleanValue()) {
+			Boolean isProcessAccess = role.getProcessAccess(tab.getAD_Process_ID());
+			if (isProcessAccess != null && isProcessAccess.booleanValue()) {
 				boolean isRecordAccess = role.isRecordAccess(I_AD_Process.Table_ID, tab.getAD_Process_ID(), false);
 				if (isRecordAccess) {
 					MProcess processTab = ASPUtil.getInstance(tab.getCtx()).getProcess(tab.getAD_Process_ID());
@@ -172,18 +172,41 @@ public class WindowUtil {
 		// exclude first process on tab
 		final String whereClause = "AD_Process_ID <> ? " // #1
 			// process on column
-			+ "AND (EXISTS(SELECT 1 FROM AD_Field f "
-			+ "INNER JOIN AD_Column c ON(c.AD_Column_ID = f.AD_Column_ID) "
-			+ "WHERE c.AD_Process_ID = AD_Process.AD_Process_ID "
-			+ "AND f.IsDisplayed = 'Y' "
-			+ "AND f.AD_Tab_ID = ? " // #2
-			+ "AND f.IsActive = 'Y')"
+			+ "AND (EXISTS("
+				+ "SELECT 1 FROM AD_Field f "
+				+ "INNER JOIN AD_Column c ON(c.AD_Column_ID = f.AD_Column_ID) "
+				+ "WHERE c.AD_Process_ID = AD_Process.AD_Process_ID "
+				+ "AND f.IsDisplayed = 'Y' "
+				// ASP filter
+				// TODO: Add filter with ASP Level
+				+ "AND NOT EXISTS("
+					+ "SELECT 1 FROM AD_FieldCustom AS fc "
+					+ "INNER JOIN AD_TabCustom AS tc "
+						+ "ON(tc.AD_TabCustom_ID = fc.AD_TabCustom_ID AND tc.IsActive = 'Y') "
+					+ "INNER JOIN AD_WindowCustom AS wc "
+						+ "ON(wc.AD_WindowCustom_ID = tc.AD_WindowCustom_ID AND wc.IsActive = 'Y') "
+					+ "WHERE fc.IsActive = 'Y' "
+					+ "AND fc.IsDisplayed = 'N' "
+					+ "AND fc.AD_Field_ID = f.AD_Field_ID "
+					+ "AND (wc.AD_User_ID = ? OR wc.AD_Role_ID = ?)"
+				+ ") "
+				+ "AND f.AD_Tab_ID = ? " // #2
+				+ "AND f.IsActive = 'Y'"
+			+ ") "
 			// process on table
-			+ "OR EXISTS(SELECT 1 FROM AD_Table_Process AS tp "
-			+ "WHERE tp.AD_Process_ID = AD_Process.AD_Process_ID "
-			+ "AND tp.AD_Table_ID = ? " // #3
-			+ "AND tp.IsActive = 'Y'))"
+			+ "OR EXISTS("
+				+ "SELECT 1 FROM AD_Table_Process AS tp "
+				+ "WHERE tp.AD_Process_ID = AD_Process.AD_Process_ID "
+				+ "AND tp.AD_Table_ID = ? " // #3
+				+ "AND tp.IsActive = 'Y')"
+			+ ")"
 		;
+		List<Object> filterList = new ArrayList<>();
+		filterList.add(tab.getAD_Process_ID());
+		filterList.add(Env.getAD_User_ID(context));
+		filterList.add(role.getAD_Role_ID());
+		filterList.add(tab.getAD_Tab_ID());
+		filterList.add(tab.getAD_Table_ID());
 		//	Process from tab
 		List<Integer> processIdList = new Query(
 			tab.getCtx(),
@@ -191,14 +214,20 @@ public class WindowUtil {
 			whereClause,
 			null
 		)
-			.setParameters(tab.getAD_Process_ID(), tab.getAD_Tab_ID(), tab.getAD_Table_ID())
+			.setParameters(filterList)
 			.setOnlyActiveRecords(true)
 			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO)
 			.getIDsAsList()
 		;
 		for(Integer processId : processIdList) {
-			MProcess process = ASPUtil.getInstance(tab.getCtx()).getProcess(processId);
-			processList.put(processId, process);
+			Boolean isProcessAccess = role.getProcessAccess(tab.getAD_Process_ID());
+			if (isProcessAccess != null && isProcessAccess.booleanValue()) {
+				boolean isRecordAccess = role.isRecordAccess(I_AD_Process.Table_ID, processId, false);
+				if (isRecordAccess) {
+					MProcess process = ASPUtil.getInstance(tab.getCtx()).getProcess(processId);
+					processList.put(processId, process);
+				}
+			}
 		}
 
 		return new ArrayList<MProcess>(processList.values());
