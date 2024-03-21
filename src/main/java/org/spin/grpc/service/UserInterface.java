@@ -2213,9 +2213,10 @@ public class UserInterface extends UserInterfaceImplBase {
 			throw new AdempiereException("@AD_Reference_ID@ @WhereClause@ @Unparseable@");
 		}
 
-		if (isOnlyActiveRecords) {
-			sql = WhereClauseUtil.addIsActiveRestriction(reference.TableName, sql);
-		}
+		// TODO: Fix with list document type
+		// if (isOnlyActiveRecords) {
+		// 	sql = WhereClauseUtil.addIsActiveRestriction(reference.TableName, sql);
+		// }
 		String sqlWithRoleAccess = MRole.getDefault(context, false)
 			.addAccessSQL(
 				sql,
@@ -2225,8 +2226,32 @@ public class UserInterface extends UserInterfaceImplBase {
 			)
 		;
 
+		String sqlWithActiveRecords = sqlWithRoleAccess;
+		if (isOnlyActiveRecords) {
+			//	Order by
+			String queryWithoutOrderBy = org.spin.service.grpc.util.db.OrderByUtil.removeOrderBy(sqlWithRoleAccess);
+			String orderByClause = org.spin.service.grpc.util.db.OrderByUtil.getOnlyOrderBy(sqlWithRoleAccess);
+	
+			StringBuffer whereClause = new StringBuffer()
+				.append(" AND ")
+			;
+			if (!Util.isEmpty(reference.TableName, true)) {
+				whereClause.append(reference.TableName)
+					.append(".")
+				;
+			}
+			whereClause.append("IsActive = 'Y' ");
+
+			sqlWithActiveRecords = queryWithoutOrderBy + whereClause.toString() + orderByClause;
+		}
+
 		List<Object> parameters = new ArrayList<>();
-		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, reference.TableName, searchValue, parameters);
+		String parsedSQL = RecordUtil.addSearchValueAndGet(
+			sqlWithActiveRecords,
+			reference.TableName,
+			searchValue,
+			parameters
+		);
 
 		//	Get page and count
 		int count = CountUtil.countRecords(parsedSQL, reference.TableName, parameters);
