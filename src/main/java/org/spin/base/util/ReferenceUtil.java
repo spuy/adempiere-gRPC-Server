@@ -142,10 +142,28 @@ public class ReferenceUtil {
 				return null;
 			}
 			final String tableAlias = tableName + "_" + columnName;
-			displayColumn = displayColumn.replace(
-				"FROM " + tableName,
-				"FROM " + tableName + " AS " + tableAlias
+
+			String regexMainTable = "(?<from>\\bFROM\\b)\\s+(?<table>" + tableName + "\\b)\\s+"
+				+ "(?<restriction>\\bWHERE\\b|\\bORDER\\s+BY\\b|((LEFT|INNER|RIGHT|FULL|SELF|CROSS)\\s+(OUTER\\s+){0,1}){0,1}JOIN)"
+			;
+			Pattern patternMainTable = Pattern.compile(
+				regexMainTable,
+				Pattern.CASE_INSENSITIVE | Pattern.DOTALL
 			);
+			Matcher matcherMainTable = patternMainTable
+				.matcher(displayColumn);
+			if (matcherMainTable.find()) {
+				displayColumn = displayColumn.replaceAll(
+					regexMainTable,
+					// "FROM " + tableName + " AS " + tableAlias + " " + matcherMainTable.group(3)
+					"FROM " + tableName + " AS " + tableAlias + " " + matcherMainTable.group("restriction")
+				);
+			} else {
+				displayColumn = displayColumn.replace(
+					"FROM " + tableName,
+					"FROM " + tableName + " AS " + tableAlias
+				);
+			}
 			displayColumn = displayColumn.replace(
 				tableName + "." + baseColumnToReplace,
 				tableAlias + "." + columnName
