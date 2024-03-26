@@ -51,36 +51,42 @@ jobs:
         with:
           name: adempiere-grpc-server.pb
           path: build/descriptors/adempiere-grpc-server.pb
+          retention-days: 1
 
       - name: Upload envoy file artifact
         uses: actions/upload-artifact@v4
         with:
           name: envoy.yaml
           path: resources/envoy.yaml
+          retention-days: 1
 
       - name: Upload dist app zip artifact
         uses: actions/upload-artifact@v4
         with:
           name: adempiere-grpc-server.zip
           path: build/release/adempiere-grpc-server.zip
+          retention-days: 1
 
       - name: Upload dist app zip.MD5 artifact
         uses: actions/upload-artifact@v4
         with:
           name: adempiere-grpc-server.zip.MD5
           path: build/release/adempiere-grpc-server.zip.MD5
+          retention-days: 1
 
       - name: Upload dist app tar artifact
         uses: actions/upload-artifact@v4
         with:
           name: adempiere-grpc-server.tar
           path: build/release/adempiere-grpc-server.tar
+          retention-days: 1
 
       - name: Upload dist app tar.MD5 artifact
         uses: actions/upload-artifact@v4
         with:
           name: adempiere-grpc-server.tar.MD5
           path: build/release/adempiere-grpc-server.tar.MD5
+          retention-days: 1
 
 
 
