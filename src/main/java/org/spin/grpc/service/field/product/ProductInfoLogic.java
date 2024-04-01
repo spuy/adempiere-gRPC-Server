@@ -29,6 +29,8 @@ import org.adempiere.core.domains.models.I_M_PriceList_Version;
 import org.adempiere.core.domains.models.I_M_Product;
 import org.adempiere.core.domains.models.I_M_Product_Category;
 import org.adempiere.core.domains.models.I_M_Product_Class;
+import org.adempiere.core.domains.models.I_M_Product_Classification;
+import org.adempiere.core.domains.models.I_M_Product_Group;
 import org.adempiere.core.domains.models.I_M_Product_PO;
 import org.adempiere.core.domains.models.I_M_Warehouse;
 import org.adempiere.exceptions.AdempiereException;
@@ -51,6 +53,7 @@ import org.spin.backend.grpc.field.product.ListAvailableToPromisesResponse;
 import org.spin.backend.grpc.field.product.ListPricesListVersionsRequest;
 import org.spin.backend.grpc.field.product.ListProductCategoriesRequest;
 import org.spin.backend.grpc.field.product.ListProductClasessRequest;
+import org.spin.backend.grpc.field.product.ListProductClassificationsRequest;
 import org.spin.backend.grpc.field.product.ListProductGroupsRequest;
 import org.spin.backend.grpc.field.product.ListProductsInfoRequest;
 import org.spin.backend.grpc.field.product.ListProductsInfoResponse;
@@ -262,7 +265,7 @@ public class ProductInfoLogic {
 			DisplayType.TableDir,
 			0, 0, 0,
 			0,
-			I_M_Product_Category.COLUMNNAME_M_Product_Category_ID, I_M_Product_Category.Table_Name
+			I_M_Product_Group.COLUMNNAME_M_Product_Group_ID, I_M_Product_Group.Table_Name
 		);
 
 		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
@@ -284,6 +287,27 @@ public class ProductInfoLogic {
 			0, 0, 0,
 			0,
 			I_M_Product_Class.COLUMNNAME_M_Product_Class_ID, I_M_Product_Class.Table_Name
+		);
+
+		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
+			reference,
+			null,
+			request.getPageSize(),
+			request.getPageToken(),
+			request.getSearchValue(),
+			true
+		);
+
+		return builderList;
+	}
+
+	public static ListLookupItemsResponse.Builder listProductClassifications(ListProductClassificationsRequest request) {
+		// Warehouse
+		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
+			DisplayType.TableDir,
+			0, 0, 0,
+			0,
+			I_M_Product_Classification.COLUMNNAME_M_Product_Classification_ID, I_M_Product_Classification.Table_Name
 		);
 
 		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
@@ -394,33 +418,54 @@ public class ProductInfoLogic {
 			Env.getAD_Client_ID(context)
 		);
 
+		final String searchValue = ValueManager.getDecodeUrl(
+			request.getSearchValue()
+		);
+		if (!Util.isEmpty(searchValue, true)) {
+			sqlWhere += " AND ("
+				+ "UPPER(p.Value) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(p.Name) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(p.UPC) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(p.SKU) LIKE '%' || UPPER(?) || '%' "
+				+ ") "
+			;
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+			parametersList.add(searchValue);
+		}
+
 		// Value
-		if (!Util.isEmpty(request.getValue())) {
+		final String value = ValueManager.getDecodeUrl(
+			request.getValue()
+		);
+		if (!Util.isEmpty(value)) {
 			sqlWhere += " AND UPPER(p.Value) LIKE '%' || UPPER(?) || '%' ";
-			parametersList.add(
-				request.getValue()
-			);
+			parametersList.add(value);
 		}
 		// Name
-		if (!Util.isEmpty(request.getName())) {
+		final String name = ValueManager.getDecodeUrl(
+			request.getName()
+		);
+		if (!Util.isEmpty(name)) {
 			sqlWhere += " AND UPPER(p.Name) LIKE '%' || UPPER(?) || '%' ";
-			parametersList.add(
-				request.getName()
-			);
+			parametersList.add(name);
 		}
 		// UPC/EAN
-		if (!Util.isEmpty(request.getUpc())) {
+		final String upc = ValueManager.getDecodeUrl(
+			request.getUpc()
+		);
+		if (!Util.isEmpty(upc)) {
 			sqlWhere += " AND UPPER(p.UPC) LIKE '%' || UPPER(?) || '%' ";
-			parametersList.add(
-				request.getUpc()
-			);
+			parametersList.add(upc);
 		}
-		// UPC/EAN
-		if (!Util.isEmpty(request.getSku())) {
-			sqlWhere += " AND UPPER(p.SKAU) LIKE '%' || UPPER(?) || '%' ";
-			parametersList.add(
-				request.getSku()
-			);
+		// SKU
+		final String sku = ValueManager.getDecodeUrl(
+			request.getSku()
+		);
+		if (!Util.isEmpty(sku)) {
+			sqlWhere += " AND UPPER(p.SKU) LIKE '%' || UPPER(?) || '%' ";
+			parametersList.add(sku);
 		}
 		// Product Category
 		final int productCategoryId = request.getProductCategoryId();
@@ -452,6 +497,13 @@ public class ProductInfoLogic {
 			sqlWhere += " AND p.M_Product_Class_ID = ? ";
 			parametersList.add(
 				request.getProductClassId()
+			);
+		}
+		// Product Classification
+		if (request.getProductClassificationId() > 0) {
+			sqlWhere += " AND p.M_Product_Classification_ID = ? ";
+			parametersList.add(
+				request.getProductClassificationId()
 			);
 		}
 		// Attribute Set
@@ -556,7 +608,7 @@ public class ProductInfoLogic {
 		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
-		int count =  CountUtil.countRecords(sql, tableName, "p", parametersList);
+		int count = CountUtil.countRecords(sql, tableName, "p", parametersList);
 		//	Set page token
 		String nexPageToken = null;
 		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
