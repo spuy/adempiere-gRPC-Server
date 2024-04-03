@@ -297,27 +297,7 @@ public class Security extends SecurityImplBase {
 			);
 		}
 	}
-	
-	@Override
-	public void getMenu(MenuRequest request, StreamObserver<MenuResponse> responseObserver) {
-		try {
-			if(request == null) {
-				throw new AdempiereException("Menu Request Null");
-			}
-			MenuResponse.Builder menuBuilder = convertMenu();
-			responseObserver.onNext(menuBuilder.build());
-			responseObserver.onCompleted();
-		} catch (Exception e) {
-			log.severe(e.getLocalizedMessage());
-			e.printStackTrace();
-			responseObserver.onError(
-				Status.INTERNAL
-					.withDescription(e.getLocalizedMessage())
-					.withCause(e)
-					.asRuntimeException()
-			);
-		}
-	}
+
 
 
 	@Override
@@ -1389,6 +1369,28 @@ public class Security extends SecurityImplBase {
 	}
 
 
+
+	@Override
+	public void getMenu(MenuRequest request, StreamObserver<MenuResponse> responseObserver) {
+		try {
+			if(request == null) {
+				throw new AdempiereException("Menu Request Null");
+			}
+			MenuResponse.Builder menuBuilder = convertMenu();
+			responseObserver.onNext(menuBuilder.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			e.printStackTrace();
+			responseObserver.onError(
+				Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException()
+			);
+		}
+	}
+
 	/**
 	 * Convert Menu
 	 * @return
@@ -1414,11 +1416,11 @@ public class Security extends SecurityImplBase {
 			treeId = MTree.getDefaultTreeIdFromTableId(menu.getAD_Client_ID(), I_AD_Menu.Table_ID);
 		}
 
-		Menu.Builder builder = Menu.newBuilder();
-		if(treeId != 0) {
+		if(treeId > 0) {
+			builderList = MenuResponse.newBuilder();
 			MTree tree = new MTree(Env.getCtx(), treeId, false, false, null, null);
 			//	
-			builder = convertMenu(Env.getCtx(), menu, 0, Env.getAD_Language(Env.getCtx()));
+			// Menu.Builder builder = convertMenu(Env.getCtx(), menu, 0, Env.getAD_Language(Env.getCtx()));
 			//	Get main node
 			MTreeNode rootNode = tree.getRoot();
 			Enumeration<?> childrens = rootNode.children();
@@ -1432,13 +1434,12 @@ public class Security extends SecurityImplBase {
 				);
 				//	Explode child
 				addChildren(Env.getCtx(), childBuilder, child, Env.getAD_Language(Env.getCtx()));
-				builder.addChildren(childBuilder.build());
+				// builder.addChildren(childBuilder.build());
+				builderList.addMenus(childBuilder);
 			}
 		}
 
 		//	Set from DB
-		builderList = MenuResponse.newBuilder();
-		builderList.addMenus(builder);
 		menuCache.put(menuKey, builderList);
 		return builderList;
 	}
@@ -1492,7 +1493,6 @@ public class Security extends SecurityImplBase {
 			)
 			.setIsSummary(menu.isSummary())
 			.setIsReadOnly(menu.isReadOnly())
-			.setIsActive(menu.isActive())
 		;
 		//	Supported actions
 		if(!Util.isEmpty(menu.getAction(), true)) {
@@ -1523,8 +1523,10 @@ public class Security extends SecurityImplBase {
 						)
 					)
 				;
-				builder.setForm(actionReference);
-			} else if (menu.getAction().equals(MMenu.ACTION_Window) &&menu.getAD_Window_ID() > 0) {
+				builder.setActionId(form.getAD_Form_ID())
+					.setForm(actionReference)
+				;
+			} else if (menu.getAction().equals(MMenu.ACTION_Window) && menu.getAD_Window_ID() > 0) {
 				MWindow window = new MWindow(context, menu.getAD_Window_ID(), null);
 				actionReference.setId(
 						window.getAD_Window_ID()
@@ -1550,7 +1552,9 @@ public class Security extends SecurityImplBase {
 						)
 					)
 				;
-				builder.setWindow(actionReference);
+				builder.setActionId(window.getAD_Window_ID())
+					.setWindow(actionReference)
+				;
 				
 			} else if ((menu.getAction().equals(MMenu.ACTION_Process) || menu.getAction().equals(MMenu.ACTION_Report))
 					&& menu.getAD_Process_ID() > 0) {
@@ -1579,8 +1583,9 @@ public class Security extends SecurityImplBase {
 						)
 					)
 				;
-				builder.setProcess(actionReference);
-				
+				builder.setActionId(process.getAD_Process_ID())
+					.setProcess(actionReference)
+				;
 			} else if (menu.getAction().equals(MMenu.ACTION_SmartBrowse) && menu.getAD_Browse_ID() > 0) {
 				MBrowse smartBrowser = MBrowse.get(context, menu.getAD_Browse_ID());
 				actionReference.setId(
@@ -1607,8 +1612,9 @@ public class Security extends SecurityImplBase {
 						)
 					)
 				;
-				builder.setBrowse(actionReference);
-				
+				builder.setActionId(smartBrowser.getAD_Browse_ID())
+					.setBrowse(actionReference)
+				;
 			} else if (menu.getAction().equals(MMenu.ACTION_WorkFlow) && menu.getAD_Workflow_ID() > 0) {
 				MWorkflow workflow = MWorkflow.get(context, menu.getAD_Workflow_ID());
 				actionReference.setId(
@@ -1635,12 +1641,14 @@ public class Security extends SecurityImplBase {
 						)
 					)
 				;
-				builder.setWorkflow(actionReference);
+				builder.setActionId(workflow.getAD_Workflow_ID())
+					.setWorkflow(actionReference)
+				;
 			}
 		}
 		return builder;
 	}
-	
+
 	/**
 	 * Add children to menu
 	 * @param context
@@ -1668,4 +1676,5 @@ public class Security extends SecurityImplBase {
 			);
 		}
 	}
+
 }
