@@ -122,6 +122,7 @@ public class QueryUtil {
 					StringBuffer displayColumnSQL = new StringBuffer()
 						.append(", ")
 						.append(columnSQL)
+						.append(" AS ")
 						.append(LookupUtil.DISPLAY_COLUMN_KEY)
 						.append("_")
 						.append(columnName)
@@ -246,6 +247,7 @@ public class QueryUtil {
 					StringBuffer displayColumnSQL = new StringBuffer()
 						.append(", ")
 						.append(columnSQL)
+						.append(" AS ")
 						.append(LookupUtil.DISPLAY_COLUMN_KEY)
 						.append("_")
 						.append(columnName)
@@ -304,7 +306,9 @@ public class QueryUtil {
 				co.set(true);
 			}
 
-			sql.append(" AS \"" + viewColumn.getColumnName() + "\"");
+			sql.append(" AS ")
+				.append("\"" + viewColumn.getColumnName() + "\"")
+			;
 		});
 
 		MView view = new MView(Env.getCtx(), browser.getAD_View_ID());
