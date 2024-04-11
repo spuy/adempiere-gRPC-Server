@@ -576,10 +576,10 @@ public class UserCustomization extends UserCustomizationImplBase {
 					customField.setSeqNo(fieldAttributes.getSequencePanel());
 				}
 				// checks if the column exists in the database
-				if (customField.get_ColumnIndex(DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME) >= 0 && !Util.isEmpty(fieldAttributes.getIsDefaultDisplayedAsPanel(), true)) {
+				if (customField.get_ColumnIndex(DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME) >= 0) {
 					customField.set_ValueOfColumn(
 						DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME,
-						BooleanManager.getBooleanFromString(
+						BooleanManager.getBooleanToString(
 							fieldAttributes.getIsDefaultDisplayedAsPanel()
 						)
 					);
