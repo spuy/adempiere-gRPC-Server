@@ -155,6 +155,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 		query
 			.setLimit(limit, offset)
 			.getIDsAsList()
+			.parallelStream()
 			.forEach(userId -> {
 				User.Builder builder = convertUser(userId);
 				builderList.addRecords(builder);
@@ -262,6 +263,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 		query
 			.setLimit(limit, offset)
 			.getIDsAsList()
+			.parallelStream()
 			.forEach(roleId -> {
 				Role.Builder builder = convertRole(roleId);
 				builderList.addRecords(builder);
@@ -364,6 +366,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 		query
 			.setLimit(limit, offset)
 			.getIDsAsList()
+			.parallelStream()
 			.forEach(aspLevelId -> {
 				LevelCustomization.Builder builder = convertLevelCustomization(aspLevelId);
 				builderList.addRecords(builder);
@@ -504,7 +507,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 
 			// instance tab
 			List<MTabCustom> tabsCustomList = customWindow.getTabs();
-			MTabCustom customTab = tabsCustomList.stream()
+			MTabCustom customTab = tabsCustomList.parallelStream()
 				.filter(tabItem -> {
 					return tabItem.getAD_Tab_ID() == tab.getAD_Tab_ID();
 				})
@@ -554,7 +557,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 				}
 
 				// instance custom field
-				MFieldCustom customField = customFieldsList.stream()
+				MFieldCustom customField = customFieldsList.parallelStream()
 					.filter(fieldItem -> {
 						return fieldItem.getAD_Field_ID() == field.getAD_Field_ID();
 					})
@@ -573,10 +576,10 @@ public class UserCustomization extends UserCustomizationImplBase {
 					customField.setSeqNo(fieldAttributes.getSequencePanel());
 				}
 				// checks if the column exists in the database
-				if (customField.get_ColumnIndex(DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME) >= 0 && !Util.isEmpty(fieldAttributes.getIsDefaultDisplayedAsPanel(), true)) {
+				if (customField.get_ColumnIndex(DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME) >= 0) {
 					customField.set_ValueOfColumn(
 						DictionaryUtil.IS_DISPLAYED_AS_PANEL_COLUMN_NAME,
-						BooleanManager.getBooleanFromString(
+						BooleanManager.getBooleanToString(
 							fieldAttributes.getIsDefaultDisplayedAsPanel()
 						)
 					);
@@ -714,7 +717,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 			}
 
 			// instance browse field custom
-			MBrowseFieldCustom customBrowseField = customBrowseFieldList.stream()
+			MBrowseFieldCustom customBrowseField = customBrowseFieldList.parallelStream()
 				.filter(browseFieldItem -> {
 					return browseFieldItem.getAD_Browse_Field_ID() == browseField.getAD_Browse_Field_ID();
 				})
@@ -858,7 +861,7 @@ public class UserCustomization extends UserCustomizationImplBase {
 			}
 
 			// instance custom process parameter
-			MProcessParaCustom customProcessParameter = customProcessParametersList.stream()
+			MProcessParaCustom customProcessParameter = customProcessParametersList.parallelStream()
 				.filter(processParameterItem -> {
 					return processParameterItem.getAD_Process_Para_ID() == processParameter.getAD_Process_Para_ID();
 				})
