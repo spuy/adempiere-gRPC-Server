@@ -49,7 +49,6 @@ import org.adempiere.core.domains.models.I_AD_Private_Access;
 import org.adempiere.core.domains.models.I_AD_Process_Para;
 import org.adempiere.core.domains.models.I_AD_Record_Access;
 import org.adempiere.core.domains.models.I_AD_Role;
-import org.adempiere.core.domains.models.I_AD_Tab;
 import org.adempiere.core.domains.models.I_AD_Table;
 import org.adempiere.core.domains.models.I_CM_Chat;
 import org.adempiere.core.domains.models.I_R_MailText;
@@ -235,8 +234,9 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (browser.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("No Table defined in the Smart Browser");
 		}
+		MTable table = MTable.get(context, browser.getAD_Table_ID());
 
-		PO entity = RecordUtil.getEntity(Env.getCtx(), browser.getAD_Table_ID(), null, request.getRecordId(), null);
+		PO entity = RecordUtil.getEntity(Env.getCtx(), table.getAD_Table_ID(), null, request.getRecordId(), null);
 		if (entity == null || entity.get_ID() <= 0) {
 			// Return
 			return ConvertUtil.convertEntity(entity);
@@ -253,19 +253,24 @@ public class UserInterface extends UserInterfaceImplBase {
 					return column.getColumnName().equals(attribute.getKey());
 				})
 				.findFirst()
-				.get();
+				.orElse(null)
+			;
 
 			// if view aliases not exists, next element
 			if (viewColumn == null) {
 				return;
 			}
-			MViewDefinition viewDefinition = MViewDefinition.get(Env.getCtx(), viewColumn.getAD_View_Definition_ID());
 
+			MViewDefinition viewDefinition = MViewDefinition.get(Env.getCtx(), viewColumn.getAD_View_Definition_ID());
 			// not same table setting in smart browser and view definition
 			if (browser.getAD_Table_ID() != viewDefinition.getAD_Table_ID()) {
 				return;
 			}
 			String columnName = MColumn.getColumnName(Env.getCtx(), viewColumn.getAD_Column_ID());
+			if (table.get_ColumnIndex(columnName) < 0) {
+				// column is not present on current table
+				return;
+			}
 
 			int referenceId = org.spin.dictionary.util.DictionaryUtil.getReferenceId(entity.get_Table_ID(), columnName);
 
@@ -282,7 +287,13 @@ public class UserInterface extends UserInterfaceImplBase {
 			entity.set_ValueOfColumn(columnName, value);
 		});
 		//	Save entity
-		entity.saveEx();
+		if (entity.is_Changed()) {
+			entity.saveEx();
+		} else {
+			log.severe(
+				Msg.parseTranslation(Env.getCtx(), "@Ignored@")
+			);
+		}
 
 		//	Return
 		return ConvertUtil.convertEntity(entity);
@@ -548,15 +559,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
-		MTab tab = new Query(
-				Env.getCtx(),
-				MTab.Table_Name,
-				MTab.COLUMNNAME_AD_Tab_ID + " = ? ",
-				null
-			)
-			.setParameters(request.getTabId())
-			.first()
-		;
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
@@ -828,14 +831,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
-
-		MTab tab = new Query(
-			Env.getCtx(),
-			I_AD_Tab.Table_Name,
-			"AD_Tab_ID = ?",
-			null
-		).setParameters(request.getTabId())
-		.first();
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
@@ -909,13 +905,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
-		MTab tab = new Query(
-			Env.getCtx(),
-			I_AD_Tab.Table_Name,
-			"AD_Tab_ID = ?",
-			null
-		).setParameters(request.getTabId())
-		.first();
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
