@@ -43,15 +43,18 @@ import org.adempiere.model.MDocumentStatus;
 import org.compiere.model.MChart;
 import org.compiere.model.MColorSchema;
 import org.compiere.model.MDashboardContent;
+import org.compiere.model.MForm;
 import org.compiere.model.MGoal;
 import org.compiere.model.MMeasure;
 import org.compiere.model.MMenu;
 import org.compiere.model.MRule;
+import org.compiere.model.MTab;
 import org.compiere.model.MTable;
 import org.compiere.model.MWindow;
 import org.compiere.model.PO;
 import org.compiere.model.Query;
 import org.compiere.util.CLogger;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
 import org.spin.backend.grpc.dashboarding.Action;
@@ -301,34 +304,76 @@ public class Dashboarding extends DashboardingImplBase {
 		int roleId = Env.getAD_Role_ID(context);
 
 		//	Get from document status
-		Arrays.asList(MDocumentStatus.getDocumentStatusIndicators(context, userId, roleId)).forEach(documentStatus -> {
-			PendingDocument.Builder pendingDocument = PendingDocument.newBuilder();
-			pendingDocument.setDocumentName(
-				ValueManager.validateNull(documentStatus.getName())
-			);
-			// for Reference
-			if(documentStatus.getAD_Window_ID() > 0) {
-				pendingDocument.setWindowId(documentStatus.getAD_Window_ID());
-			} else if(documentStatus.getAD_Form_ID() > 0) {
-				pendingDocument.setFormId(documentStatus.getAD_Form_ID());
-			}
-			//	Criteria
-			MTable table = MTable.get(context, documentStatus.getAD_Table_ID());
-			pendingDocument.setTableName(
-				ValueManager.validateNull(
-					table.getTableName()
-				)
-			);
-			//	TODO: Add filter from SQL
-//			pendingDocument
-//					.setCriteria(Criteria.newBuilder()
-//					.setTableName(ValueManager.validateNull(table.getTableName()))
-//					.setWhereClause(ValueManager.validateNull(documentStatus.getWhereClause())));
-			//	Set quantity
-			pendingDocument.setRecordCount(MDocumentStatus.evaluate(documentStatus));
-			//	TODO: Add description for interface
-			builder.addPendingDocuments(pendingDocument);
-		});
+		Arrays.asList(MDocumentStatus.getDocumentStatusIndicators(context, userId, roleId))
+			.parallelStream()
+			.forEach(documentStatus -> {
+				PendingDocument.Builder pendingDocumentBuilder = PendingDocument.newBuilder()
+					.setDocumentName(
+						ValueManager.validateNull(
+							documentStatus.getName()
+						)
+					)
+				;
+
+				//	Criteria
+				MTable table = MTable.get(context, documentStatus.getAD_Table_ID());
+				pendingDocumentBuilder.setTableName(
+					ValueManager.validateNull(
+						table.getTableName()
+					)
+				);
+
+				// for Reference
+				String uuidRerefenced = "";
+				if(documentStatus.getAD_Window_ID() > 0) {
+					MWindow referenceWindow = MWindow.get(context, documentStatus.getAD_Window_ID());
+					int tabId = DB.getSQLValue(
+						null,
+						"SELECT AD_Tab_ID FROM AD_Tab WHERE AD_Window_ID= ? AND AD_Table_ID = ? ORDER BY SeqNo",
+						referenceWindow.getAD_Window_ID(), table.getAD_Table_ID()
+					);
+					MTab referenceTab = MTab.get(context, tabId);
+					pendingDocumentBuilder.setWindowId(
+							referenceWindow.getAD_Window_ID()
+						)
+						.setTabId(
+							referenceTab.getAD_Tab_ID()
+						)
+					;
+					uuidRerefenced = ValueManager.validateNull(
+							referenceWindow.getUUID()
+						)
+						+ "|" +
+						ValueManager.validateNull(
+							referenceTab.getUUID()
+						)
+					;
+				} else if(documentStatus.getAD_Form_ID() > 0) {
+					MForm referenceForm = new MForm(context, documentStatus.getAD_Form_ID(), null);
+					pendingDocumentBuilder.setFormId(referenceForm.getAD_Form_ID());
+					uuidRerefenced = ValueManager.validateNull(
+						referenceForm.getUUID()
+					);
+				}
+
+				String uuid = uuidRerefenced + "|" + table.getTableName();
+				RecordUtil.referenceWhereClauseCache.put(uuid, documentStatus.getWhereClause());
+
+				//	Set quantity
+				pendingDocumentBuilder.setRecordCount(
+						MDocumentStatus.evaluate(documentStatus)
+					)
+					.setRecordReferenceUuid(
+						ValueManager.validateNull(
+							uuid
+						)
+					)
+				;
+				//	TODO: Add description for interface
+				builder.addPendingDocuments(pendingDocumentBuilder);
+			})
+		;
+
 		//	Return
 		return builder;
 	}
@@ -371,12 +416,14 @@ public class Dashboarding extends DashboardingImplBase {
 		int recordCount = 0;
 
 		//	Get from Charts
-		final String whereClauseChart = "((AD_User_ID IS NULL AND AD_Role_ID IS NULL)"
-			+ " OR AD_Role_ID=?"	//	#1
-			+ " OR EXISTS (SELECT 1 FROM AD_User_Roles ur "
-			+ "WHERE ur.AD_User_ID=PA_Goal.AD_User_ID "
-			+ "AND ur.AD_Role_ID = ? "	//	#2
-			+ "AND ur.IsActive='Y')) "
+		final String whereClauseChart = "(AD_User_ID IS NULL AND AD_Role_ID IS NULL) "
+			+ "OR AD_Role_ID = ? "	//	#1
+			+ "OR EXISTS ("
+				+ "SELECT 1 FROM AD_User_Roles ur "
+				+ "WHERE ur.AD_User_ID=PA_Goal.AD_User_ID "
+				+ "AND ur.AD_Role_ID = ? "	//	#2
+				+ "AND ur.IsActive='Y'"
+			+ ")"
 		;
 		Query queryCharts = new Query(
 			context,
@@ -414,10 +461,12 @@ public class Dashboarding extends DashboardingImplBase {
 			});
 
 		//	Get from dashboard
-		final String whereClauseDashboard = "EXISTS(SELECT 1 FROM AD_Dashboard_Access da WHERE "
+		final String whereClauseDashboard = "EXISTS("
+			+ "SELECT 1 FROM AD_Dashboard_Access da WHERE "
 			+ "da.PA_DashboardContent_ID = PA_DashboardContent.PA_DashboardContent_ID "
 			+ "AND da.IsActive = 'Y' "
-			+ "AND da.AD_Role_ID = ?)"
+			+ "AND da.AD_Role_ID = ?"
+			+ ")"
 		;
 		Query queryDashboard = new Query(
 			context,
@@ -429,6 +478,8 @@ public class Dashboarding extends DashboardingImplBase {
 			.setOnlyActiveRecords(true)
 		;
 		recordCount += queryDashboard.count();
+
+		final boolean isBaseLanguage = Env.isBaseLanguage(Env.getCtx(), "");
 		queryDashboard
 			.setOrderBy(
 				I_PA_DashboardContent.COLUMNNAME_ColumnNo + ","
@@ -436,11 +487,35 @@ public class Dashboarding extends DashboardingImplBase {
 				+ I_PA_DashboardContent.COLUMNNAME_Line)
 			.<MDashboardContent>list()
 			.forEach(dashboard -> {
+				String name = dashboard.getName();
+				String description = dashboard.getDescription();
+				if (!isBaseLanguage) {
+					String nameTranslated = dashboard.get_Translation(I_PA_DashboardContent.COLUMNNAME_Name);
+					if (!Util.isEmpty(nameTranslated, true)) {
+						name = nameTranslated;
+					}
+					String descriptionTranslated = dashboard.get_Translation(I_PA_DashboardContent.COLUMNNAME_Description);
+					if (!Util.isEmpty(descriptionTranslated, true)) {
+						description = descriptionTranslated;
+					}
+				}
 				Dashboard.Builder dashboardBuilder = Dashboard.newBuilder()
 					.setId(dashboard.getPA_DashboardContent_ID())
-					.setName(ValueManager.validateNull(dashboard.getName()))
-					.setDescription(ValueManager.validateNull(dashboard.getDescription()))
-					.setHtml(ValueManager.validateNull(dashboard.getHTML()))
+					.setName(
+						ValueManager.validateNull(
+							name
+						)
+					)
+					.setDescription(
+						ValueManager.validateNull(
+							description
+						)
+					)
+					.setHtml(
+						ValueManager.validateNull(
+							dashboard.getHTML()
+						)
+					)
 					.setColumnNo(dashboard.getColumnNo())
 					.setLineNo(dashboard.getLine())
 					.setIsEventRequired(dashboard.isEventRequired())

@@ -49,7 +49,6 @@ import org.adempiere.core.domains.models.I_AD_Private_Access;
 import org.adempiere.core.domains.models.I_AD_Process_Para;
 import org.adempiere.core.domains.models.I_AD_Record_Access;
 import org.adempiere.core.domains.models.I_AD_Role;
-import org.adempiere.core.domains.models.I_AD_Tab;
 import org.adempiere.core.domains.models.I_AD_Table;
 import org.adempiere.core.domains.models.I_CM_Chat;
 import org.adempiere.core.domains.models.I_R_MailText;
@@ -206,8 +205,8 @@ public class UserInterface extends UserInterfaceImplBase {
 			if (request == null) {
 				throw new AdempiereException("Requested is Null");
 			}
-			log.fine("Object List Requested = " + request);
-			Entity.Builder entityValue = updateBrowserEntity(Env.getCtx(), request);
+			log.fine("UpdateBrowserEntityRequest = " + request);
+			Entity.Builder entityValue = updateBrowserEntity(request);
 			responseObserver.onNext(entityValue.build());
 			responseObserver.onCompleted();
 		} catch (Exception e) {
@@ -221,28 +220,29 @@ public class UserInterface extends UserInterfaceImplBase {
 
 	/**
 	 * Update Browser Entity
-	 * @param Env.getCtx()
 	 * @param request
 	 * @return
 	 */
-	private Entity.Builder updateBrowserEntity(Properties context, UpdateBrowserEntityRequest request) {
-		MBrowse browser = ASPUtil.getInstance(Env.getCtx()).getBrowse(request.getId());
+	private Entity.Builder updateBrowserEntity(UpdateBrowserEntityRequest request) {
+		Properties context = Env.getCtx();
+		MBrowse browser = ASPUtil.getInstance(context).getBrowse(request.getId());
 
 		if (!browser.isUpdateable()) {
-			throw new AdempiereException("Smart Browser not updateable record");
+			throw new AdempiereException("Smart Browser not updateable records");
 		}
 
 		if (browser.getAD_Table_ID() <= 0) {
 			throw new AdempiereException("No Table defined in the Smart Browser");
 		}
+		final MTable table = MTable.get(context, browser.getAD_Table_ID());
 
-		PO entity = RecordUtil.getEntity(Env.getCtx(), browser.getAD_Table_ID(), null, request.getRecordId(), null);
+		PO entity = RecordUtil.getEntity(context, table.getAD_Table_ID(), null, request.getRecordId(), null);
 		if (entity == null || entity.get_ID() <= 0) {
 			// Return
 			return ConvertUtil.convertEntity(entity);
 		}
 
-		MView view = new MView(Env.getCtx(), browser.getAD_View_ID());
+		MView view = new MView(context, browser.getAD_View_ID());
 		List<MViewColumn> viewColumnsList = view.getViewColumns();
 
 		request.getAttributes().getFieldsMap().entrySet().parallelStream().forEach(attribute -> {
@@ -253,21 +253,26 @@ public class UserInterface extends UserInterfaceImplBase {
 					return column.getColumnName().equals(attribute.getKey());
 				})
 				.findFirst()
-				.get();
+				.orElse(null)
+			;
 
 			// if view aliases not exists, next element
 			if (viewColumn == null) {
 				return;
 			}
-			MViewDefinition viewDefinition = MViewDefinition.get(Env.getCtx(), viewColumn.getAD_View_Definition_ID());
 
+			MViewDefinition viewDefinition = MViewDefinition.get(context, viewColumn.getAD_View_Definition_ID());
 			// not same table setting in smart browser and view definition
 			if (browser.getAD_Table_ID() != viewDefinition.getAD_Table_ID()) {
 				return;
 			}
-			String columnName = MColumn.getColumnName(Env.getCtx(), viewColumn.getAD_Column_ID());
-
-			int referenceId = org.spin.dictionary.util.DictionaryUtil.getReferenceId(entity.get_Table_ID(), columnName);
+			MColumn column = MColumn.get(browser.getCtx(), viewColumn.getAD_Column_ID());
+			if (column == null || column.getAD_Column_ID() <= 0) {
+				// column is not present on current table
+				return;
+			}
+			String columnName = column.getColumnName();
+			int referenceId = column.getAD_Reference_ID();
 
 			Object value = null;
 			if (referenceId > 0) {
@@ -282,7 +287,13 @@ public class UserInterface extends UserInterfaceImplBase {
 			entity.set_ValueOfColumn(columnName, value);
 		});
 		//	Save entity
-		entity.saveEx();
+		if (entity.is_Changed()) {
+			entity.saveEx();
+		} else {
+			log.severe(
+				Msg.parseTranslation(context, "@Ignored@")
+			);
+		}
 
 		//	Return
 		return ConvertUtil.convertEntity(entity);
@@ -548,31 +559,32 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
-		MTab tab = new Query(
-				Env.getCtx(),
-				MTab.Table_Name,
-				MTab.COLUMNNAME_AD_Tab_ID + " = ? ",
-				null
-			)
-			.setParameters(request.getTabId())
-			.first()
-		;
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 		MTable table = MTable.get(Env.getCtx(), tab.getAD_Table_ID());
-		String tableName = table.getTableName();
 		String[] keyColumns = table.getKeyColumns();
 
 		String sql = QueryUtil.getTabQueryWithReferences(tab);
 		// add filter
-		StringBuffer whereClause = new StringBuffer()
-			.append(" WHERE ")
-		;
-		List<Object> parametersLit = new ArrayList<Object>();
+		StringBuffer whereClause = new StringBuffer();
+		List<Object> filtersList = new ArrayList<Object>();
 		if (keyColumns.length == 1) {
-			whereClause.append(tableName + "." + tableName + "_ID = ?");
-			parametersLit.add(request.getId());
+			for (final String keyColumnName: table.getKeyColumns()) {
+				MColumn column = table.getColumn(keyColumnName);
+				if (DisplayType.isID(column.getAD_Reference_ID())) {
+					if (whereClause.length() > 0) {
+						whereClause.append(" OR ");
+					}
+					whereClause.append(
+						table.getTableName() + "." + keyColumnName + " = ?"
+					);
+					filtersList.add(
+						request.getId()
+					);
+				}
+			}
 		} else {
 			String whereMultiKeys = WhereClauseUtil.getWhereClauseFromKeyColumns(keyColumns);
 			whereMultiKeys = WhereClauseUtil.getWhereRestrictionsWithAlias(
@@ -580,14 +592,16 @@ public class UserInterface extends UserInterfaceImplBase {
 				whereMultiKeys
 			);
 			whereClause.append(whereMultiKeys);
-			parametersLit = multiKeys;
+			filtersList = multiKeys;
 		}
-		sql += whereClause.toString();
+		sql += " WHERE " + whereClause.toString();
 
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		Entity.Builder valueObjectBuilder = Entity.newBuilder()
-			.setTableName(table.getTableName())
+			.setTableName(
+				table.getTableName()
+			)
 		;
 		CLogger log = CLogger.getCLogger(UserInterface.class);
 
@@ -595,14 +609,17 @@ public class UserInterface extends UserInterfaceImplBase {
 			LinkedHashMap<String, MColumn> columnsMap = new LinkedHashMap<>();
 			//	Add field to map
 			for (MColumn column: table.getColumnsAsList()) {
-				columnsMap.put(column.getColumnName().toUpperCase(), column);
+				columnsMap.put(
+					column.getColumnName().toUpperCase(),
+					column
+				);
 			}
 
 			//	SELECT Key, Value, Name FROM ...
 			pstmt = DB.prepareStatement(sql, null);
 
 			// add query parameters
-			ParameterUtil.setParametersFromObjectsList(pstmt, parametersLit);
+			ParameterUtil.setParametersFromObjectsList(pstmt, filtersList);
 
 			//	Get from Query
 			rs = pstmt.executeQuery();
@@ -612,9 +629,9 @@ public class UserInterface extends UserInterfaceImplBase {
 				for (int index = 1; index <= metaData.getColumnCount(); index++) {
 					try {
 						String columnName = metaData.getColumnName(index);
-						MColumn field = columnsMap.get(columnName.toUpperCase());
+						MColumn column = columnsMap.get(columnName.toUpperCase());
 						//	Display Columns
-						if(field == null) {
+						if(column == null) {
 							String displayValue = rs.getString(index);
 							Value.Builder displayValueBuilder = ValueManager.getValueFromString(displayValue);
 
@@ -624,15 +641,17 @@ public class UserInterface extends UserInterfaceImplBase {
 							);
 							continue;
 						}
-						if (field.isKey()) {
-							valueObjectBuilder.setId(rs.getInt(index));
+						if (column.isKey()) {
+							valueObjectBuilder.setId(
+								rs.getInt(index)
+							);
 						}
 						//	From field
-						String fieldColumnName = field.getColumnName();
+						String fieldColumnName = column.getColumnName();
 						Object value = rs.getObject(index);
 						Value.Builder valueBuilder = ValueManager.getValueFromReference(
 							value,
-							field.getAD_Reference_ID()
+							column.getAD_Reference_ID()
 						);
 						rowValues.putFields(
 							fieldColumnName,
@@ -735,13 +754,14 @@ public class UserInterface extends UserInterfaceImplBase {
 
 		//	Add from reference
 		//	TODO: Add support to this functionality
-		if(!Util.isEmpty(request.getRecordReferenceUuid())) {
+		if(!Util.isEmpty(request.getRecordReferenceUuid(), true)) {
 			String referenceWhereClause = RecordUtil.referenceWhereClauseCache.get(request.getRecordReferenceUuid());
-			if(!Util.isEmpty(referenceWhereClause)) {
+			if(!Util.isEmpty(referenceWhereClause, true)) {
+				String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(tableName, referenceWhereClause);
 				if(whereClause.length() > 0) {
 					whereClause.append(" AND ");
 				}
-				whereClause.append("(").append(referenceWhereClause).append(")");
+				whereClause.append("(").append(validationCode).append(")");
 			}
 		}
 
@@ -827,14 +847,7 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (request.getTabId() <= 0) {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
-
-		MTab tab = new Query(
-			Env.getCtx(),
-			I_AD_Tab.Table_Name,
-			"AD_Tab_ID = ?",
-			null
-		).setParameters(request.getTabId())
-		.first();
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
@@ -908,13 +921,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
-		MTab tab = new Query(
-			Env.getCtx(),
-			I_AD_Tab.Table_Name,
-			"AD_Tab_ID = ?",
-			null
-		).setParameters(request.getTabId())
-		.first();
+		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
 			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
@@ -945,10 +952,17 @@ public class UserInterface extends UserInterfaceImplBase {
 		}
 		PO currentEntity = entity;
 		attributes.entrySet().parallelStream().forEach(attribute -> {
-			int referenceId = org.spin.dictionary.util.DictionaryUtil.getReferenceId(
-				currentEntity.get_Table_ID(),
-				attribute.getKey()
-			);
+			final String columnName = attribute.getKey();
+			MColumn column = table.getColumn(columnName);
+			if (column == null || column.getAD_Column_ID() <= 0) {
+				// checks if the column exists in the database
+				return;
+			}
+			if (Arrays.stream(keyColumns).anyMatch(columnName::equals)) {
+				// prevent warning `PO.set_Value: Column not updateable`
+				return;
+			}
+			int referenceId = column.getAD_Reference_ID();
 			Object value = null;
 			if (referenceId > 0) {
 				value = ValueManager.getObjectFromReference(
@@ -957,9 +971,11 @@ public class UserInterface extends UserInterfaceImplBase {
 				);
 			} 
 			if (value == null) {
-				value = ValueManager.getObjectFromValue(attribute.getValue());
+				value = ValueManager.getObjectFromValue(
+					attribute.getValue()
+				);
 			}
-			currentEntity.set_ValueOfColumn(attribute.getKey(), value);
+			currentEntity.set_ValueOfColumn(columnName, value);
 		});
 		//	Save entity
 		currentEntity.saveEx();
