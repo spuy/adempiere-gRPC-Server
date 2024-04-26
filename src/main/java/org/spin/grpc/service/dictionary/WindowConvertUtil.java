@@ -568,7 +568,7 @@ public class WindowConvertUtil {
 
 		MTab parentTab = MTab.get(Env.getCtx(), field.getAD_Tab_ID());
 		List<MTab> tabsList = ASPUtil.getInstance(Env.getCtx()).getWindowTabs(parentTab.getAD_Window_ID());
-		if (tabsList == null) {
+		if (tabsList == null || tabsList.isEmpty()) {
 			return depenentFieldsList;
 		}
 		tabsList.parallelStream()
@@ -578,7 +578,7 @@ public class WindowConvertUtil {
 			})
 			.forEach(tab -> {
 				List<MField> fieldsList = ASPUtil.getInstance().getWindowFields(tab.getAD_Tab_ID());
-				if (fieldsList == null) {
+				if (fieldsList == null || fieldsList.isEmpty()) {
 					return;
 				}
 
@@ -627,15 +627,15 @@ public class WindowConvertUtil {
 					})
 					.forEach(currentField -> {
 						DependentField.Builder builder = DependentField.newBuilder()
-							.setContainerId(
+							.setParentId(
 								tab.getAD_Tab_ID()
 							)
-							.setContainerUuid(
+							.setParentUuid(
 								ValueManager.validateNull(
 									tab.getUUID()
 								)
 							)
-							.setContainerName(
+							.setParentName(
 								ValueManager.validateNull(
 									tab.getName()
 								)
