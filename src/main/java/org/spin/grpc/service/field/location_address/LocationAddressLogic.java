@@ -60,8 +60,8 @@ public class LocationAddressLogic {
 		);
 		if (!Util.isEmpty(searchValue, true)) {
 			whereClause = "("
-				+ "UPPER(CountryCode) = UPPER(?) "
-				+ "OR UPPER(Name) = UPPER(?) "
+				+ "UPPER(CountryCode) LIKE '%' || UPPER(?) || '%' "
+				+ "OR UPPER(Name) LIKE '%' || UPPER(?) || '%' "
 				+ ")"
 			;
 			parameters.add(searchValue);
@@ -83,7 +83,7 @@ public class LocationAddressLogic {
 		;
 
 		String sessionLanguage = Env.getAD_Language(Env.getCtx());
-		boolean isBaseLangague = Language.isBaseLanguage(sessionLanguage);
+		final boolean isBaseLangague = Language.isBaseLanguage(sessionLanguage);
 		query.getIDsAsList().forEach(countryId -> {
 			MCountry country = MCountry.get(Env.getCtx(), countryId);
 			String name = country.getName();
@@ -143,12 +143,7 @@ public class LocationAddressLogic {
 			request.getSearchValue()
 		);
 		if (!Util.isEmpty(searchValue, true)) {
-			whereClause = "AND ("
-				+ "UPPER(CountryCode) = UPPER(?) "
-				+ "OR UPPER(Name) = UPPER(?) "
-				+ ")"
-			;
-			parameters.add(searchValue);
+			whereClause = "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 			parameters.add(searchValue);
 		}
 		Query query = new Query(
@@ -208,12 +203,7 @@ public class LocationAddressLogic {
 			request.getSearchValue()
 		);
 		if (!Util.isEmpty(searchValue, true)) {
-			whereClause += "AND ("
-				+ "UPPER(CountryCode) = UPPER(?) "
-				+ "OR UPPER(Name) = UPPER(?) "
-				+ ")"
-			;
-			parameters.add(searchValue);
+			whereClause += "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 			parameters.add(searchValue);
 		}
 		Query query = new Query(
@@ -254,7 +244,7 @@ public class LocationAddressLogic {
 			throw new AdempiereException("@FillMandatory@ @C_Location_ID@");
 		}
 		MLocation address = MLocation.get(Env.getCtx(), addressId, null);
-		if (address == null || address.getC_Country_ID() <= 0) {
+		if (address == null || address.getC_Location_ID() <= 0) {
 			throw new AdempiereException("@C_Location_ID@ @NotFound@");
 		}
 		return address;
@@ -328,11 +318,11 @@ public class LocationAddressLogic {
 			);
 			address.setLongitude(longitude);
 		}
-		if (!Util.isEmpty(request.getLatitude(), true)) {
-			BigDecimal latitude = NumberManager.getBigDecimalFromString(
-				request.getLatitude()
+		if (!Util.isEmpty(request.getAltitude(), true)) {
+			BigDecimal altitude = NumberManager.getBigDecimalFromString(
+				request.getAltitude()
 			);
-			address.setLatitude(latitude);
+			address.setAltitude(altitude);
 		}
 
 		address.saveEx();
@@ -409,7 +399,10 @@ public class LocationAddressLogic {
 
 
 	public static Address.Builder getAddress(GetAddressRequest request) {
-		MLocation address = validateAndGetAddress(request.getId());
+		MLocation address = validateAndGetAddress(
+			request.getId()
+		);
+
 		Address.Builder builder = LocationAddressConvertUtil.convertAddress(
 			address
 		);

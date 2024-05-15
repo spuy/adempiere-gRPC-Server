@@ -20,8 +20,10 @@ import org.compiere.model.MCountry;
 import org.compiere.model.MLocation;
 import org.compiere.model.MRegion;
 import org.compiere.util.Env;
+import org.compiere.util.Util;
 import org.spin.backend.grpc.field.location_address.Address;
 import org.spin.backend.grpc.field.location_address.Country;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 public class LocationAddressConvertUtil {
@@ -104,22 +106,33 @@ public class LocationAddressConvertUtil {
 
 	public static Address.Builder convertAddress(MLocation address) {
 		Address.Builder builder = Address.newBuilder();
-		if (address == null) {
+		if (address == null || address.getC_Location_ID() <= 0) {
 			return builder;
 		}
-		MCountry country = MCountry.get(Env.getCtx(), address.getC_Country_ID());
+
+		String countryName = null;
+		if (address.getC_Country_ID() > 0) {
+			MCountry country = MCountry.get(Env.getCtx(), address.getC_Country_ID());
+			if (country != null && country.getC_Country_ID() > 0) {
+				countryName = country.getName();
+				if (Util.isEmpty(countryName, true)) {
+					countryName = country.getCountryCode();
+				}
+			}
+		}
 
 		String regionName = null;
 		if (address.getC_Region_ID() > 0) {
 			MRegion region = MRegion.get(Env.getCtx(), address.getC_Region_ID());
-			if (region != null) {
+			if (region != null && region.getC_Region_ID() > 0) {
 				regionName = region.getName();
 			}
 		}
+
 		String cityName = null;
 		if (address.getC_City_ID() > 0) {
 			MCity city = MCity.get(Env.getCtx(), address.getC_City_ID());
-			if (city != null) {
+			if (city != null && city.getC_City_ID() > 0) {
 				cityName = city.getName();
 			}
 		}
@@ -140,7 +153,7 @@ public class LocationAddressConvertUtil {
 			)
 			.setCountryName(
 				ValueManager.validateNull(
-					country.getName()
+					countryName
 				)
 			)
 			.setRegionId(
@@ -192,6 +205,21 @@ public class LocationAddressConvertUtil {
 			.setPostalCodeAdditional(
 				ValueManager.validateNull(
 					address.getPostal_Add()
+				)
+			)
+			.setAltitude(
+				NumberManager.getBigDecimalToString(
+					address.getAltitude()
+				)
+			)
+			.setLatitude(
+				NumberManager.getBigDecimalToString(
+					address.getLatitude()
+				)
+			)
+			.setLongitude(
+				NumberManager.getBigDecimalToString(
+					address.getLongitude()
 				)
 			)
 		;
