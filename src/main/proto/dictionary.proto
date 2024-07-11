@@ -153,8 +153,9 @@ message ReferenceRequest {
 
 // Window
 message Window {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 6;
 	string name = 3;
 	string description = 4;
 	string help = 5;
@@ -179,8 +180,9 @@ message Table {
 
 // Tab
 message Tab {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 6;
 	string name = 3;
 	string description = 4;
 	string help = 5;
@@ -222,8 +224,9 @@ message Tab {
 
 // Field
 message Field {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 7;
 	string column_name = 3;
 	string name = 4;
 	string description = 5;
@@ -288,8 +291,9 @@ message DependentField {
 	int32 parent_id = 1;
 	string parent_uuid = 2;
 	string parent_name = 3;
-	int32 id = 4;
+	string id = 4;
 	string uuid = 5;
+	int32 internal_id = 7;
 	string column_name = 6;
 }
 
@@ -340,8 +344,9 @@ message FieldCondition {
 }
 
 message DictionaryEntity {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 6;
 	string name = 3;
 	string description = 4;
 	string help = 5;
@@ -349,8 +354,9 @@ message DictionaryEntity {
 
 // Process
 message Process {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 20;
 	string code = 3;
 	string name = 4;
 	string description = 5;
@@ -377,8 +383,9 @@ message Process {
 
 // Form
 message Form {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 8;
 	string name = 3;
 	string description = 4;
 	string help = 5;
@@ -387,8 +394,9 @@ message Form {
 
 // Smart Browser
 message Browser {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 7;
 	string code = 3;
 	string name = 4;
 	string description = 5;

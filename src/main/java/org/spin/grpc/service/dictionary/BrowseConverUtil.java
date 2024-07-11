@@ -64,9 +64,17 @@ public class BrowseConverUtil {
 		String query = QueryUtil.getBrowserQueryWithReferences(browser);
 		String orderByClause = OrderByUtil.getBrowseOrderBy(browser);
 		Browser.Builder builder = Browser.newBuilder()
-			.setId(browser.getAD_Browse_ID())
+			.setId(
+				ValueManager.validateNull(
+					browser.getUUID()
+				))
 			.setUuid(
-				ValueManager.validateNull(browser.getUUID())
+				ValueManager.validateNull(
+					browser.getUUID()
+				)
+			)
+			.setInternalId(
+				browser.getAD_Browse_ID()
 			)
 			.setCode(
 				ValueManager.validateNull(
@@ -167,9 +175,17 @@ public class BrowseConverUtil {
 
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(browseField.getAD_Browse_Field_ID())
+			.setId(
+				ValueManager.validateNull(
+					browseField.getUUID()
+				))
 			.setUuid(
-				ValueManager.validateNull(browseField.getUUID())
+				ValueManager.validateNull(
+					browseField.getUUID()
+				)
+			)
+			.setInternalId(
+				browseField.getAD_Browse_Field_ID()
 			)
 			.setName(
 				ValueManager.validateNull(browseField.getName())
@@ -377,12 +393,17 @@ public class BrowseConverUtil {
 						)
 					)
 					.setId(
-						currentBrowseField.getAD_Browse_Field_ID()
+						ValueManager.validateNull(
+							currentBrowseField.getUUID()
+						)
 					)
 					.setUuid(
 						ValueManager.validateNull(
 							currentBrowseField.getUUID()
 						)
+					)
+					.setInternalId(
+						currentBrowseField.getAD_Browse_Field_ID()
 					)
 				;
 

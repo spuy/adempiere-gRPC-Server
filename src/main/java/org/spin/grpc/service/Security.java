@@ -1472,11 +1472,17 @@ public class Security extends SecurityImplBase {
 			description = menu.getDescription();
 		}
 		Menu.Builder builder = Menu.newBuilder()
-			.setId(menu.getAD_Menu_ID())
+			.setId(
+				ValueManager.validateNull(
+					menu.getUUID()
+				))
 			.setUuid(
 				ValueManager.validateNull(
 					menu.getUUID()
 				)
+			)
+			.setInternalId(
+				menu.getAD_Menu_ID()
 			)
 			.setParentId(parentId)
 			// .setSequence(

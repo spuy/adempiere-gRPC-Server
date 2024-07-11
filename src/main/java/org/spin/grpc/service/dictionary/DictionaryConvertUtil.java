@@ -114,6 +114,11 @@ public class DictionaryConvertUtil {
 				)
 			)
 			.setId(
+				ValueManager.validateNull(
+					entity.get_UUID()
+				)
+			)
+			.setInternalId(
 				entity.get_ID()
 			)
 			.setName(
@@ -244,9 +249,19 @@ public class DictionaryConvertUtil {
 		DictionaryConvertUtil.translateEntity(form);
 
 		//	
-		builder.setId(form.getAD_Form_ID())
+		builder.setId(
+				ValueManager.validateNull(
+					form.getUUID()
+				)
+			)
 			.setUuid(
-				ValueManager.validateNull(form.getUUID()))
+				ValueManager.validateNull(
+					form.getUUID()
+				)
+			)
+			.setInternalId(
+				form.getAD_Form_ID()
+			)
 			.setName(
 				ValueManager.validateNull(
 					ValueManager.getTranslation(form, MForm.COLUMNNAME_Name)
@@ -320,9 +335,17 @@ public class DictionaryConvertUtil {
 		M_Element element = new M_Element(context, column.getAD_Element_ID(), null);
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(column.getAD_Column_ID())
+			.setId(
+				ValueManager.validateNull(
+					column.getUUID()
+				))
 			.setUuid(
-				ValueManager.validateNull(column.getUUID())
+				ValueManager.validateNull(
+					column.getUUID()
+				)
+			)
+			.setInternalId(
+				column.getAD_Column_ID()
 			)
 			.setName(
 				ValueManager.validateNull(column.getName())
@@ -474,12 +497,17 @@ public class DictionaryConvertUtil {
 						table.getTableName()
 					)
 					.setId(
-						currentColumn.getAD_Column_ID()
+						ValueManager.validateNull(
+							currentColumn.getUUID()
+						)
 					)
 					.setUuid(
 						ValueManager.validateNull(
 							currentColumn.getUUID()
 						)
+					)
+					.setInternalId(
+						currentColumn.getAD_Column_ID()
 					)
 					.setColumnName(
 						currentColumn.getColumnName()
@@ -513,9 +541,17 @@ public class DictionaryConvertUtil {
 		}
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(element.getAD_Element_ID())
+			.setId(
+				ValueManager.validateNull(
+					element.getUUID()
+				))
 			.setUuid(
-				ValueManager.validateNull(element.getUUID())
+				ValueManager.validateNull(
+					element.getUUID()
+				)
+			)
+			.setInternalId(
+				element.getAD_Element_ID()
 			)
 			.setName(
 				ValueManager.validateNull(
