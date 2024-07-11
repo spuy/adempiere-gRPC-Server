@@ -88,9 +88,18 @@ public class WindowConvertUtil {
 
 		//	
 		Window.Builder builder = Window.newBuilder()
-			.setId(window.getAD_Window_ID())
+			.setId(
+				ValueManager.validateNull(
+					window.getUUID()
+				)
+			)
 			.setUuid(
-				ValueManager.validateNull(window.getUUID())
+				ValueManager.validateNull(
+					window.getUUID()
+				)
+			)
+			.setInternalId(
+				window.getAD_Window_ID()
 			)
 			.setName(window.getName())
 			.setDescription(
@@ -161,7 +170,7 @@ public class WindowConvertUtil {
 		if (table == null || table.getAD_Table_ID() <= 0) {
 			return builder;
 		}
-		List<String> selectionColums = table.getColumnsAsList(true).parallelStream()
+		List<String> selectionColums = table.getColumnsAsList(true).stream()
 			.filter(column -> {
 				return column.isSelectionColumn();
 			})
@@ -242,9 +251,18 @@ public class WindowConvertUtil {
 
 		//	create build
 		Tab.Builder builder = Tab.newBuilder()
-			.setId(tab.getAD_Tab_ID())
+			.setId(
+				ValueManager.validateNull(
+					tab.getUUID()
+				)
+			)
 			.setUuid(
-				ValueManager.validateNull(tab.getUUID())
+				ValueManager.validateNull(
+					tab.getUUID()
+				)
+			)
+			.setInternalId(
+				tab.getAD_Tab_ID()
 			)
 			.setName(
 				ValueManager.validateNull(tab.getName())
@@ -340,7 +358,11 @@ public class WindowConvertUtil {
 				;
 				if (parentColumn != null && parentColumn.getAD_Column_ID() > 0) {
 					// filter_column_name
-					parentColumn.getColumnName();
+					builder.setFilterColumnName(
+						ValueManager.validateNull(
+							parentColumn.getColumnName()
+						)
+					);
 				}
 			}
 		}
@@ -421,9 +443,16 @@ public class WindowConvertUtil {
 		}
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(field.getAD_Field_ID())
+			.setId(
+				ValueManager.validateNull(
+					field.getUUID()
+				)
+			)
 			.setUuid(
 				ValueManager.validateNull(field.getUUID())
+			)
+			.setInternalId(
+				field.getAD_Field_ID()
 			)
 			.setName(
 				ValueManager.validateNull(field.getName())
@@ -608,7 +637,7 @@ public class WindowConvertUtil {
 		if (tabsList == null || tabsList.isEmpty()) {
 			return depenentFieldsList;
 		}
-		tabsList.parallelStream()
+		tabsList.stream()
 			.filter(currentTab -> {
 				// transaltion tab is not rendering on client
 				return currentTab.isActive() && !currentTab.isTranslationTab() && !currentTab.isSortTab();
@@ -619,7 +648,7 @@ public class WindowConvertUtil {
 					return;
 				}
 
-				fieldsList.parallelStream()
+				fieldsList.stream()
 					.filter(currentField -> {
 						if (currentField == null || !currentField.isActive()) {
 							return false;
@@ -678,12 +707,17 @@ public class WindowConvertUtil {
 								)
 							)
 							.setId(
-								currentField.getAD_Field_ID()
+								ValueManager.validateNull(
+									currentField.getUUID()
+								)
 							)
 							.setUuid(
 								ValueManager.validateNull(
 									currentField.getUUID()
 								)
+							)
+							.setInternalId(
+								currentField.getAD_Field_ID()
 							)
 						;
 

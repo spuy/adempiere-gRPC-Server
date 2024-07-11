@@ -2831,7 +2831,7 @@ public class UserInterface extends UserInterfaceImplBase {
 
 	private ListEntitiesResponse.Builder listTabSequences(ListTabSequencesRequest request) {
 		if (request.getTabId() <= 0) {
-			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
 		// Fill context
@@ -2841,12 +2841,11 @@ public class UserInterface extends UserInterfaceImplBase {
 		);
 
 		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
-		;
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
-			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 		if (!tab.isSortTab()) {
-			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
+			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@: " + tab.getName());
 		}
 		String sortColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortOrder_ID());
 		String includedColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortYesNo_ID());
@@ -2859,23 +2858,43 @@ public class UserInterface extends UserInterfaceImplBase {
 			})
 			.findFirst()
 			.orElse(null);
+		if (keyColumn == null || keyColumn.getAD_Column_ID() <= 0) {
+			throw new AdempiereException("@KeyColumn@ @NotFound@");
+		}
 
-		MColumn parentColumn = columnsList.parallelStream()
-			.filter(column -> {
-				return column.isParent();
-			})
-			.findFirst()
-			.orElse(null);
+		String filterColumnName = request.getFilterColumnName();
+		if (Util.isEmpty(filterColumnName, true)) {
+			MColumn parentColumn = columnsList.parallelStream()
+				.filter(column -> {
+					return column.isParent();
+				})
+				.findFirst()
+				.orElse(null);
+			if (parentColumn != null && parentColumn.getAD_Column_ID() > 0) {
+				filterColumnName = parentColumn.getColumnName();
+			}
+		}
+		if (Util.isEmpty(filterColumnName, true)) {
+			throw new AdempiereException("@Parent_Column_ID@ @NotFound@");
+		}
 
-		int parentRecordId = Env.getContextAsInt(Env.getCtx(), windowNo, parentColumn.getColumnName());
+		int filterRecordId = request.getFilterRecordId();
+		if (filterRecordId <= 0) {
+			// TODO: Support backward, remove in future versions
+			filterRecordId = Env.getContextAsInt(Env.getCtx(), windowNo, filterColumnName);
+		}
+		RecordUtil.validateRecordId(
+			filterRecordId,
+			table.getAccessLevel()
+		);
 
 		Query query = new Query(
 				Env.getCtx(),
 				table.getTableName(),
-				parentColumn.getColumnName() + " = ?",
+				filterColumnName + " = ?",
 				null
 			)
-			.setParameters(parentRecordId)
+			.setParameters(filterRecordId)
 			.setOrderBy(sortColumnName + " ASC")
 		;
 
