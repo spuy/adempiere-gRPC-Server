@@ -538,15 +538,17 @@ message ListGeneralSearchRecordsRequest {
 	string page_token = 6;
 	string search_value = 7;
 	string context_attributes = 8;
+	bool is_only_active_records = 9;
 	// references
-	int32 process_parameter_id = 9;
-	int32 field_id = 10;
-	int32 browse_field_id = 11;
-	int32 reference_id = 12;
-	int32 column_id = 13;
-	string table_name = 14;
-	string column_name = 15;
-	bool is_only_active_records = 16;
+	int32 process_parameter_id = 10;
+	int32 field_id = 11;
+	int32 browse_field_id = 12;
+	int32 reference_id = 13;
+	int32 column_id = 14;
+	string table_name = 15;
+	string column_name = 16;
+	//
+	bool is_without_validation = 17;
 }
 
 message ListTabSequencesRequest {
@@ -557,9 +559,13 @@ message ListTabSequencesRequest {
 	int32 page_size = 5;
 	string page_token = 6;
 	string search_value = 7;
-	int32 window_id = 8;
-	int32 tab_id = 9;
-	string context_attributes = 10;
+	string context_attributes = 9;
+	// dictinary attributes
+	int32 window_id = 10;
+	int32 tab_id = 11;
+	// record attributes
+	string filter_column_name = 12;
+	int32 filter_record_id = 13;
 }
 
 message SaveTabSequencesRequest {

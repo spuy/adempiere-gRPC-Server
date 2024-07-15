@@ -149,6 +149,7 @@ import org.spin.base.util.LookupUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
 import org.spin.base.util.ReferenceUtil;
+import org.spin.dictionary.util.WindowUtil;
 import org.spin.grpc.service.ui.BrowserLogic;
 import org.spin.grpc.service.ui.CalloutLogic;
 import org.spin.grpc.service.ui.UserInterfaceLogic;
@@ -904,9 +905,14 @@ public class UserInterface extends UserInterfaceImplBase {
 		if (entity == null) {
 			throw new AdempiereException("@Error@ PO is null");
 		}
+
 		Map<String, Value> attributes = new HashMap<>(request.getAttributes().getFieldsMap());
-		attributes.entrySet().parallelStream().forEach(attribute -> {
-			int referenceId = org.spin.dictionary.util.DictionaryUtil.getReferenceId(entity.get_Table_ID(), attribute.getKey());
+		attributes.entrySet().stream().forEach(attribute -> {
+			String columnName = attribute.getKey();
+			int referenceId = org.spin.dictionary.util.DictionaryUtil.getReferenceId(
+				entity.get_Table_ID(),
+				columnName
+			);
 			Object value = null;
 			if (referenceId > 0) {
 				value = ValueManager.getObjectFromReference(
@@ -917,7 +923,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			if (value == null) {
 				value = ValueManager.getObjectFromValue(attribute.getValue());
 			}
-			entity.set_ValueOfColumn(attribute.getKey(), value);
+			entity.set_ValueOfColumn(columnName, value);
 		});
 		//	Save entity
 		entity.saveEx();
@@ -2254,7 +2260,8 @@ public class UserInterface extends UserInterfaceImplBase {
 			request.getBrowseFieldId(),
 			request.getColumnId(),
 			request.getColumnName(),
-			request.getTableName()
+			request.getTableName(),
+			request.getIsWithoutValidation()
 		);
 		if (reference == null) {
 			throw new AdempiereException("@AD_Reference_ID@ @NotFound@");
@@ -2606,10 +2613,16 @@ public class UserInterface extends UserInterfaceImplBase {
 			}
 
 			// set values on Env.getCtx()
+			Map<String, Integer> displayTypeColumns = WindowUtil.getTabFieldsDisplayType(tab);
 			Map<String, Object> attributes = ValueManager.convertValuesMapToObjects(
-				request.getContextAttributes().getFieldsMap()
+				request.getContextAttributes().getFieldsMap(),
+				displayTypeColumns
 			);
-			ContextManager.setContextWithAttributesFromObjectMap(windowNo, Env.getCtx(), attributes);
+			ContextManager.setContextWithAttributesFromObjectMap(
+				windowNo,
+				Env.getCtx(),
+				attributes
+			);
 
 			//
 			Object oldValue = null;
@@ -2657,7 +2670,12 @@ public class UserInterface extends UserInterfaceImplBase {
 
 			//	load values
 			for (Entry<String, Object> attribute : attributes.entrySet()) {
-				gridTab.setValue(attribute.getKey(), attribute.getValue());
+				String columnNameEntity = attribute.getKey();
+				Object valueEntity = attribute.getValue();
+				gridTab.setValue(
+					columnNameEntity,
+					valueEntity
+				);
 			}
 			gridTab.setValue(request.getColumnName(), value);
 
@@ -2669,7 +2687,7 @@ public class UserInterface extends UserInterfaceImplBase {
 			String result = processCallout(windowNo, gridTab, gridField);
 			Struct.Builder contextValues = Struct.newBuilder();
 			Arrays.asList(gridTab.getFields())
-				.parallelStream()
+				.stream()
 				.filter(fieldValue -> {
 					return CalloutLogic.isValidChange(fieldValue);
 				})
@@ -2831,7 +2849,7 @@ public class UserInterface extends UserInterfaceImplBase {
 
 	private ListEntitiesResponse.Builder listTabSequences(ListTabSequencesRequest request) {
 		if (request.getTabId() <= 0) {
-			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
+			throw new AdempiereException("@FillMandatory@ @AD_Tab_ID@");
 		}
 
 		// Fill context
@@ -2841,12 +2859,11 @@ public class UserInterface extends UserInterfaceImplBase {
 		);
 
 		MTab tab = MTab.get(Env.getCtx(), request.getTabId());
-		;
 		if (tab == null || tab.getAD_Tab_ID() <= 0) {
-			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
+			throw new AdempiereException("@AD_Tab_ID@ @NotFound@");
 		}
 		if (!tab.isSortTab()) {
-			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@");
+			throw new AdempiereException("@AD_Tab_ID@ @No@ @Sequence@: " + tab.getName());
 		}
 		String sortColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortOrder_ID());
 		String includedColumnName = MColumn.getColumnName(Env.getCtx(), tab.getAD_ColumnSortYesNo_ID());
@@ -2859,23 +2876,43 @@ public class UserInterface extends UserInterfaceImplBase {
 			})
 			.findFirst()
 			.orElse(null);
+		if (keyColumn == null || keyColumn.getAD_Column_ID() <= 0) {
+			throw new AdempiereException("@KeyColumn@ @NotFound@");
+		}
 
-		MColumn parentColumn = columnsList.parallelStream()
-			.filter(column -> {
-				return column.isParent();
-			})
-			.findFirst()
-			.orElse(null);
+		String filterColumnName = request.getFilterColumnName();
+		if (Util.isEmpty(filterColumnName, true)) {
+			MColumn parentColumn = columnsList.parallelStream()
+				.filter(column -> {
+					return column.isParent();
+				})
+				.findFirst()
+				.orElse(null);
+			if (parentColumn != null && parentColumn.getAD_Column_ID() > 0) {
+				filterColumnName = parentColumn.getColumnName();
+			}
+		}
+		if (Util.isEmpty(filterColumnName, true)) {
+			throw new AdempiereException("@Parent_Column_ID@ @NotFound@");
+		}
 
-		int parentRecordId = Env.getContextAsInt(Env.getCtx(), windowNo, parentColumn.getColumnName());
+		int filterRecordId = request.getFilterRecordId();
+		if (filterRecordId <= 0) {
+			// TODO: Support backward, remove in future versions
+			filterRecordId = Env.getContextAsInt(Env.getCtx(), windowNo, filterColumnName);
+		}
+		RecordUtil.validateRecordId(
+			filterRecordId,
+			table.getAccessLevel()
+		);
 
 		Query query = new Query(
 				Env.getCtx(),
 				table.getTableName(),
-				parentColumn.getColumnName() + " = ?",
+				filterColumnName + " = ?",
 				null
 			)
-			.setParameters(parentRecordId)
+			.setParameters(filterRecordId)
 			.setOrderBy(sortColumnName + " ASC")
 		;
 
