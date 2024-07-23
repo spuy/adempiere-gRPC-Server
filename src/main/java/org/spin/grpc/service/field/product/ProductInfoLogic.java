@@ -40,6 +40,7 @@ import org.compiere.model.MPriceList;
 import org.compiere.model.MPriceListVersion;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPO;
+import org.compiere.model.MRole;
 import org.compiere.model.Query;
 import org.compiere.util.DB;
 import org.compiere.util.DisplayType;
@@ -391,17 +392,6 @@ public class ProductInfoLogic {
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
 		ContextManager.setContextWithAttributesFromString(windowNo, context, request.getContextAttributes());
 
-		StringBuffer whereClause = new StringBuffer("1=1");
-		// validation code of field
-		String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(tableName, reference.ValidationCode);
-		String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
-		if (!Util.isEmpty(reference.ValidationCode, true)) {
-			if (Util.isEmpty(parsedValidationCode, true)) {
-				throw new AdempiereException("@WhereClause@ @Unparseable@");
-			}
-			whereClause.append(" AND ").append(parsedValidationCode);
-		}
-
 		String sqlQuery = "SELECT "
 			+ "p.M_Product_ID, p.UUID, " // + "p.Discontinued, "
 			+ "p.IsStocked AS IsStocked, "
@@ -422,11 +412,16 @@ public class ProductInfoLogic {
 		;
 
 		String sqlWhere = " WHERE p.AD_Client_ID = ? ";
-
 		List<Object> parametersList = new ArrayList<>();
 		parametersList.add(
 			Env.getAD_Client_ID(context)
 		);
+
+		// validate is active record
+		if (request.getIsOnlyActiveRecords()) {
+			sqlWhere += "AND p.IsActive = ? ";
+			parametersList.add(true);
+		}
 
 		final String searchValue = ValueManager.getDecodeUrl(
 			request.getSearchValue()
@@ -614,11 +609,36 @@ public class ProductInfoLogic {
 
 		String sql = sqlQuery + sqlFrom + sqlWhere;
 
+		// add where with access restriction
+		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
+			.addAccessSQL(
+				sql,
+				"p",
+				MRole.SQL_FULLYQUALIFIED,
+				MRole.SQL_RO
+			);
+
+		// validation code of field
+		if (!request.getIsWithoutValidation()) {
+			String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(
+				tableName,
+				"p",
+				reference.ValidationCode
+			);
+			if (!Util.isEmpty(reference.ValidationCode, true)) {
+				String parsedValidationCode = Env.parseContext(context, windowNo, validationCode, false);
+				if (Util.isEmpty(parsedValidationCode, true)) {
+					throw new AdempiereException("@WhereClause@ @Unparseable@");
+				}
+				sqlWithRoleAccess += " AND " + parsedValidationCode;
+			}
+		}
+
 		//	Count records
 		int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		int limit = LimitUtil.getPageSize(request.getPageSize());
 		int offset = (pageNumber - 1) * limit;
-		int count = CountUtil.countRecords(sql, tableName, "p", parametersList);
+		int count = CountUtil.countRecords(sqlWithRoleAccess, tableName, "p", parametersList);
 		//	Set page token
 		String nexPageToken = null;
 		if(LimitUtil.isValidNextPageToken(count, offset, limit)) {
@@ -634,7 +654,7 @@ public class ProductInfoLogic {
 			)
 		;
 
-		String parsedSQL = LimitUtil.getQueryWithLimit(sql, limit, offset);
+		String parsedSQL = LimitUtil.getQueryWithLimit(sqlWithRoleAccess, limit, offset);
 
 		//	Add Order By
 		String sqlOrderBy = " ORDER BY ";
