@@ -24,7 +24,7 @@ repositories {
 	mavenLocal()
     mavenCentral()
     maven {
-    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com'
+    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere_customizations'
         credentials {
         	username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
             password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token'] 
@@ -51,34 +51,12 @@ dependencies {
 	implementation 'com.sun.xml.bind:jaxb-impl:3.0.0-M4'
 	implementation 'com.sun.xml.bind:jaxb-core:3.0.0-M4'
 	implementation 'javax.activation:activation:1.1.1'
-
-	//	ADempiere Core
-	implementation "${baseGroupId}:base:${baseVersion}"
-	implementation "${baseGroupId}:point-of-sales:${baseVersion}"
-	implementation "${baseGroupId}:store:${baseVersion}"
-	implementation "${baseGroupId}:distribution:${baseVersion}"
-	implementation "${baseGroupId}:freight:${baseVersion}"
-	implementation "${baseGroupId}:store:${baseVersion}"
-	implementation "${baseGroupId}:human-resource-and-payroll:${baseVersion}"
-	implementation "${baseGroupId}:extend:${baseVersion}"
-	implementation "${baseGroupId}:migration:${baseVersion}"
-	implementation "${baseGroupId}:asset:${baseVersion}"
-	implementation "${baseGroupId}:crm:${baseVersion}"
-	implementation "${baseGroupId}:production:${baseVersion}"
-	implementation "${baseGroupId}:project:${baseVersion}"
-	implementation "${baseGroupId}:request:${baseVersion}"
-	implementation "${baseGroupId}:adempiere.test:${baseVersion}"
-	implementation "${baseGroupId}:cashflow:${baseVersion}"
-	implementation "${baseGroupId}:manufacturing:${baseVersion}"
-	implementation "${baseGroupId}:wms:${baseVersion}"
-	implementation "${baseGroupId}:openid-authentication:${baseVersion}"
-	implementation "${baseGroupId}:investment-and-loan:${baseVersion}"
-	implementation "${baseGroupId}:time-and-attendance:${baseVersion}"
-	implementation "${baseGroupId}:loan:${baseVersion}"
-	implementation "${baseGroupId}:discord-notifier:${baseVersion}"
-	implementation "${baseGroupId}:telegram-notifier:${baseVersion}"
-	implementation "${baseGroupId}:tools:${baseVersion}"
-	implementation "${baseGroupId}:jasperreports:${baseVersion}"
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.2'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.11.2'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.2'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
+	//	ADempiere Core + Patches
+    implementation 'com.solop.adempiere:adempiere-customizations.customizations_libs:3.9.4.001-1.0.0'
 	//	Others
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
 	implementation 'net.sf.jasperreports:jasperreports-fonts:6.21.0'
@@ -90,35 +68,6 @@ dependencies {
 	implementation 'io.vavr:vavr:0.10.4' // used by org.compiere.util.DB
 	implementation "org.codehaus.groovy:groovy-all:2.4.15"
 
-	// ADempiere Projects with additional features
-	//	ADempiere gRPC Utils Base (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-grpc-utils)
-	implementation "${baseGroupId}:adempiere-grpc-utils:1.4.6"
-	// Dashboard Improvements (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-dashboard-improvements)
-	implementation "${baseGroupId}:adempiere-dashboard-improvements:1.0.8"
-	// Point Of Sales Improvements (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-pos-improvements)
-	implementation "${baseGroupId}:adempiere-pos-improvements:1.0.2"
-	// Business Processors (To Task's and Schedulers) (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-business-processors)
-	implementation "${baseGroupId}:adempiere-business-processors:1.1.0"
-	// Engine as Queue (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-kafka-connector)
-	implementation "${baseGroupId}:adempiere-kafka-connector:1.3.0"
-	// AWS3 Connector to use as File Storagee (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-s3-connector)
-	implementation 'io.github.adempiere:adempiere-s3-connector:1.0.2'
-	// Third part access using JWT (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-jwt-token)
-	implementation "${baseGroupId}:adempiere-jwt-token:1.0.2"
-	// https://mvnrepository.com/artifact/com.nimbusds/oauth2-oidc-sdk
-	implementation 'com.nimbusds:oauth2-oidc-sdk:9.35'
-	// https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-	implementation 'com.nimbusds:nimbus-jose-jwt:9.22'
-	// https://mvnrepository.com/artifact/com.nimbusds/content-type
-	implementation 'com.nimbusds:content-type:2.2'
-	// https://mvnrepository.com/artifact/net.minidev/json-smart
-	implementation 'net.minidev:json-smart:2.4.8'
-	// https://mvnrepository.com/artifact/net.minidev/accessors-smart
-	implementation 'net.minidev:accessors-smart:2.4.8'
-
-	//	Temporary projects
-	//	Keycloak and Okta connector (Open-ID based) (https://central.sonatype.com/artifact/io.github.adempiere/adempiere-open-id-connector)
-	implementation "${baseGroupId}:adempiere-open-id-connector:1.0.0"
 }
 
 configurations.all {
