@@ -290,7 +290,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 				try {
 					int lastFolder = fileName.lastIndexOf("/") + 1;
 					String tempFolder = System.getProperty("java.io.tmpdir");
-					File tmpFile = new File(tempFolder  + File.pathSeparator + fileName.substring(lastFolder));
+					File tmpFile = new File(tempFolder  + File.separator + fileName.substring(lastFolder));
 					InputStream inputStream = fileHandler.getResource(resourceMetadata);
 					Files.copy(inputStream, tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		            files.add(tmpFile);
