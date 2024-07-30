@@ -293,7 +293,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 						;
 				try {
 					int lastFolder = fileName.lastIndexOf("/") + 1;
-					File tmpFile = File.createTempFile("", fileName.substring(lastFolder));
+					File tmpFile = File.createTempFile("send_", fileName.substring(lastFolder));
 					InputStream inputStream = fileHandler.getResource(resourceMetadata);
 					Files.copy(inputStream, tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		            files.add(tmpFile);
