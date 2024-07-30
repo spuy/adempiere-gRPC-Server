@@ -122,7 +122,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 	}
 	
 	private ListNotificationsTypesResponse.Builder listNotificationsTypes(ListNotificationsTypesRequest request) {
-        final String whereClause = "AD_Reference_ID = 54081 "
+        final String whereClause = "AD_Reference_ID = ? "
 			+ "AND Value IN('STW', 'SFA', 'SYT', 'SIG', 'SSK', 'SIN', 'SSN', 'STG', 'SWH', 'SDC', 'EMA', 'NTE') "
 			+ "AND EXISTS("
 				+ "SELECT 1 FROM AD_AppRegistration AS a "
@@ -139,7 +139,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 			whereClause,
 			null
 		)
-			.setParameters(clientId)
+			.setParameters(clientId, 54081)
 		;
 
 		MRefList.getList(Env.getCtx(), 54081, false);
@@ -292,7 +292,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 						.withUserId(Env.getAD_User_ID(Env.getCtx()))
 						.withContainerType(ResourceMetadata.ContainerType.RESOURCE)
 						.withContainerId("tmp")
-						.withName(fileName)
+						.withResourceName(fileName)
 						;
 				try {
 					int lastFolder = fileName.lastIndexOf("/") + 1;
