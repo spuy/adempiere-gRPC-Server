@@ -139,10 +139,7 @@ public class SendNotifications extends  SendNotificationsImplBase{
 			whereClause,
 			null
 		)
-			.setParameters(clientId, 54081)
-		;
-
-		MRefList.getList(Env.getCtx(), 54081, false);
+		.setParameters(54081, clientId);
 
 		ListNotificationsTypesResponse.Builder builderList = ListNotificationsTypesResponse.newBuilder()
 			.setRecordCount(
