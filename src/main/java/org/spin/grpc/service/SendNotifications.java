@@ -285,15 +285,12 @@ public class SendNotifications extends  SendNotificationsImplBase{
 			IS3 fileHandler = (IS3) supportedApi;
 			fileNames.forEach(fileName -> {
 				ResourceMetadata resourceMetadata = ResourceMetadata.newInstance()
-						.withClientId(Env.getAD_Client_ID(Env.getCtx()))
-						.withUserId(Env.getAD_User_ID(Env.getCtx()))
-						.withContainerType(ResourceMetadata.ContainerType.RESOURCE)
-						.withContainerId("tmp")
 						.withResourceName(fileName)
 						;
 				try {
 					int lastFolder = fileName.lastIndexOf("/") + 1;
-					File tmpFile = File.createTempFile("send_", fileName.substring(lastFolder));
+					String tempFolder = System.getProperty("java.io.tmpdir");
+					File tmpFile = new File(tempFolder  + File.pathSeparator + fileName.substring(lastFolder));
 					InputStream inputStream = fileHandler.getResource(resourceMetadata);
 					Files.copy(inputStream, tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		            files.add(tmpFile);
