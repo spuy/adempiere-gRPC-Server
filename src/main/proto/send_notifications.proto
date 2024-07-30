@@ -90,11 +90,11 @@ message SendNotificationRequest {
 	string notification_type = 2;
 	string title = 3;
 	string body = 4;
-	repeated Recipinets recipients = 5;
-	string attachments = 8;
+	repeated Recipient recipients = 5;
+	repeated string attachments = 8;
 }
 
-message Recipinets {
+message Recipient {
 	int32 contact_id = 1;
 	string account_name = 2;
 }
