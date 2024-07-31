@@ -27,13 +27,13 @@ repositories {
     maven { url "https://clojars.org/repo" }
     mavenCentral()
     mavenLocal()
-	maven {
-		url = 'https://maven.pkg.github.com/solop-develop/adempiere_customizations'
-		credentials {
-			username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
-			password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token']
-		}
-	}
+//	maven {
+//		url = 'https://maven.pkg.github.com/solop-develop/adempiere_customizations'
+//		credentials {
+//			username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
+//			password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token']
+//		}
+//	}
     maven {
         url = "https://maven.pkg.github.com/spuy/spuy-core"
         credentials {
@@ -71,7 +71,7 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.2'
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
 	//	ADempiere Core + Patches
-	implementation 'com.solop.adempiere:adempiere-customizations.customizations_libs:3.9.4.001-1.0.1'
+//	implementation 'com.solop.adempiere:adempiere-customizations.customizations_libs:3.9.4.001-1.0.1'
 
 	//	ADempiere Core
 	implementation "${baseGroupId}:base:${baseVersion}"
