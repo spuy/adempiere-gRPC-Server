@@ -57,7 +57,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
 
 	//	ADempiere Core + Patches + Features
-	implementation 'com.solop:adempiere.solop_libs:3.9.4.001-1.0.0'
+	implementation 'com.solop:adempiere.solop_libs:3.9.4.001-1.0.1'
 
 	//	Others
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
