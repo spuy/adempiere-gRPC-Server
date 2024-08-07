@@ -17,7 +17,7 @@ ENV \
 	DB_TYPE="PostgreSQL" \
 	ADEMPIERE_APPS_TYPE="wildfly" \
 	SYSTEM_LOGO_URL="" \
-	TZ="America/Caracas"
+	TZ="America/Montevideo"
 
 EXPOSE ${SERVER_PORT}
 
