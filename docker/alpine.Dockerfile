@@ -46,6 +46,9 @@ RUN addgroup adempiere && \
 	chown -R adempiere /opt/apps/server/ && \
 	chmod +x start.sh
 
+# Enabling TLSv1 protocol in JVM
+RUN sed -i 's/jdk.tls.disabledAlgorithms=SSLv3, TLSv1, TLSv1.1/jdk.tls.disabledAlgorithms=SSLv3, TLSv1.1/g' /opt/java/openjdk/conf/security/java.security
+
 USER adempiere
 
 # Start app
