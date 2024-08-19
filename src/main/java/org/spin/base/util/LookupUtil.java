@@ -32,12 +32,14 @@ public class LookupUtil {
 
 	/**	Key column constant	*/
 	public final static String KEY_COLUMN_KEY = "KeyColumn";
-	/**	Key column constant	*/
+	/**	Uuid column constant	*/
 	public final static String UUID_COLUMN_KEY = "UUID";
-	/**	Key column constant	*/
+	/**	Value column constant	*/
 	public final static String VALUE_COLUMN_KEY = "ValueColumn";
-	/**	Key column constant	*/
+	/**	Display column constant	*/
 	public final static String DISPLAY_COLUMN_KEY = "DisplayColumn";
+	/**	To column constant	*/
+	public final static String To_COLUMN_KEY = "To";
 	
 	
 	/**
@@ -155,6 +157,34 @@ public class LookupUtil {
 
 		builder.setValues(values);
 		return builder;
+	}
+
+
+	/**
+	 * Get display column name
+	 * @param columnName
+	 * @return example DisplayColumn_AD_Client_ID
+	 */
+	public static String getDisplayColumnName(String columnName) {
+		return LookupUtil.DISPLAY_COLUMN_KEY + "_" + columnName;
+	}
+
+	/**
+	 * Get uuid column name
+	 * @param columnName
+	 * @return example AD_Client_ID_UUID
+	 */
+	public static String getUuidColumnName(String columnName) {
+		return columnName + "_" + LookupUtil.UUID_COLUMN_KEY;
+	}
+
+	/**
+	 * Get to range column name
+	 * @param columnName
+	 * @return example AD_Client_ID_To
+	 */
+	public static String getToColumnName(String columnName) {
+		return columnName + "_" + LookupUtil.To_COLUMN_KEY;
 	}
 
 }

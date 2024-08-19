@@ -36,7 +36,9 @@ import java.util.stream.Collectors;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.pipo.IDFinder;
 import org.adempiere.core.domains.models.I_AD_Element;
+import org.adempiere.core.domains.models.I_C_Order;
 import org.adempiere.core.domains.models.X_AD_Table;
+import org.compiere.model.MClient;
 import org.compiere.model.MColumn;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MTable;
@@ -56,6 +58,7 @@ import org.spin.dictionary.util.DictionaryUtil;
 import org.spin.service.grpc.util.db.FromUtil;
 import org.spin.service.grpc.util.db.OrderByUtil;
 import org.spin.service.grpc.util.db.ParameterUtil;
+import org.spin.service.grpc.util.value.NumberManager;
 import org.spin.service.grpc.util.value.ValueManager;
 
 import com.google.protobuf.Struct;
@@ -75,13 +78,20 @@ public class RecordUtil {
 
 
 	/** Table Allows Records with Zero Identifier */
-	public static List<String> ALLOW_ZERO_ID = Arrays.asList(
+	public static final List<String> ALLOW_ZERO_ID = Arrays.asList(
 		X_AD_Table.ACCESSLEVEL_All,
 		X_AD_Table.ACCESSLEVEL_SystemPlusClient,
 		X_AD_Table.ACCESSLEVEL_ClientPlusOrganization
 	);
 
 
+	/** Column names on records to client validations */
+	public static final List<String> RECORDS_COLUMN_NAMES = Arrays.asList(
+		I_AD_Element.COLUMNNAME_AD_Client_ID,
+		I_AD_Element.COLUMNNAME_IsActive,
+		I_C_Order.COLUMNNAME_Processed,
+		I_C_Order.COLUMNNAME_Processing
+	);
 
 	/**
 	 * get Entity from Table ID and (Record UUID / Record ID)
@@ -640,7 +650,8 @@ public class RecordUtil {
 							continue;
 						}
 						if (field.isKey()) {
-							entityBuilder.setId(rs.getInt(index));
+							final int identifier = rs.getInt(index);
+							entityBuilder.setId(identifier);
 						}
 						//	From field
 						String fieldColumnName = field.getColumnName();
@@ -653,6 +664,26 @@ public class RecordUtil {
 							fieldColumnName,
 							valueBuilder.build()
 						);
+
+						// to add client uuid by record
+						if (fieldColumnName.equals(I_AD_Element.COLUMNNAME_AD_Client_ID)) {
+							MClient entity = MClient.get(
+								table.getCtx(),
+								NumberManager.getIntegerFromObject(value)
+							);
+							if (entity != null) {
+								Value.Builder valueUuidBuilder = ValueManager.getValueFromReference(
+									entity.get_UUID(),
+									DisplayType.String
+								);
+								rowValues.putFields(
+									LookupUtil.getUuidColumnName(
+										I_AD_Element.COLUMNNAME_AD_Client_ID
+									),
+									valueUuidBuilder.build()
+								);
+							}
+						}
 					} catch (Exception e) {
 						log.severe(e.getLocalizedMessage());
 					}
