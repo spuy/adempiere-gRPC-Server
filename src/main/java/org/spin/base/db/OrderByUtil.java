@@ -14,12 +14,20 @@
  ************************************************************************************/
 package org.spin.base.db;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.adempiere.core.domains.models.I_AD_Element;
+import org.adempiere.model.MBrowse;
+import org.adempiere.model.MBrowseField;
+import org.adempiere.model.MViewColumn;
 import org.compiere.model.MColumn;
 import org.compiere.model.MField;
 import org.compiere.model.MTab;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
+import org.spin.base.util.LookupUtil;
+import org.spin.base.util.ReferenceUtil;
 import org.spin.dictionary.util.WindowUtil;
 
 /**
@@ -76,7 +84,10 @@ public class OrderByUtil {
 
 	public static String[] getTabOrderBysColumns(MTab tab) {
 		String orderBys[] = new String[3];
-		for (MField field : tab.getASPFields()) {
+		List<MField> fielsList = Arrays.asList(
+			tab.getFields(false, null)
+		);
+		for (MField field : fielsList) {
 			if (field.getSortNo() == null || field.getSortNo().compareTo(Env.ZERO) == 0) {
 				continue;
 			}
@@ -108,6 +119,37 @@ public class OrderByUtil {
 		};
 
 		return orderBys;
+	}
+
+
+	/**
+	 * Get Order By
+	 * @param browser
+	 * @return
+	 */
+	public static String getBrowseOrderBy(MBrowse browser) {
+		StringBuilder sqlOrderBy = new StringBuilder();
+		List<MBrowseField> browseFieldsList = browser.getOrderByFields();
+		for (MBrowseField field : browseFieldsList) {
+			if (sqlOrderBy.length() > 0) {
+				sqlOrderBy.append(", ");
+			}
+
+			MViewColumn viewColumn = MViewColumn.getById(browser.getCtx(), field.getAD_View_Column_ID(), null);
+			String sortColumn = viewColumn.getColumnSQL();
+			if (ReferenceUtil.validateReference(field.getAD_Reference_ID())) {
+				final String displayColumnName = LookupUtil.getDisplayColumnName(
+					viewColumn.getColumnName()
+				);
+				sortColumn = "\"" + displayColumnName + "\"";
+				// if (DB.isPostgreSQL()) {
+				// 	// sort null columns on top rows
+				// 	sortColumn += " NULLS FIRST ";
+				// }
+			}
+			sqlOrderBy.append(sortColumn);
+		}
+		return sqlOrderBy.length() > 0 ? sqlOrderBy.toString(): "";
 	}
 
 }
