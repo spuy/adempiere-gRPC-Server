@@ -38,7 +38,6 @@ import org.spin.base.util.ContextManager;
 import org.spin.base.util.ReferenceUtil;
 import org.spin.dictionary.custom.ProcessParaCustomUtil;
 import org.spin.service.grpc.util.value.ValueManager;
-import org.spin.util.ASPUtil;
 import org.spin.util.AbstractExportFormat;
 import org.spin.util.ReportExportHandler;
 
@@ -66,12 +65,11 @@ public class ProcessConvertUtil {
 		if (process == null) {
 			return Process.newBuilder();
 		}
-		process = ASPUtil.getInstance(context).getProcess(process.getAD_Process_ID());
 
 		// TODO: Remove with fix the issue https://github.com/solop-develop/adempiere-grpc-server/issues/28
 		DictionaryConvertUtil.translateEntity(process);
 
-		List<MProcessPara> parametersList = ASPUtil.getInstance(context).getProcessParameters(process.getAD_Process_ID());
+		List<MProcessPara> parametersList = process.getParametersAsList();
 
 		Process.Builder builder = Process.newBuilder()
 			.setId(
@@ -116,7 +114,10 @@ public class ProcessConvertUtil {
 		;
 
 		if (process.getAD_Browse_ID() > 0) {
-			MBrowse browse = ASPUtil.getInstance(context).getBrowse(process.getAD_Browse_ID());
+			MBrowse browse = MBrowse.get(
+				context,
+				process.getAD_Browse_ID()
+			);
 			builder.setBrowserId(
 					process.getAD_Browse_ID()
 				)
@@ -217,15 +218,17 @@ public class ProcessConvertUtil {
 			return depenentFieldsList;
 		}
 
-		String parentColumnName = processParameter.getColumnName();
-
-		MProcess process = ASPUtil.getInstance().getProcess(processParameter.getAD_Process_ID());
-		List<MProcessPara> parametersList = ASPUtil.getInstance().getProcessParameters(processParameter.getAD_Process_ID());
+		MProcess process = MProcess.get(
+			processParameter.getCtx(),
+			processParameter.getAD_Process_ID()
+		);
+		List<MProcessPara> parametersList = process.getParametersAsList();
 		if (parametersList == null || parametersList.isEmpty()) {
 			return depenentFieldsList;
 		}
 
-		parametersList.parallelStream()
+		final String parentColumnName = processParameter.getColumnName();
+		parametersList.stream()
 			.filter(currentParameter -> {
 				if (currentParameter == null || !currentParameter.isActive()) {
 					return false;
@@ -238,13 +241,20 @@ public class ProcessConvertUtil {
 				if (ContextManager.isUseParentColumnOnContext(parentColumnName, currentParameter.getDefaultValue())) {
 					return true;
 				}
+				// TODO: Validate range with `_To` suffix
+				if (ContextManager.isUseParentColumnOnContext(parentColumnName, currentParameter.getDefaultValue2())) {
+					return true;
+				}
 				// ReadOnly Logic
 				if (ContextManager.isUseParentColumnOnContext(parentColumnName, currentParameter.getReadOnlyLogic())) {
 					return true;
 				}
 				// Dynamic Validation
 				if (currentParameter.getAD_Val_Rule_ID() > 0) {
-					MValRule validationRule = MValRule.get(currentParameter.getCtx(), currentParameter.getAD_Val_Rule_ID());
+					MValRule validationRule = MValRule.get(
+						currentParameter.getCtx(),
+						currentParameter.getAD_Val_Rule_ID()
+					);
 					if (ContextManager.isUseParentColumnOnContext(parentColumnName, validationRule.getCode())) {
 						return true;
 					}
@@ -252,20 +262,8 @@ public class ProcessConvertUtil {
 				return false;
 			})
 			.forEach(currentParameter -> {
+				final String currentColumnName = currentParameter.getColumnName();
 				DependentField.Builder builder = DependentField.newBuilder()
-					.setParentId(
-						process.getAD_Process_ID()
-					)
-					.setParentUuid(
-						ValueManager.validateNull(
-							process.getUUID()
-						)
-					)
-					.setParentName(
-						ValueManager.validateNull(
-							process.getName()
-						)
-					)
 					.setId(
 						ValueManager.validateNull(
 							currentParameter.getUUID()
@@ -281,7 +279,20 @@ public class ProcessConvertUtil {
 					)
 					.setColumnName(
 						ValueManager.validateNull(
-							currentParameter.getColumnName()
+							currentColumnName
+						)
+					)
+					.setParentId(
+						process.getAD_Process_ID()
+					)
+					.setParentUuid(
+						ValueManager.validateNull(
+							process.getUUID()
+						)
+					)
+					.setParentName(
+						ValueManager.validateNull(
+							process.getName()
 						)
 					)
 				;
