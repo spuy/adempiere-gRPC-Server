@@ -38,7 +38,7 @@ repositories {
         credentials {
             // project property, system properrty, enviroment variable
             username = findProperty("deployUsername") ?: System.properties['deploy.user'] ?: System.getenv("GITHUB_SPDEV_USER")
-            password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_SPDEV_USER")
+            password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_SPDEV_TOKEN")
         }
     }
     maven {
