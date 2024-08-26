@@ -57,7 +57,7 @@ repositories {
 	maven {
 		url = "https://maven.pkg.github.com/spuy/spuy-core"
 		credentials {
-			username = System.getenv("GH_SPDEV_TOKEN") ?: project.properties['deploy.user']
+			username = System.getenv("GH_SPDEV_USER") ?: project.properties['deploy.user']
 			password = System.getenv("GH_SPDEV_TOKEN") ?: project.properties['deploy.token']
 		}
 	}

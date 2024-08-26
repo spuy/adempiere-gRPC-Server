@@ -52,8 +52,8 @@ jobs:
           GITHUB_DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           GITHUB_DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           GITHUB_DEPLOY_REPOSITORY: ${{ secrets.DEPLOY_REPOSITORY }}
-          GITHUB_SPDEV_USER: ${{ secrets.GH_SPDEV_USER }}
-          GITHUB_SPDEV_TOKEN: ${{ secrets.GH_SPDEV_TOKEN }}
+          GH_SPDEV_USER: ${{ secrets.GH_SPDEV_USER }}
+          GH_SPDEV_TOKEN: ${{ secrets.GH_SPDEV_TOKEN }}
           # ORG_GRADLE_PROJECT_deployUsername: ${{ secrets.DEPLOY_USER }}
           # ORG_GRADLE_PROJECT_deployToken: ${{ secrets.DEPLOY_TOKEN }}
           # ORG_GRADLE_PROJECT_deployRepository: ${{ secrets.DEPLOY_REPOSITORY }}
