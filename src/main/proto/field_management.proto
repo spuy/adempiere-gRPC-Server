@@ -15,44 +15,152 @@
  syntax = "proto3";
 
 
- option java_multiple_files = true;
- option java_package = "org.spin.backend.grpc.field";
- option java_outer_classname = "ADempiereFieldManagement";
+option java_multiple_files = true;
+option java_package = "org.spin.backend.grpc.field";
+option java_outer_classname = "ADempiereFieldManagement";
+
+import "base_data_type.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// Base URL
+// /fields/
  
- import "google/api/annotations.proto";
- import "google/protobuf/struct.proto";
- 
- // Base URL
- // /field/
- 
- package field;
+package field;
 
 //	Field Management
 service FieldManagementService {
+	// Get Default Value
+	rpc GetDefaultValue(GetDefaultValueRequest) returns (DefaultValue) {
+		option (google.api.http) = {
+			get: "/fields/default-value/{table_name}/{column_name}"
+			additional_bindings: {
+				get: "/fields/default-value/column/{column_id}"
+			}
+			additional_bindings: {
+				get: "/fields/default-value/field/{field_id}"
+			}
+			additional_bindings: {
+				get: "/fields/default-value/parameter/{process_parameter_id}"
+			}
+			additional_bindings: {
+				get: "/fields/default-value/parameter/{process_parameter_to_id}/to"
+			}
+			additional_bindings: {
+				get: "/fields/default-value/query-criteria/{browse_field_id}"
+			}
+			additional_bindings: {
+				get: "/fields/default-value/query-criteria/{browse_field_to_id}/to"
+			}
+		};
+	}
+	// List Lookup Item
+	rpc ListLookupItems(data.ListLookupItemsRequest) returns (data.ListLookupItemsResponse) {
+		option (google.api.http) = {
+			get: "/fields/lookups/{table_name}/{column_name}"
+			additional_bindings: {
+				get: "/fields/lookups/column/{column_id}"
+			}
+			additional_bindings: {
+				get: "/fields/lookups/field/{field_id}"
+			}
+			additional_bindings: {
+				get: "/fields/lookups/parameter/{process_parameter_id}"
+			}
+			additional_bindings: {
+				get: "/fields/lookups/query-criteria/{browse_field_id}"
+			}
+		};
+	}
+	// List General Search Records
+	rpc ListGeneralSearchRecords(ListGeneralSearchRecordsRequest) returns (data.ListEntitiesResponse) {
+		option (google.api.http) = {
+			get: "/fields/searchs/{table_name}/{column_name}"
+			additional_bindings: {
+				get: "/fields/searchs/column/{column_id}"
+			}
+			additional_bindings: {
+				get: "/fields/searchs/field/{field_id}"
+			}
+			additional_bindings: {
+				get: "/fields/searchs/parameter/{process_parameter_id}"
+			}
+			additional_bindings: {
+				get: "/fields/searchs/query-criteria/{browse_field_id}"
+			}
+		};
+	}
+
 	// Windows To Zoom from field
 	rpc ListZoomWindows(ListZoomWindowsRequest) returns (ListZoomWindowsResponse) {
 		option (google.api.http) = {
-			get: "/field/zooms/{table_name}/{column_name}"
+			get: "/fields/zooms/{table_name}/{column_name}"
 			additional_bindings: {
-				get: "/field/zooms/column/{column_id}"
+				get: "/fields/zooms/column/{column_id}"
 			}
 			additional_bindings: {
-				get: "/field/zooms/field/{field_id}"
+				get: "/fields/zooms/field/{field_id}"
 			}
 			additional_bindings: {
-				get: "/field/zooms/parameter/{process_parameter_id}"
+				get: "/fields/zooms/parameter/{process_parameter_id}"
 			}
 			additional_bindings: {
-				get: "/field/zooms/query-criteria/{browse_field_id}"
+				get: "/fields/zooms/query-criteria/{browse_field_id}"
 			}
 		};
 	}
 	rpc GetZoomParentRecord(GetZoomParentRecordRequest) returns (GetZoomParentRecordResponse) {
 		option (google.api.http) = {
-			get: "/field/zooms/record/{window_id}/{tab_id}"
+			get: "/fields/zooms/record/{window_id}/{tab_id}"
 		};
 	}
 }
+
+// Default Value
+message GetDefaultValueRequest {
+	// References
+	string table_name = 1;
+	string column_name = 2;
+	int32 column_id = 3;
+	int32 field_id = 4;
+	int32 process_parameter_id = 5;
+	int32 process_parameter_to_id = 6;
+	int32 browse_field_id = 7;
+	int32 browse_field_to_id = 8;
+	string context_attributes = 9;
+	google.protobuf.Value value = 10;
+}
+message DefaultValue {
+	int32 id = 1;
+	google.protobuf.Struct values = 2;
+	bool is_active = 3;
+}
+
+
+// List Search Records Request
+message ListGeneralSearchRecordsRequest {
+	string filters = 1;
+	string sort_by = 2;
+	repeated string group_columns = 3;
+	repeated string select_columns = 4;
+	int32 page_size = 5;
+	string page_token = 6;
+	string search_value = 7;
+	string context_attributes = 8;
+	bool is_only_active_records = 9;
+	// references
+	int32 process_parameter_id = 10;
+	int32 field_id = 11;
+	int32 browse_field_id = 12;
+	int32 reference_id = 13;
+	int32 column_id = 14;
+	string table_name = 15;
+	string column_name = 16;
+	//
+	bool is_without_validation = 17;
+}
+
+
 
 //	Zoom Window
 message ListZoomWindowsRequest {
