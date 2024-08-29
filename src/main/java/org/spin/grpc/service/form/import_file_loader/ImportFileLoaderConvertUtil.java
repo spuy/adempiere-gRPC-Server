@@ -13,7 +13,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
  ************************************************************************************/
 
-package org.spin.form.import_file_loader;
+package org.spin.grpc.service.form.import_file_loader;
 
 import org.adempiere.core.domains.models.I_AD_Column;
 import org.adempiere.core.domains.models.I_AD_Table;
@@ -42,14 +42,21 @@ public class ImportFileLoaderConvertUtil {
 			name = table.get_Translation(I_AD_Table.COLUMNNAME_Name);
 		}
 
-		builder.setId(table.getAD_Table_ID())
+		builder.setId(
+				table.getAD_Table_ID()
+			)
+			.setUuid(
+				ValueManager.validateNull(
+					table.getUUID()
+				)
+			)
 			.setName(
 				ValueManager.validateNull(name)
 			)
 			.setTableName(table.getTableName())
 		;
 
-		table.getColumnsAsList().parallelStream().forEach(column -> {
+		table.getColumnsAsList().forEach(column -> {
 			String nameOfColumn = column.getName();
 			if (!isBaseLanguage) {
 				// set translated values
@@ -57,14 +64,25 @@ public class ImportFileLoaderConvertUtil {
 			}
 
 			ImportColumn.Builder columnBuilder = ImportColumn.newBuilder()
-				.setId(column.getAD_Column_ID())
+				.setId(
+					column.getAD_Column_ID()
+				)
+				.setUuid(
+					ValueManager.validateNull(
+						column.getUUID()
+					)
+				)
 				.setName(
 					ValueManager.validateNull(nameOfColumn)
 				)
 				.setColumnName(
-					ValueManager.validateNull(column.getColumnName())
+					ValueManager.validateNull(
+						column.getColumnName()
+					)
 				)
-				.setDisplayType(column.getAD_Reference_ID())
+				.setDisplayType(
+					column.getAD_Reference_ID()
+				)
 			;
 
 			builder.addImportColumns(columnBuilder);
@@ -80,21 +98,36 @@ public class ImportFileLoaderConvertUtil {
 			return builder;
 		}
 
-		builder.setId(importFormat.getAD_ImpFormat_ID())
+		builder.setId(
+				importFormat.getAD_ImpFormat_ID()
+			)
+			.setUuid(
+				ValueManager.validateNull(
+					importFormat.getUUID()
+				)
+			)
 			.setName(
-				ValueManager.validateNull(importFormat.getName())
+				ValueManager.validateNull(
+					importFormat.getName()
+				)
 			)
 			.setDescription(
-				ValueManager.validateNull(importFormat.getDescription())
+				ValueManager.validateNull(
+					importFormat.getDescription()
+				)
 			)
 			.setTableName(
 				MTable.getTableName(Env.getCtx(), importFormat.getAD_Table_ID())
 			)
 			.setFormatType(
-				ValueManager.validateNull(importFormat.getFormatType())
+				ValueManager.validateNull(
+					importFormat.getFormatType()
+				)
 			)
 			.setSeparatorCharacter(
-				ValueManager.validateNull(importFormat.getSeparatorChar())
+				ValueManager.validateNull(
+					importFormat.getSeparatorChar()
+				)
 			)
 		;
 
@@ -114,31 +147,58 @@ public class ImportFileLoaderConvertUtil {
 			return builder;
 		}
 
-		builder.setId(importFormatRow.getAD_ImpFormat_Row_ID())
-			.setName(
-				ValueManager.validateNull(importFormatRow.getName())
+		builder.setId(
+				importFormatRow.getAD_ImpFormat_Row_ID()
 			)
-			.setSequence(importFormatRow.getSeqNo())
+			.setUuid(
+				ValueManager.validateNull(
+					importFormatRow.getUUID()
+				)
+			)
+			.setName(
+				ValueManager.validateNull(
+					importFormatRow.getName()
+				)
+			)
+			.setSequence(
+				importFormatRow.getSeqNo()
+			)
 			.setColumnName(
 				MColumn.getColumnName(Env.getCtx(), importFormatRow.getAD_Column_ID())
 			)
 			.setDataType(
-				ValueManager.validateNull(importFormatRow.getDataType())
+				ValueManager.validateNull(
+					importFormatRow.getDataType()
+				)
 			)
-			.setStartNo(importFormatRow.getStartNo())
-			.setEndNo(importFormatRow.getEndNo())
+			.setStartNo(
+				importFormatRow.getStartNo()
+			)
+			.setEndNo(
+				importFormatRow.getEndNo()
+			)
 			.setDefaultValue(
-				ValueManager.validateNull(importFormatRow.getDefaultValue())
+				ValueManager.validateNull(
+					importFormatRow.getDefaultValue()
+				)
 			)
 			.setDefimalPoint(
-				ValueManager.validateNull(importFormatRow.getDecimalPoint())
+				ValueManager.validateNull(
+					importFormatRow.getDecimalPoint()
+				)
 			)
-			.setIsDivideBy100(importFormatRow.isDivideBy100())
+			.setIsDivideBy100(
+				importFormatRow.isDivideBy100()
+			)
 			.setDateFormat(
-				ValueManager.validateNull(importFormatRow.getDataFormat())
+				ValueManager.validateNull(
+					importFormatRow.getDataFormat()
+				)
 			)
 			.setConstantValue(
-				ValueManager.validateNull(importFormatRow.getConstantValue())
+				ValueManager.validateNull(
+					importFormatRow.getConstantValue()
+				)
 			)
 		;
 

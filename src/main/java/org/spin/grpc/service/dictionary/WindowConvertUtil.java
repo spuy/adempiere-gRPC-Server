@@ -79,7 +79,7 @@ public class WindowConvertUtil {
 		}
 
 		// TODO: Remove with fix the issue https://github.com/solop-develop/backend/issues/28
-		DictionaryConvertUtil.translateEntity(window);
+		DictionaryConvertUtil.translateEntity(context, window);
 
 		//	
 		Window.Builder builder = Window.newBuilder()
@@ -220,6 +220,9 @@ public class WindowConvertUtil {
 		if (tab == null) {
 			return Tab.newBuilder();
 		}
+
+		// TODO: Remove with fix the issue https://github.com/solop-develop/backend/issues/28
+		DictionaryConvertUtil.translateEntity(context, tab);
 
 		int tabId = tab.getAD_Tab_ID();
 		int parentTabId = 0;
@@ -402,6 +405,9 @@ public class WindowConvertUtil {
 		if (field == null) {
 			return Field.newBuilder();
 		}
+
+		// TODO: Remove with fix the issue https://github.com/solop-develop/backend/issues/28
+		DictionaryConvertUtil.translateEntity(context, field);
 
 		// Column reference
 		MColumn column = MColumn.get(context, field.getAD_Column_ID());
