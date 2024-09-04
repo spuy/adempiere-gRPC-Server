@@ -30,13 +30,12 @@ import org.spin.grpc.service.Dashboarding;
 import org.spin.grpc.service.Enrollment;
 import org.spin.grpc.service.FileManagement;
 import org.spin.grpc.service.GeneralLedger;
-import org.spin.grpc.service.ImportFileLoader;
-import org.spin.grpc.service.InOutInfo;
 import org.spin.grpc.service.LogsInfo;
 import org.spin.grpc.service.MaterialManagement;
 import org.spin.grpc.service.NoticeManagement;
 import org.spin.grpc.service.PaymentPrintExport;
 import org.spin.grpc.service.PointOfSalesForm;
+import org.spin.grpc.service.PreferenceManagement;
 import org.spin.grpc.service.RecordManagement;
 import org.spin.grpc.service.ReportManagement;
 import org.spin.grpc.service.Security;
@@ -52,6 +51,7 @@ import org.spin.grpc.service.core_functionality.CoreFunctionality;
 import org.spin.grpc.service.dictionary.Dictionary;
 import org.spin.grpc.service.field.business_partner.BusinessPartnerInfo;
 import org.spin.grpc.service.field.field_management.FieldManagementService;
+import org.spin.grpc.service.field.in_out.InOutInfoService;
 import org.spin.grpc.service.field.invoice.InvoiceInfoService;
 import org.spin.grpc.service.field.location_address.LocationAddress;
 import org.spin.grpc.service.field.payment.PaymentInfoService;
@@ -62,6 +62,7 @@ import org.spin.grpc.service.form.ExpressReceipt;
 import org.spin.grpc.service.form.ExpressShipment;
 import org.spin.grpc.service.form.PaymentAllocation;
 import org.spin.grpc.service.form.bank_statement_match.BankStatementMatch;
+import org.spin.grpc.service.form.import_file_loader.ImportFileLoader;
 import org.spin.grpc.service.form.issue_management.IssueManagement;
 import org.spin.grpc.service.form.match_po_receipt_invoice.MatchPOReceiptInvoice;
 import org.spin.grpc.service.form.payroll_action_notice.PayrollActionNotice;
@@ -208,8 +209,8 @@ public class AllInOneServices {
 		serverBuilder.addService(new ImportFileLoader());
 		logger.info("Service " + ImportFileLoader.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		//	In-Out
-		serverBuilder.addService(new InOutInfo());
-		logger.info("Service " + InOutInfo.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		serverBuilder.addService(new InOutInfoService());
+		logger.info("Service " + InOutInfoService.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		//	Invoice Field
 		serverBuilder.addService(new InvoiceInfoService());
 		logger.info("Service " + InvoiceInfoService.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
@@ -246,6 +247,9 @@ public class AllInOneServices {
 		//	Payroll Action Notice
 		serverBuilder.addService(new PayrollActionNotice());
 		logger.info("Service " + PayrollActionNotice.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
+		//	Preference Managment
+		serverBuilder.addService(new PreferenceManagement());
+		logger.info("Service " + PreferenceManagement.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());
 		//	Product
 		serverBuilder.addService(new ProductInfo());
 		logger.info("Service " + ProductInfo.class.getName() + " added on " + SetupLoader.getInstance().getServer().getPort());

@@ -1,3 +1,17 @@
+/************************************************************************************
+ * Copyright (C) 2018-present E.R.P. Consultores y Asociados, C.A.                  *
+ * Contributor(s): Edwin Betancourt, EdwinBetanc0urt@outlook.com                    *
+ * This program is free software: you can redistribute it and/or modify             *
+ * it under the terms of the GNU General Public License as published by             *
+ * the Free Software Foundation, either version 2 of the License, or                *
+ * (at your option) any later version.                                              *
+ * This program is distributed in the hope that it will be useful,                  *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of                   *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                     *
+ * GNU General Public License for more details.                                     *
+ * You should have received a copy of the GNU General Public License                *
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.            *
+ ************************************************************************************/
 package org.spin.grpc.service.field.payment;
 
 import java.math.BigDecimal;
@@ -26,7 +40,7 @@ import org.spin.backend.grpc.field.payment.PaymentInfo;
 import org.spin.base.db.WhereClauseUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.base.util.ReferenceInfo;
-import org.spin.grpc.service.UserInterface;
+import org.spin.grpc.service.field.field_management.FieldManagementLogic;
 import org.spin.service.grpc.authentication.SessionManager;
 import org.spin.service.grpc.util.db.CountUtil;
 import org.spin.service.grpc.util.db.LimitUtil;
@@ -64,7 +78,7 @@ public class PaymentInfoLogic {
 			whereClause
 		);
 
-		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
+		ListLookupItemsResponse.Builder builderList = FieldManagementLogic.listLookupItems(
 			reference,
 			null,
 			request.getPageSize(),
@@ -93,7 +107,7 @@ public class PaymentInfoLogic {
 			whereClause
 		);
 
-		ListLookupItemsResponse.Builder builderList = UserInterface.listLookupItems(
+		ListLookupItemsResponse.Builder builderList = FieldManagementLogic.listLookupItems(
 			reference,
 			null,
 			request.getPageSize(),
@@ -115,7 +129,7 @@ public class PaymentInfoLogic {
 		int windowNo = ThreadLocalRandom.current().nextInt(1, 8996 + 1);
 		// ContextManager.setContextWithAttributesFromString(windowNo, Env.getCtx(), request.getContextAttributes());
 
-		String tableName;
+		final String tableName = I_C_Payment.Table_Name;
 		MLookupInfo reference = ReferenceInfo.getInfoFromRequest(
 			request.getReferenceId(),
 			request.getFieldId(),
@@ -123,33 +137,36 @@ public class PaymentInfoLogic {
 			request.getBrowseFieldId(),
 			request.getColumnId(),
 			request.getColumnName(),
-			tableName = "C_Payment",
+			tableName,
 			request.getIsWithoutValidation()
 		);
 
 		//
 		String sql = "SELECT "
-			+ "p.C_Payment_ID, p.UUID, "
-			+ "(SELECT b.Name || ' ' || ba.AccountNo FROM C_Bank b, C_BankAccount ba WHERE b.C_Bank_ID=ba.C_Bank_ID AND ba.C_BankAccount_ID=p.C_BankAccount_ID) AS BankAccount, "
-			+ "(SELECT Name FROM C_BPartner bp WHERE bp.C_BPartner_ID=p.C_BPartner_ID) AS BusinessPartner, "
-			+ "p.DateTrx, "
-			+ "p.DocumentNo, "
-			+ "p.IsReceipt, "
-			+ "(SELECT ISO_Code FROM C_Currency c WHERE c.C_Currency_ID=p.C_Currency_ID) AS Currency, "
-			+ "p.PayAmt, "
-			+ "currencyBase(p.PayAmt,p.C_Currency_ID,p.DateTrx, p.AD_Client_ID,p.AD_Org_ID), "
-			+ "p.DiscountAmt, "
-			+ "p.WriteOffAmt, "
-			+ "p.IsAllocated, "
-			+ "docstatus "
-			+ "FROM C_Payment AS p "
+			+ "C_Payment_ID, UUID, "
+			+ "(SELECT b.Name || ' ' || ba.AccountNo FROM C_Bank AS b, C_BankAccount AS ba WHERE b.C_Bank_ID = ba.C_Bank_ID AND ba.C_BankAccount_ID = C_Payment.C_BankAccount_ID) AS BankAccount, "
+			+ "(SELECT Name FROM C_BPartner AS bp WHERE bp.C_BPartner_ID = C_Payment.C_BPartner_ID) AS BusinessPartner, "
+			+ "DateTrx, "
+			+ "DocumentNo, "
+			+ "IsReceipt, "
+			+ "(SELECT ISO_Code FROM C_Currency AS c WHERE c.C_Currency_ID = C_Payment.C_Currency_ID) AS Currency, "
+			+ "PayAmt, "
+			+ "(SELECT Name FROM C_DocType AS dt WHERE dt.C_DocType_ID = C_Payment.C_DocType_ID) AS DocmentType, "
+			+ "(SELECT TO_CHAR(DateTrx, 'YYYY-MM-DD') FROM C_Payment AS p1 WHERE p1.C_Payment_ID = C_Payment.C_Payment_ID) AS InfoTo, "
+			+ "A_Name, "
+			+ "currencyBase(PayAmt, C_Currency_ID, DateTrx, AD_Client_ID, AD_Org_ID), "
+			+ "DiscountAmt, "
+			+ "WriteOffAmt, "
+			+ "IsAllocated, "
+			+ "DocStatus "
+			+ "FROM C_Payment AS C_Payment "
 			+ "WHERE 1=1 "
 		;
 
 		List<Object> filtersList = new ArrayList<>(); // includes on filters criteria
 		// Document No
 		if (!Util.isEmpty(request.getDocumentNo(), true)) {
-			sql += "AND UPPER(p.DocumentNo) LIKE '%' || UPPER(?) || '%' ";
+			sql += "AND UPPER(DocumentNo) LIKE '%' || UPPER(?) || '%' ";
 			filtersList.add(
 				request.getDocumentNo()
 			);
@@ -157,14 +174,14 @@ public class PaymentInfoLogic {
 		// Business Partner
 		int businessPartnerId = request.getBusinessPartnerId();
 		if (businessPartnerId > 0) {
-			sql += "AND p.C_BPartner_ID = ? ";
+			sql += "AND C_BPartner_ID = ? ";
 			filtersList.add(
 				businessPartnerId
 			);
 		}
 		// Business Partner
 		if (request.getBankAccountId() > 0) {
-			sql += "AND p.C_BankAccount_ID = ? ";
+			sql += "AND C_BankAccount_ID = ? ";
 			filtersList.add(
 				request.getBankAccountId()
 			);
@@ -188,17 +205,17 @@ public class PaymentInfoLogic {
 		if (dateFrom != null || dateTo != null) {
 			sql += " AND ";
 			if (dateFrom != null && dateTo != null) {
-				sql += "TRUNC(p.DateTrx, 'DD') BETWEEN ? AND ? ";
+				sql += "TRUNC(DateTrx, 'DD') BETWEEN ? AND ? ";
 				filtersList.add(dateFrom);
 				filtersList.add(dateTo);
 			}
 			else if (dateFrom != null) {
-				sql += "TRUNC(p.DateTrx, 'DD') >= ? ";
+				sql += "TRUNC(DateTrx, 'DD') >= ? ";
 				filtersList.add(dateFrom);
 			}
 			else {
 				// DateTo != null
-				sql += "TRUNC(p.DateTrx, 'DD') <= ? ";
+				sql += "TRUNC(DateTrx, 'DD') <= ? ";
 				filtersList.add(dateTo);
 			}
 		}
@@ -207,7 +224,7 @@ public class PaymentInfoLogic {
 			request.getGrandTotalFrom()
 		);
 		if (grandTotalFrom != null) {
-			sql += "AND p.PayAmt >= ? ";
+			sql += "AND PayAmt >= ? ";
 			filtersList.add(
 				grandTotalFrom
 			);
@@ -217,7 +234,7 @@ public class PaymentInfoLogic {
 			request.getGrandTotalTo()
 		);
 		if (grandTotalTo != null) {
-			sql += "AND p.PayAmt <= ? ";
+			sql += "AND PayAmt <= ? ";
 			filtersList.add(
 				grandTotalTo
 			);
@@ -227,7 +244,7 @@ public class PaymentInfoLogic {
 		String sqlWithRoleAccess = MRole.getDefault(Env.getCtx(), false)
 			.addAccessSQL(
 				sql.toString(),
-				"p",
+				tableName,
 				MRole.SQL_FULLYQUALIFIED,
 				MRole.SQL_RO
 			);
@@ -238,7 +255,6 @@ public class PaymentInfoLogic {
 		if (!request.getIsWithoutValidation()) {
 			String validationCode = WhereClauseUtil.getWhereRestrictionsWithAlias(
 				tableName,
-				"p",
 				reference.ValidationCode
 			);
 			if (!Util.isEmpty(reference.ValidationCode, true)) {
@@ -251,26 +267,27 @@ public class PaymentInfoLogic {
 		}
 
 		//	For dynamic condition
-		String dynamicWhere = WhereClauseUtil.getWhereClauseFromCriteria(request.getFilters(), tableName, "p", filtersList);
+		String dynamicWhere = WhereClauseUtil.getWhereClauseFromCriteria(request.getFilters(), tableName, filtersList);
 		if (!Util.isEmpty(dynamicWhere, true)) {
 			//	Add includes first AND
 			whereClause.append(" AND ")
 				.append("(")
 				.append(dynamicWhere)
-				.append(")");
+				.append(")")
+			;
 		}
 
 		sqlWithRoleAccess += whereClause;
-		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, tableName, "p", request.getSearchValue(), filtersList);
+		String parsedSQL = RecordUtil.addSearchValueAndGet(sqlWithRoleAccess, tableName, request.getSearchValue(), filtersList);
 
 		//	Get page and count
 		final int pageNumber = LimitUtil.getPageNumber(SessionManager.getSessionUuid(), request.getPageToken());
 		final int limit = LimitUtil.getPageSize(request.getPageSize());
 		final int offset = (pageNumber - 1) * limit;
-		final int count = CountUtil.countRecords(parsedSQL, tableName, "p", filtersList);
+		final int count = CountUtil.countRecords(parsedSQL, tableName, filtersList);
 
 		//	Add Row Number
-		parsedSQL += " ORDER BY p.DateTrx desc, p.DocumentNo ";
+		parsedSQL += " ORDER BY DateTrx DESC, DocumentNo ";
 		parsedSQL = LimitUtil.getQueryWithLimit(parsedSQL, limit, offset);
 
 		//	Set page token
