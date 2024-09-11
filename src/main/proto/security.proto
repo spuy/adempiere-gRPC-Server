@@ -189,6 +189,7 @@ message Client {
 	string logo = 5;
 	string logo_report = 6;
 	string logo_web = 7;
+	string dictionary_code = 8;
 }
 
 // Role
@@ -304,8 +305,9 @@ message DictionaryEntity {
 
 // Menu
 message Menu {
-	int32 id = 1;
+	string id = 1;
 	string uuid = 2;
+	int32 internal_id = 19;
 	int32 parent_id = 3;
 	string sequence = 4;
 	string name = 5;

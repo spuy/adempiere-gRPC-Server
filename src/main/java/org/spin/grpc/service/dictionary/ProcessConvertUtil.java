@@ -73,11 +73,17 @@ public class ProcessConvertUtil {
 		List<MProcessPara> parametersList = process.getParametersAsList();
 
 		Process.Builder builder = Process.newBuilder()
-			.setId(process.getAD_Process_ID())
+			.setId(
+				ValueManager.validateNull(
+					process.getUUID()
+				))
 			.setUuid(
 				ValueManager.validateNull(
 					process.getUUID()
 				)
+			)
+			.setInternalId(
+				process.getAD_Process_ID()
 			)
 			.setCode(
 				ValueManager.validateNull(
@@ -265,12 +271,17 @@ public class ProcessConvertUtil {
 				final String currentColumnName = currentParameter.getColumnName();
 				DependentField.Builder builder = DependentField.newBuilder()
 					.setId(
-						currentParameter.getAD_Process_Para_ID()
+						ValueManager.validateNull(
+							currentParameter.getUUID()
+						)
 					)
 					.setUuid(
 						ValueManager.validateNull(
 							currentParameter.getUUID()
 						)
+					)
+					.setInternalId(
+						currentParameter.getAD_Process_Para_ID()
 					)
 					.setColumnName(
 						ValueManager.validateNull(
@@ -314,9 +325,17 @@ public class ProcessConvertUtil {
 
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(processParameter.getAD_Process_Para_ID())
+			.setId(
+				ValueManager.validateNull(
+					processParameter.getUUID()
+				))
 			.setUuid(
-				ValueManager.validateNull(processParameter.getUUID())
+				ValueManager.validateNull(
+					processParameter.getUUID()
+				)
+			)
+			.setInternalId(
+				processParameter.getAD_Process_Para_ID()
 			)
 			.setName(
 				ValueManager.validateNull(processParameter.getName())

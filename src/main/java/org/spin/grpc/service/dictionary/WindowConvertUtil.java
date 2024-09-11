@@ -83,9 +83,18 @@ public class WindowConvertUtil {
 
 		//	
 		Window.Builder builder = Window.newBuilder()
-			.setId(window.getAD_Window_ID())
+			.setId(
+				ValueManager.validateNull(
+					window.getUUID()
+				)
+			)
 			.setUuid(
-				ValueManager.validateNull(window.getUUID())
+				ValueManager.validateNull(
+					window.getUUID()
+				)
+			)
+			.setInternalId(
+				window.getAD_Window_ID()
 			)
 			.setName(window.getName())
 			.setDescription(
@@ -240,9 +249,18 @@ public class WindowConvertUtil {
 
 		//	create build
 		Tab.Builder builder = Tab.newBuilder()
-			.setId(tab.getAD_Tab_ID())
+			.setId(
+				ValueManager.validateNull(
+					tab.getUUID()
+				)
+			)
 			.setUuid(
-				ValueManager.validateNull(tab.getUUID())
+				ValueManager.validateNull(
+					tab.getUUID()
+				)
+			)
+			.setInternalId(
+				tab.getAD_Tab_ID()
 			)
 			.setName(
 				ValueManager.validateNull(tab.getName())
@@ -428,9 +446,16 @@ public class WindowConvertUtil {
 		}
 		//	Convert
 		Field.Builder builder = Field.newBuilder()
-			.setId(field.getAD_Field_ID())
+			.setId(
+				ValueManager.validateNull(
+					field.getUUID()
+				)
+			)
 			.setUuid(
 				ValueManager.validateNull(field.getUUID())
+			)
+			.setInternalId(
+				field.getAD_Field_ID()
 			)
 			.setName(
 				ValueManager.validateNull(field.getName())
@@ -687,12 +712,17 @@ public class WindowConvertUtil {
 						);
 						DependentField.Builder builder = DependentField.newBuilder()
 							.setId(
-								currentField.getAD_Field_ID()
+								ValueManager.validateNull(
+									currentField.getUUID()
+								)
 							)
 							.setUuid(
 								ValueManager.validateNull(
 									currentField.getUUID()
 								)
+							)
+							.setInternalId(
+								currentField.getAD_Field_ID()
 							)
 							.setColumnName(
 								ValueManager.validateNull(
