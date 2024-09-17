@@ -24,7 +24,7 @@ repositories {
 	mavenLocal()
     mavenCentral()
     maven {
-    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere_customizations'
+    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
         credentials {
         	username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
             password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token']
@@ -94,7 +94,7 @@ dependencies {
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
 
 	//	ADempiere Core + Patches + Features
-	implementation "com.solop:adempiere.solop_libs:3.9.4.001-1.0.8"
+	implementation "com.solop:adempiere.solop_libs:3.9.4.001-1.0.9"
 }
 
 configurations.all {
@@ -102,7 +102,7 @@ configurations.all {
 		// used by aws-java-sdk-core (storefront is joda-time-2.10.4)
 		force("joda-time:joda-time:2.8.1")
         force("com.amazonaws:aws-java-sdk-s3:1.12.756")
-        force("com.amazonaws:aws-java-sdk-core:1.8.10.2")
+        force("com.amazonaws:aws-java-sdk-core:1.12.756")
     }
 }
 
