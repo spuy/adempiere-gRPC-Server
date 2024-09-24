@@ -20,11 +20,13 @@ def customBaseVersion = ""
 def descriptorFile = "adempiere-grpc-server.pb"
 def javaMainClass = "org.spin.server.AllInOneServices"
 
+def awsSdkVerson = '1.12.756'
+
 repositories {
 	mavenLocal()
     mavenCentral()
     maven {
-    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere_customizations'
+    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
         credentials {
         	username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
             password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token']
@@ -95,14 +97,17 @@ dependencies {
 
 	//	ADempiere Core + Patches + Features
 	implementation "com.solop:adempiere.solop_libs:3.9.4.001-1.1.4"
+
+    implementation "com.amazonaws:aws-java-sdk-core:${awsSdkVerson}"
+
 }
 
 configurations.all {
 	resolutionStrategy {
 		// used by aws-java-sdk-core (storefront is joda-time-2.10.4)
 		force("joda-time:joda-time:2.8.1")
-        force("com.amazonaws:aws-java-sdk-s3:1.12.756")
-        force("com.amazonaws:aws-java-sdk-core:1.8.10.2")
+        force("com.amazonaws:aws-java-sdk-s3:${awsSdkVerson}")
+        force("com.amazonaws:aws-java-sdk-core:${awsSdkVerson}")
     }
 }
 
