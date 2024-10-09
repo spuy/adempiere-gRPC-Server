@@ -14,6 +14,7 @@
  ************************************************************************************/
 package org.spin.grpc.service.form.issue_management;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -122,7 +123,6 @@ public class IssueManagementServiceLogic {
 		queryRequestTypes
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			// .list(MRequestType.class)
 			.forEach(requestTypeId -> {
 				RequestType.Builder builder = IssueManagementConvertUtil.convertRequestType(requestTypeId);
@@ -181,7 +181,6 @@ public class IssueManagementServiceLogic {
 		querySaleRepresentatives
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(userId -> {
 				User.Builder builder = IssueManagementConvertUtil.convertUser(userId);
 				builderList.addRecords(builder);
@@ -238,7 +237,6 @@ public class IssueManagementServiceLogic {
 		queryPriority
 			// .setLimit(limit, offset)
 			.list(MRefList.class)
-			.parallelStream()
 			.forEach(priority -> {
 				Priority.Builder builder = IssueManagementConvertUtil.convertPriority(priority);
 				builderList.addRecords(builder);
@@ -296,7 +294,6 @@ public class IssueManagementServiceLogic {
 		queryRequests
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(statusCategoryId -> {
 				StatusCategory.Builder builder = IssueManagementConvertUtil.convertStatusCategory(
 					statusCategoryId
@@ -424,7 +421,6 @@ public class IssueManagementServiceLogic {
 		queryRequests
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(categoryId -> {
 				Category.Builder builder = IssueManagementConvertUtil.convertCategory(
 					categoryId
@@ -484,7 +480,6 @@ public class IssueManagementServiceLogic {
 		queryRequests
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(groupId -> {
 				Group.Builder builder = IssueManagementConvertUtil.convertGroup(
 					groupId
@@ -543,7 +538,6 @@ public class IssueManagementServiceLogic {
 		queryPriority
 			// .setLimit(limit, offset)
 			.list(MRefList.class)
-			.parallelStream()
 			.forEach(priority -> {
 				TaskStatus.Builder builder = IssueManagementConvertUtil.convertTaskStatus(priority);
 				builderList.addRecords(builder);
@@ -579,6 +573,7 @@ public class IssueManagementServiceLogic {
 			null
 		)
 			.setApplyAccessFilter(MRole.SQL_FULLYQUALIFIED, MRole.SQL_RO) // TODO: Fix Record access with pagination
+			.setClient_ID()
 			.setOnlyActiveRecords(true)
 			.setParameters(filtersList)
 		;
@@ -604,7 +599,6 @@ public class IssueManagementServiceLogic {
 		queryRequests
 			// .setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(businessPartnerId -> {
 				BusinessPartner.Builder builder = IssueManagementConvertUtil.convertBusinessPartner(
 					businessPartnerId
@@ -664,9 +658,8 @@ public class IssueManagementServiceLogic {
 		);
 
 		queryRequests
-			// .setLimit(limit, offset)
+			.setLimit(limit, offset)
 			.getIDsAsList()
-			.parallelStream()
 			.forEach(projectId -> {
 				Project.Builder builder = IssueManagementConvertUtil.convertProject(
 					projectId
@@ -753,15 +746,122 @@ public class IssueManagementServiceLogic {
 			parametersList.add(searchValue);
 		}
 
+		if (request.getCategoryId() > 0) {
+			whereClause += " AND (R_Category_ID = ?) ";
+			parametersList.add(
+				request.getCategoryId()
+			);
+		}
+		if (request.getTypeId() > 0) {
+			whereClause += " AND (R_RequestType_ID = ?) ";
+			parametersList.add(
+				request.getTypeId()
+			);
+		}
 		// filter status by status category
 		if (request.getStatusCategoryId() > 0) {
 			whereClause += " AND EXISTS("
 				+ "SELECT 1 FROM R_Status AS sc "
 				+ "WHERE sc.R_StatusCategory_ID = ? "
 				+ "AND R_Request.R_StatusCategory_ID = sc.R_StatusCategory_ID"
-				+")"
+				+ ")"
 			;
 			parametersList.add(request.getStatusCategoryId());
+		}
+		if (request.getStatusId() > 0) {
+			whereClause += " AND (R_Status_ID = ?) ";
+			parametersList.add(
+				request.getStatusId()
+			);
+		}
+
+		if (request.getGroupId() > 0) {
+			whereClause += " AND (R_Group_ID = ?) ";
+			parametersList.add(
+				request.getGroupId()
+			);
+		}
+
+		if (request.getBusinessPartnerId() > 0) {
+			whereClause += " AND (C_BPartner_ID = ?) ";
+			parametersList.add(
+				request.getBusinessPartnerId()
+			);
+		}
+
+		if (request.getProjectId() > 0) {
+			// TODO: Add Project Phase and Poject Task
+			whereClause += " AND ("
+				+ "C_Project_ID = ? "
+				+ "OR EXISTS( "
+					+ "SELECT 1 FROM C_ProjectLine AS pl "
+					+ "WHERE pl.C_Project_ID = ? "
+					+ "AND pl.C_ProjectLine_ID = R_Request.C_ProjectLine_ID"
+					+ ") "
+				+ ") "
+			;
+			parametersList.add(
+				request.getProjectId()
+			);
+			parametersList.add(
+				request.getProjectId()
+			);
+		}
+
+		if (!Util.isEmpty(request.getPriorityValue(), true)) {
+			whereClause += " AND (Priority = ?) ";
+			parametersList.add(
+				request.getPriorityValue()
+			);
+		}
+
+		if (!Util.isEmpty(request.getTaskStatusValue(), true)) {
+			whereClause += " AND (TaskStatus = ?) ";
+			parametersList.add(
+				request.getTaskStatusValue()
+			);
+		}
+
+		// Created Date
+		Timestamp createdFrom = ValueManager.getDateFromTimestampDate(request.getCreatedFrom());
+		Timestamp createdTo = ValueManager.getDateFromTimestampDate(request.getCreatedTo());
+		if (createdFrom != null || createdTo != null) {
+			whereClause += " AND ";
+			if (createdFrom != null && createdTo != null) {
+				whereClause += "TRUNC(Created, 'DD') BETWEEN ? AND ? ";
+				parametersList.add(createdFrom);
+				parametersList.add(createdTo);
+			}
+			else if (createdFrom != null) {
+				whereClause += "TRUNC(Created, 'DD') >= ? ";
+				parametersList.add(createdFrom);
+			}
+			else {
+				// DateTo != null
+				whereClause += "TRUNC(Created, 'DD') <= ? ";
+				parametersList.add(createdTo);
+			}
+		}
+
+		// Date Next Action
+		Timestamp dateNextActionFrom = ValueManager.getDateFromTimestampDate(request.getDateNextActionFrom());
+		Timestamp dateNextActionTo = ValueManager.getDateFromTimestampDate(request.getDateNextActionFrom());
+		if (dateNextActionFrom != null || dateNextActionTo != null) {
+			whereClause += " AND ";
+			if (dateNextActionFrom != null && dateNextActionTo != null) {
+				whereClause += "TRUNC(DateNextAction, 'DD') BETWEEN ? AND ? ";
+				parametersList.add(dateNextActionFrom);
+				parametersList.add(dateNextActionTo);
+			}
+			else if (dateNextActionFrom != null) {
+				whereClause += "TRUNC(DateNextAction, 'DD') >= ? ";
+				parametersList.add(dateNextActionFrom);
+			}
+			else {
+				// DateTo != null
+				whereClause += "TRUNC(DateNextAction, 'DD') <= ? ";
+				parametersList.add(dateNextActionTo);
+			}
 		}
 
 		Query queryRequests = new Query(
@@ -794,7 +894,7 @@ public class IssueManagementServiceLogic {
 		);
 
 		queryRequests
-			// .setLimit(limit, offset)
+			.setLimit(limit, offset)
 			.setOrderBy(I_R_Request.COLUMNNAME_DateNextAction + " NULLS FIRST ")
 			.getIDsAsList()
 			// .list(MRequest.class)
@@ -825,15 +925,80 @@ public class IssueManagementServiceLogic {
 			parametersList.add(searchValue);
 		}
 
+		if (request.getCategoryId() > 0) {
+			whereClause += " AND (R_Category_ID = ?) ";
+			parametersList.add(
+				request.getCategoryId()
+			);
+		}
+		if (request.getTypeId() > 0) {
+			whereClause += " AND (R_RequestType_ID = ?) ";
+			parametersList.add(
+				request.getTypeId()
+			);
+		}
 		// filter status by status category
 		if (request.getStatusCategoryId() > 0) {
 			whereClause += " AND EXISTS("
 				+ "SELECT 1 FROM R_Status AS sc "
 				+ "WHERE sc.R_StatusCategory_ID = ? "
 				+ "AND R_Request.R_StatusCategory_ID = sc.R_StatusCategory_ID"
-				+")"
+				+ ")"
 			;
 			parametersList.add(request.getStatusCategoryId());
+		}
+		if (request.getStatusId() > 0) {
+			whereClause += " AND (R_Status_ID = ?) ";
+			parametersList.add(
+				request.getStatusId()
+			);
+		}
+
+		if (request.getGroupId() > 0) {
+			whereClause += " AND (R_Group_ID = ?) ";
+			parametersList.add(
+				request.getGroupId()
+			);
+		}
+
+		if (request.getBusinessPartnerId() > 0) {
+			whereClause += " AND (C_BPartner_ID = ?) ";
+			parametersList.add(
+				request.getBusinessPartnerId()
+			);
+		}
+
+		if (request.getProjectId() > 0) {
+			// TODO: Add Project Phase and Poject Task
+			whereClause += " AND ("
+				+ "C_Project_ID = ? "
+				+ "OR EXISTS( "
+					+ "SELECT 1 FROM C_ProjectLine AS pl "
+					+ "WHERE pl.C_Project_ID = ? "
+					+ "AND pl.C_ProjectLine_ID = R_Request.C_ProjectLine_ID"
+					+ ") "
+				+ ") "
+			;
+			parametersList.add(
+				request.getProjectId()
+			);
+			parametersList.add(
+				request.getProjectId()
+			);
+		}
+
+		if (!Util.isEmpty(request.getPriorityValue(), true)) {
+			whereClause += " AND (Priority = ?) ";
+			parametersList.add(
+				request.getPriorityValue()
+			);
+		}
+
+		if (!Util.isEmpty(request.getTaskStatusValue(), true)) {
+			whereClause += " AND (TaskStatus = ?) ";
+			parametersList.add(
+				request.getTaskStatusValue()
+			);
 		}
 
 		Query queryRequests = new Query(
@@ -866,7 +1031,7 @@ public class IssueManagementServiceLogic {
 		);
 
 		queryRequests
-			// .setLimit(limit, offset)
+			.setLimit(limit, offset)
 			.setOrderBy(I_R_Request.COLUMNNAME_DateNextAction + " NULLS FIRST ")
 			.getIDsAsList()
 			// .list(MRequest.class)
@@ -877,7 +1042,5 @@ public class IssueManagementServiceLogic {
 
 		return builderList;
 	}
-
-
 
 }
