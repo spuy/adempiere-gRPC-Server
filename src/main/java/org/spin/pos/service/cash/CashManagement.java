@@ -19,12 +19,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 
-import org.adempiere.core.domains.models.I_AD_User;
-import org.adempiere.core.domains.models.I_C_Bank;
-import org.adempiere.core.domains.models.I_C_BankAccount;
 import org.adempiere.core.domains.models.I_C_ConversionType;
-import org.adempiere.core.domains.models.I_C_Currency;
-import org.adempiere.core.domains.models.I_C_Payment;
 import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MBank;

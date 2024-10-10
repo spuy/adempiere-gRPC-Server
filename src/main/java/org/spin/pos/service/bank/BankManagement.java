@@ -26,17 +26,17 @@ import org.compiere.model.MRole;
 import org.compiere.model.Query;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
-import org.spin.backend.grpc.common.BankAccount;
+import org.spin.backend.grpc.core_functionality.BankAccount;
 import org.spin.backend.grpc.pos.Bank;
 import org.spin.backend.grpc.pos.ListBankAccountsRequest;
 import org.spin.backend.grpc.pos.ListBankAccountsResponse;
 import org.spin.backend.grpc.pos.ListBanksRequest;
 import org.spin.backend.grpc.pos.ListBanksResponse;
-import org.spin.base.db.LimitUtil;
-import org.spin.base.util.ConvertUtil;
-import org.spin.base.util.SessionManager;
-import org.spin.base.util.ValueUtil;
+import org.spin.grpc.service.core_functionality.CoreFunctionalityConvert;
 import org.spin.pos.util.POSConvertUtil;
+import org.spin.service.grpc.authentication.SessionManager;
+import org.spin.service.grpc.util.db.LimitUtil;
+import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * A util class for change values for documents
@@ -85,7 +85,7 @@ public class BankManagement {
 		ListBanksResponse.Builder builderList = ListBanksResponse.newBuilder()
 			.setRecordCount(recordCount)
 			.setNextPageToken(
-				ValueUtil.validateNull(nexPageToken)
+				ValueManager.validateNull(nexPageToken)
 			)
 		;
 
@@ -95,7 +95,7 @@ public class BankManagement {
 			.getIDsAsList()
 		;
 
-		banksIdsList.forEach(tableId -> {
+		banksIdsList.parallelStream().forEach(tableId -> {
 			Bank.Builder accountingDocument = POSConvertUtil.convertBank(tableId);
 			builderList.addRecords(accountingDocument);
 		});
@@ -135,7 +135,7 @@ public class BankManagement {
 
 		//	Get List
 		query.getIDsAsList().forEach(bankAccountId -> {
-			BankAccount.Builder bankAccountBuilder = ConvertUtil.convertBankAccount(bankAccountId);
+			BankAccount.Builder bankAccountBuilder = CoreFunctionalityConvert.convertBankAccount(bankAccountId);
 			builderList.addRecords(bankAccountBuilder);
 		});
 		return builderList;
