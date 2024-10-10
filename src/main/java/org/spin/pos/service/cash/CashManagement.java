@@ -19,7 +19,12 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 
+import org.adempiere.core.domains.models.I_AD_User;
+import org.adempiere.core.domains.models.I_C_Bank;
+import org.adempiere.core.domains.models.I_C_BankAccount;
 import org.adempiere.core.domains.models.I_C_ConversionType;
+import org.adempiere.core.domains.models.I_C_Currency;
+import org.adempiere.core.domains.models.I_C_Payment;
 import org.adempiere.core.domains.models.I_C_PaymentMethod;
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.MBank;
@@ -92,12 +97,10 @@ public class CashManagement {
 		payment.setAD_Org_ID(pointOfSalesDefinition.getAD_Org_ID());
         String value = DB.getDocumentNo(payment.getC_DocType_ID(), transactionName, false,  payment);
         payment.setDocumentNo(value);
-		Timestamp date = ValueManager.getDateFromTimestampDate(
-			request.getPaymentAccountDate()
-		);
-    	if(date != null) {
-    		payment.setDateAcct(date);
-    	}
+        Timestamp date = ValueManager.getDateFromTimestampDate(request.getPaymentAccountDate());
+        if(date != null) {
+        	payment.setDateAcct(date);
+        }
         payment.setTenderType(tenderType);
         if(!Util.isEmpty(request.getDescription())) {
         	payment.setDescription(request.getDescription());
@@ -113,9 +116,7 @@ public class CashManagement {
         }
         payment.setC_Charge_ID(defaultChargeId);
         //	Amount
-		BigDecimal paymentAmount = NumberManager.getBigDecimalFromString(
-			request.getAmount()
-		);
+        BigDecimal paymentAmount = NumberManager.getBigDecimalFromString(request.getAmount());
         payment.setPayAmt(paymentAmount);
         payment.setDocStatus(MPayment.DOCSTATUS_Drafted);
 		switch (tenderType) {
@@ -157,6 +158,22 @@ public class CashManagement {
 			payment.set_ValueOfColumn("POSReferenceBankAccount_ID", request.getReferenceBankAccountId());
 		}
 		payment.saveEx(transactionName);
+		//	Validate or complete
+//		if(Util.isEmpty(request.getUuid())) {
+//		} else {
+//			int paymentId = RecordUtil.getIdFromUuid(I_C_Payment.Table_Name, request.getUuid(), transactionName);
+//			if(paymentId <= 0) {
+//				throw new AdempiereException("@C_Payment_ID@ @NotFound@");
+//			}
+//			payment = new MPayment(Env.getCtx(), paymentId, transactionName);
+//			if(!Util.isEmpty(request.getDescription())) {
+//				payment.setDescription(request.getDescription());
+//			}
+//			if(!Util.isEmpty(request.getCollectingAgentUuid())) {
+//				payment.set_ValueOfColumn("CollectAgent_ID", RecordUtil.getIdFromUuid(I_AD_User.Table_Name, request.getCollectingAgentUuid(), transactionName));
+//			}
+//			payment.saveEx(transactionName);
+//		}
 		return payment;
 	}
 	

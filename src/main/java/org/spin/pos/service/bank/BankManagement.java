@@ -26,17 +26,17 @@ import org.compiere.model.MRole;
 import org.compiere.model.Query;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
-import org.spin.backend.grpc.core_functionality.BankAccount;
+import org.spin.backend.grpc.common.BankAccount;
 import org.spin.backend.grpc.pos.Bank;
 import org.spin.backend.grpc.pos.ListBankAccountsRequest;
 import org.spin.backend.grpc.pos.ListBankAccountsResponse;
 import org.spin.backend.grpc.pos.ListBanksRequest;
 import org.spin.backend.grpc.pos.ListBanksResponse;
-import org.spin.grpc.service.core_functionality.CoreFunctionalityConvert;
+import org.spin.base.db.LimitUtil;
+import org.spin.base.util.ConvertUtil;
+import org.spin.base.util.SessionManager;
+import org.spin.base.util.ValueUtil;
 import org.spin.pos.util.POSConvertUtil;
-import org.spin.service.grpc.authentication.SessionManager;
-import org.spin.service.grpc.util.db.LimitUtil;
-import org.spin.service.grpc.util.value.ValueManager;
 
 /**
  * A util class for change values for documents
@@ -59,11 +59,8 @@ public class BankManagement {
 		List<Object> filtersList = new ArrayList<>();
 
 		String whereClause = "BankType = 'B' ";
-		final String searchValue = ValueManager.getDecodeUrl(
-			request.getSearchValue()
-		);
-		if (!Util.isEmpty(searchValue, true)) {
-			filtersList.add(searchValue);
+		if (!Util.isEmpty(request.getSearchValue(), false)) {
+			filtersList.add(request.getSearchValue());
 			whereClause += "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -88,7 +85,7 @@ public class BankManagement {
 		ListBanksResponse.Builder builderList = ListBanksResponse.newBuilder()
 			.setRecordCount(recordCount)
 			.setNextPageToken(
-				ValueManager.validateNull(nexPageToken)
+				ValueUtil.validateNull(nexPageToken)
 			)
 		;
 
@@ -98,7 +95,7 @@ public class BankManagement {
 			.getIDsAsList()
 		;
 
-		banksIdsList.parallelStream().forEach(tableId -> {
+		banksIdsList.forEach(tableId -> {
 			Bank.Builder accountingDocument = POSConvertUtil.convertBank(tableId);
 			builderList.addRecords(accountingDocument);
 		});
@@ -113,11 +110,8 @@ public class BankManagement {
 		List<Object> filtersList = new ArrayList<>();
 		filtersList.add(bank.getC_Bank_ID());
 		String whereClause = "C_Bank_ID = ? ";
-		final String searchValue = ValueManager.getDecodeUrl(
-			request.getSearchValue()
-		);
-		if (!Util.isEmpty(searchValue, true)) {
-			filtersList.add(searchValue);
+		if (!Util.isEmpty(request.getSearchValue(), false)) {
+			filtersList.add(request.getSearchValue());
 			whereClause = "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -141,7 +135,7 @@ public class BankManagement {
 
 		//	Get List
 		query.getIDsAsList().forEach(bankAccountId -> {
-			BankAccount.Builder bankAccountBuilder = CoreFunctionalityConvert.convertBankAccount(bankAccountId);
+			BankAccount.Builder bankAccountBuilder = ConvertUtil.convertBankAccount(bankAccountId);
 			builderList.addRecords(bankAccountBuilder);
 		});
 		return builderList;
