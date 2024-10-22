@@ -59,11 +59,8 @@ public class BankManagement {
 		List<Object> filtersList = new ArrayList<>();
 
 		String whereClause = "BankType = 'B' ";
-		final String searchValue = ValueManager.getDecodeUrl(
-			request.getSearchValue()
-		);
-		if (!Util.isEmpty(searchValue, true)) {
-			filtersList.add(searchValue);
+		if (!Util.isEmpty(request.getSearchValue(), false)) {
+			filtersList.add(request.getSearchValue());
 			whereClause += "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
@@ -113,11 +110,8 @@ public class BankManagement {
 		List<Object> filtersList = new ArrayList<>();
 		filtersList.add(bank.getC_Bank_ID());
 		String whereClause = "C_Bank_ID = ? ";
-		final String searchValue = ValueManager.getDecodeUrl(
-			request.getSearchValue()
-		);
-		if (!Util.isEmpty(searchValue, true)) {
-			filtersList.add(searchValue);
+		if (!Util.isEmpty(request.getSearchValue(), false)) {
+			filtersList.add(request.getSearchValue());
 			whereClause = "AND UPPER(Name) LIKE '%' || UPPER(?) || '%' ";
 		}
 
