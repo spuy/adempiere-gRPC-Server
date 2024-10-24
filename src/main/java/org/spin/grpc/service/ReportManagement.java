@@ -41,7 +41,6 @@ import org.adempiere.core.domains.models.I_AD_Process_Para;
 import org.adempiere.core.domains.models.I_AD_ReportView;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.pdf.IText7Document;
-import org.compiere.model.MClientInfo;
 import org.compiere.model.MMenu;
 import org.compiere.model.MPInstance;
 import org.compiere.model.MProcess;
@@ -79,20 +78,16 @@ import org.spin.backend.grpc.report_management.ListReportViewsResponse;
 import org.spin.backend.grpc.report_management.PrintEntitiesBatchRequest;
 import org.spin.backend.grpc.report_management.PrintEntitiesBatchResponse;
 import org.spin.backend.grpc.report_management.PrintFormat;
-import org.spin.backend.grpc.report_management.ReportView;
 import org.spin.backend.grpc.report_management.ReportManagementGrpc.ReportManagementImplBase;
+import org.spin.backend.grpc.report_management.ReportView;
 import org.spin.base.util.AccessUtil;
 import org.spin.base.util.ConvertUtil;
 import org.spin.base.util.FileUtil;
 import org.spin.base.util.RecordUtil;
 import org.spin.dictionary.util.DictionaryUtil;
 import org.spin.dictionary.util.ReportUtil;
-import org.spin.eca62.support.IS3;
-import org.spin.eca62.support.ResourceMetadata;
-import org.spin.model.MADAppRegistration;
+import org.spin.eca62.util.S3Manager;
 import org.spin.service.grpc.util.value.ValueManager;
-import org.spin.util.support.AppSupportHandler;
-import org.spin.util.support.IAppSupport;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Value;
@@ -728,7 +723,7 @@ public class ReportManagement extends ReportManagementImplBase {
 				if(fileType.equals("pdf")) {
 					File outFile = File.createTempFile("BatchPrint_", ".pdf");
 					IText7Document.mergePdf(files, outFile);
-					printResponse.setFileName(ValueManager.validateNull(exportFile(outFile)));
+					printResponse.setFileName(ValueManager.validateNull(S3Manager.putTemporaryFile(outFile)));
 				} else {
 					File outFile = File.createTempFile("BatchPrint_", ".zip");
 					try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(outFile))) {
@@ -737,7 +732,7 @@ public class ReportManagement extends ReportManagementImplBase {
 					        Files.copy(file.toPath(), zipOut);
 					    }
 					}
-					printResponse.setFileName(ValueManager.validateNull(exportFile(outFile)));
+					printResponse.setFileName(ValueManager.validateNull(S3Manager.putTemporaryFile(outFile)));
 				}
 				printResponse.setRecordCount(files.size());
 			}
@@ -749,45 +744,6 @@ public class ReportManagement extends ReportManagementImplBase {
 					.withDescription(e.getLocalizedMessage())
 					.withCause(e)
 					.asRuntimeException());
-		}
-	}
-	
-	/**
-	 * Export File to S3
-	 * @param file
-	 * @return
-	 */
-	private String exportFile(File file) {
-		try {
-		    //	Push to S3
-		    MClientInfo clientInfo = MClientInfo.get(Env.getCtx());
-		    if(clientInfo.getFileHandler_ID() <= 0) {
-		    	throw new AdempiereException("@FileHandler_ID@ @NotFound@");
-		    }
-		    MADAppRegistration genericConnector = MADAppRegistration.getById(Env.getCtx(), clientInfo.getFileHandler_ID(), null);
-		    if(genericConnector == null) {
-				throw new AdempiereException("@AD_AppRegistration_ID@ @NotFound@");
-			}
-			//	Load
-			IAppSupport supportedApi = AppSupportHandler.getInstance().getAppSupport(genericConnector);
-			if(supportedApi == null) {
-				throw new AdempiereException("@AD_AppSupport_ID@ @NotFound@");
-			}
-			if(!IS3.class.isAssignableFrom(supportedApi.getClass())) {
-				throw new AdempiereException("@AD_AppSupport_ID@ @Unsupported@");
-			}
-			//	Push it
-			IS3 fileHandler = (IS3) supportedApi;
-			ResourceMetadata resourceMetadata = ResourceMetadata.newInstance()
-					.withClientId(Env.getAD_Client_ID(Env.getCtx()))
-					.withUserId(Env.getAD_User_ID(Env.getCtx()))
-					.withContainerType(ResourceMetadata.ContainerType.RESOURCE)
-					.withContainerId("tmp")
-					.withName(file.getName())
-					;
-			return fileHandler.putResource(resourceMetadata, new FileInputStream(file));
-		} catch (Exception e) {
-			throw new AdempiereException(e);
 		}
 	}
 
