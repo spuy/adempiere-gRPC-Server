@@ -17,7 +17,9 @@ package org.spin.grpc.service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -30,12 +32,15 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.adempiere.core.domains.models.I_AD_PInstance;
 import org.adempiere.core.domains.models.I_AD_PrintFormat;
 import org.adempiere.core.domains.models.I_AD_Process_Para;
 import org.adempiere.core.domains.models.I_AD_ReportView;
 import org.adempiere.exceptions.AdempiereException;
+import org.adempiere.pdf.IText7Document;
 import org.compiere.model.MMenu;
 import org.compiere.model.MPInstance;
 import org.compiere.model.MProcess;
@@ -70,6 +75,8 @@ import org.spin.backend.grpc.report_management.ListPrintFormatsRequest;
 import org.spin.backend.grpc.report_management.ListPrintFormatsResponse;
 import org.spin.backend.grpc.report_management.ListReportViewsRequest;
 import org.spin.backend.grpc.report_management.ListReportViewsResponse;
+import org.spin.backend.grpc.report_management.PrintEntitiesBatchRequest;
+import org.spin.backend.grpc.report_management.PrintEntitiesBatchResponse;
 import org.spin.backend.grpc.report_management.PrintFormat;
 import org.spin.backend.grpc.report_management.ReportView;
 import org.spin.backend.grpc.report_management.ReportManagementGrpc.ReportManagementImplBase;
@@ -675,6 +682,66 @@ public class ReportManagement extends ReportManagementImplBase {
 			);
 		}
 	}
+	
+	@Override
+	public void printEntitiesBatch(PrintEntitiesBatchRequest request, StreamObserver<PrintEntitiesBatchResponse> responseObserver) {
+		try {
+			PrintEntitiesBatchResponse.Builder printResponse = PrintEntitiesBatchResponse.newBuilder();
+			if(request.getReportId() <= 0) {
+				throw new AdempiereException("@AD_Process_ID@ @IsMandatory@");
+			}
+			if(Util.isEmpty(request.getTableName(), true)) {
+				throw new AdempiereException("@TableName@ @IsMandatory@");
+			}
+			MTable table = MTable.get(Env.getCtx(), request.getTableName());
+			if(table == null) {
+				throw new AdempiereException("@TableName@ @IsMandatory@");
+			}
+			List<File> files = new ArrayList<>();
+			request.getIdsList().forEach(recordId -> {
+				//	Call process builder
+				ProcessInfo result = ProcessBuilder.create(Env.getCtx())
+					.process(request.getReportId())
+					.withRecordId(table.getAD_Table_ID(), recordId)
+					.withoutPrintPreview()
+					.withoutBatchMode()
+					.withWindowNo(0)
+					.withTitle("Print Report")
+					.withoutTransactionClose()
+					.withReportExportFormat(ReportUtil.DEFAULT_REPORT_TYPE)
+					.execute()
+				;
+				File reportFile = result.getPDFReport();
+				if(reportFile != null) {
+					files.add(reportFile);
+				}
+			});
+			//	Validate Type
+			if(files.size() > 0) {
+				String fileType = Optional.ofNullable(request.getFileType()).orElse("pdf");
+				if(fileType.equals("pdf")) {
+					File outFile = File.createTempFile("BatchPrint_", ".pdf");
+					IText7Document.mergePdf(files, outFile);
+				} else {
+					File outFile = File.createTempFile("BatchPrint_", ".zip");
+					try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(outFile))) {
+					    for (File file : files) {
+					        zipOut.putNextEntry(new ZipEntry(file.getName()));
+					        Files.copy(file.toPath(), zipOut);
+					    }
+					}
+				}
+			}
+			responseObserver.onNext(printResponse.build());
+			responseObserver.onCompleted();
+		} catch (Exception e) {
+			log.severe(e.getLocalizedMessage());
+			responseObserver.onError(Status.INTERNAL
+					.withDescription(e.getLocalizedMessage())
+					.withCause(e)
+					.asRuntimeException());
+		}
+	}
 
 	/**
 	 * Convert print formats to gRPC
@@ -717,11 +784,11 @@ public class ReportManagement extends ReportManagementImplBase {
 				.setParameters(request.getReportViewId())
 				.first()
 			;
+			whereClause = "AD_ReportView_ID = ?";
+			parameters.add(reportView.getAD_ReportView_ID());
 			if (reportView != null && reportView.getAD_ReportView_ID() > 0) {
 				throw new AdempiereException("@AD_ReportView_ID@ @NotFound@");
 			}
-			whereClause = "AD_ReportView_ID = ?";
-			parameters.add(reportView.getAD_ReportView_ID());
 		}
 
 		//	Get List

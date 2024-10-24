@@ -21,7 +21,6 @@
  
  import "base_data_type.proto";
  import "google/api/annotations.proto";
- import "google/protobuf/empty.proto";
  import "google/protobuf/timestamp.proto";
  import "google/protobuf/struct.proto";
  
