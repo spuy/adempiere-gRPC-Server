@@ -45,7 +45,7 @@ import org.spin.service.grpc.util.db.OperatorUtil;
 import org.spin.service.grpc.util.db.ParameterUtil;
 import org.spin.service.grpc.util.query.Filter;
 import org.spin.service.grpc.util.query.FilterManager;
-import org.spin.service.grpc.util.value.ValueManager;
+import org.spin.service.grpc.util.value.StringManager;
 
 /**
  * Class for handle SQL Where Clause
@@ -322,8 +322,10 @@ public class WhereClauseUtil {
 			}
 		} else if(operatorValue.equals(OperatorUtil.LIKE) || operatorValue.equals(OperatorUtil.NOT_LIKE)) {
 			columnName = "UPPER(" + columnName + ")";
-			String valueToFilter = ValueManager.validateNull(
-				(String) condition.getValue()
+			String valueToFilter = StringManager.getValidString(
+				StringManager.getStringFromObject(
+					condition.getValue()
+				)
 			);
 			// if (!Util.isEmpty(valueToFilter, true)) {
 			// 	if (!valueToFilter.startsWith("%")) {
@@ -584,9 +586,13 @@ public class WhereClauseUtil {
 			tableAlias = tableName;
 		}
 		final String tableNameAlias = tableAlias;
-		FilterManager.newInstance(filters).getConditions().stream()
-			.filter(condition -> !Util.isEmpty(condition.getColumnName(), true))
+		FilterManager.newInstance(filters).getConditions()
+			.stream()
+			.filter(condition -> {
+				return !Util.isEmpty(condition.getColumnName(), true);
+			})
 			.forEach(condition -> {
+				// TODO: Validate range columns `_To`
 				MColumn column = table.getColumn(condition.getColumnName());
 				if (column == null || column.getAD_Column_ID() <= 0) {
 					// filter key does not exist as a column, next loop
@@ -600,7 +606,11 @@ public class WhereClauseUtil {
 				// TODO: Evaluate support to columnSQL
 				String columnName = tableNameAlias + "." + column.getColumnName();
 				condition.setColumnName(columnName);
-				String restriction = WhereClauseUtil.getRestrictionByOperator(condition, displayTypeId, params);
+				String restriction = WhereClauseUtil.getRestrictionByOperator(
+					condition,
+					displayTypeId,
+					params
+				);
 
 				whereClause.append(restriction);
 
