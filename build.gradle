@@ -24,46 +24,27 @@ def awsSdkVerson = '1.12.756'
 
 repositories {
 	mavenLocal()
-    mavenCentral()
-    maven {
-    	url = System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: System.properties['deploy.repository'] ?: 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
-        credentials {
-        	username = System.getenv("GITHUB_DEPLOY_USER") ?: System.properties['deploy.user']
-            password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: System.properties['deploy.token']
+	mavenCentral()
+	maven {
+		// Custom GitHub Organization
+		// TODO: Configure correct url repository secrets
+		// url = findProperty("deployRepository") ?: eSystem.properties['deploy.repository'] ?: System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
+		url = 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
+		credentials {
+			// project property, system properrty, enviroment variable
+			username = findProperty("deployUsername") ?: System.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
+			password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
 		}
 	}
-    maven {
-        // Custom GitHub Organization
-        // TODO: Configure correct url repository secrets
-        // url = findProperty("deployRepository") ?: eSystem.properties['deploy.repository'] ?: System.getenv("GITHUB_DEPLOY_REPOSITORY") ?: 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
-        url = 'https://maven.pkg.github.com/solop-develop/adempiere-solop'
-        credentials {
-            // project property, system properrty, enviroment variable
-            username = findProperty("deployUsername") ?: System.properties['deploy.user'] ?: System.getenv("GITHUB_SPDEV_USER")
-            password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_SPDEV_TOKEN")
-        }
-    }
-    maven {
-        // Adempiere GitHub Organization
-        url = 'https://maven.pkg.github.com/adempiere/adempiere'
-        credentials {
-            // project property, system properrty, enviroment variable
-            username = findProperty("deployUsername") ?: System.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
-            password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
-        }
-    }
-    maven { // The google mirror is less flaky than mavenCentral()
-        url "https://maven-central.storage-download.googleapis.com/repos/central/data/"
-    }
-    maven { url "https://clojars.org/repo" }
-    maven {
-        url = "https://maven.pkg.github.com/spuy/spuy-core"
-        credentials {
-            username = System.getenv("GITHUB_DEPLOY_USER") ?: project.properties['deploy.user']
-            password = System.getenv("GITHUB_DEPLOY_TOKEN") ?: project.properties['deploy.token']
-        }
-    }
-
+	maven {
+		// Adempiere GitHub Organization
+		url = 'https://maven.pkg.github.com/adempiere/adempiere'
+		credentials {
+			// project property, system properrty, enviroment variable
+			username = findProperty("deployUsername") ?: System.properties['deploy.user'] ?: System.getenv("GITHUB_DEPLOY_USER")
+			password = findProperty("deployToken") ?: System.properties['deploy.token'] ?: System.getenv("GITHUB_DEPLOY_TOKEN")
+		}
+	}
 	maven {
 		url = "https://maven.google.com/"
 	}
@@ -88,15 +69,15 @@ dependencies {
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
 	implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
 	implementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
-    implementation group: 'com.sun.xml.bind', name: 'jaxb-core', version: '2.3.0.1'
-    implementation group: 'com.sun.xml.bind', name: 'jaxb-impl', version: '2.3.1'
-    implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
+    implementation 'javax.xml.bind:jaxb-api:2.4.0-b180830.0359'
+	implementation 'com.sun.xml.bind:jaxb-impl:3.0.0-M4'
+	implementation 'com.sun.xml.bind:jaxb-core:3.0.0-M4'
 	implementation 'javax.activation:activation:1.1.1'
 	//	Others
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
 
 	//	ADempiere Core + Patches + Features
-	implementation "com.solop:adempiere.solop_libs:3.9.4.001-1.2.7"
+	implementation "com.solop:adempiere.solop_libs:3.9.4.001-1.2.8"
 
     implementation "com.amazonaws:aws-java-sdk-core:${awsSdkVerson}"
 
