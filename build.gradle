@@ -58,7 +58,7 @@ dependencies {
     )
 
     //implementation project(":spuy-core")
-    implementation 'uy.solop:050-spuy-core:3.9.4-r-18.2'
+    implementation 'uy.solop:050-spuy-core:3.9.4-r-18.3'
 
 	implementation "io.netty:netty-handler:4.1.107.Final"
     implementation "io.grpc:grpc-alts:${grpcVersion}"
